@@ -35,23 +35,29 @@ impl SessionStore {
     }
 
     pub fn add_session(&mut self, folder_id: Option<&str>, session: SessionInfo) {
-        if let Some(fid) = folder_id {
-            if let Some(folder) = find_folder_mut(&mut self.root, fid) {
-                folder.items.push(session);
-                return;
-            }
+        if let Some(fid) = folder_id
+            && let Some(folder) = find_folder_mut(&mut self.root, fid)
+        {
+            folder.items.push(session);
+            return;
         }
         self.root.items.push(session);
     }
 
     pub fn add_folder(&mut self, parent_id: Option<&str>, folder: SessionFolder) {
-        if let Some(pid) = parent_id {
-            if let Some(parent) = find_folder_mut(&mut self.root, pid) {
-                parent.folders.push(folder);
-                return;
-            }
+        if let Some(pid) = parent_id
+            && let Some(parent) = find_folder_mut(&mut self.root, pid)
+        {
+            parent.folders.push(folder);
+            return;
         }
         self.root.folders.push(folder);
+    }
+}
+
+impl From<SessionFolder> for SessionStore {
+    fn from(root: SessionFolder) -> Self {
+        Self { root }
     }
 }
 

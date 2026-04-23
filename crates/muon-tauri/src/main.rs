@@ -1,3 +1,40 @@
+use muon_core::config::settings::SettingsManager;
+use muon_core::session::store::SessionStore;
+
+mod commands;
+mod state;
+
+use commands::{
+    create_session, get_app_version, get_settings, greet, list_sessions, save_settings,
+};
+use state::AppState;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    let settings = SettingsManager::load().unwrap_or_default();
+    let session_store = SessionStore::load().unwrap_or_else(|_| {
+        let root = muon_core::session::folder::SessionFolder::new("Root");
+        SessionStore::from(root)
+    });
+
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .manage(tauri::async_runtime::Mutex::new(AppState::new(
+            settings,
+            session_store,
+        )))
+        .invoke_handler(tauri::generate_handler![
+            greet,
+            get_settings,
+            save_settings,
+            list_sessions,
+            create_session,
+            get_app_version,
+        ])
+        .run(tauri::generate_context!())
+        .expect("error while running Muon SSH");
+}
+
 fn main() {
-    println!("Muon SSH — Tauri app stub (not yet configured)");
+    run();
 }

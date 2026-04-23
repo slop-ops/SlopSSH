@@ -12,6 +12,8 @@ use state::AppState;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let settings = SettingsManager::load().unwrap_or_default();
+    muon_core::logging::init(&settings.log_level);
+
     let session_store = SessionStore::load().unwrap_or_else(|_| {
         let root = muon_core::session::folder::SessionFolder::new("Root");
         SessionStore::from(root)

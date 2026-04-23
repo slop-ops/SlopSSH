@@ -18,3 +18,5 @@ dirs = { workspace = true }
 base64 = { workspace = true }
 uuid = { workspace = true }
 chrono = { workspace = true }
+russh = "0.60"
+russh-sftp = "2"

@@ -1,0 +1,132 @@
+use std::sync::Arc;
+
+use russh::keys::{PrivateKey, PrivateKeyWithHashAlg, load_secret_key, ssh_key};
+use russh::*;
+
+use super::auth::AuthMethod;
+use crate::session::info::SessionInfo;
+
+#[derive(Debug, thiserror::Error)]
+pub enum SshError {
+    #[error("Connection failed: {0}")]
+    ConnectionFailed(String),
+    #[error("Authentication failed: {0}")]
+    AuthFailed(String),
+    #[error("Channel error: {0}")]
+    ChannelError(String),
+    #[error("Host key verification failed: {0}")]
+    HostKeyError(String),
+    #[error("Proxy error: {0}")]
+    ProxyError(String),
+    #[error("Timeout")]
+    Timeout,
+    #[error("Not connected")]
+    NotConnected,
+    #[error("{0}")]
+    Other(String),
+}
+
+pub struct ClientHandler;
+
+impl client::Handler for ClientHandler {
+    type Error = russh::Error;
+
+    async fn check_server_key(
+        &mut self,
+        _server_public_key: &ssh_key::PublicKey,
+    ) -> Result<bool, Self::Error> {
+        Ok(true)
+    }
+}
+
+pub struct SshConnection {
+    handle: Option<client::Handle<ClientHandler>>,
+    session_info: SessionInfo,
+    connected: bool,
+}
+
+impl SshConnection {
+    pub async fn connect(
+        session_info: SessionInfo,
+        auth_method: AuthMethod,
+    ) -> Result<Self, SshError> {
+        let config = client::Config {
+            ..Default::default()
+        };
+
+        let handler = ClientHandler;
+
+        let mut session = client::connect(
+            Arc::new(config),
+            (&*session_info.host, session_info.port),
+            handler,
+        )
+        .await
+        .map_err(|e| SshError::ConnectionFailed(e.to_string()))?;
+
+        let auth_result = match auth_method {
+            AuthMethod::Password { password } => session
+                .authenticate_password(&session_info.username, &password)
+                .await
+                .map_err(|e| SshError::AuthFailed(e.to_string()))?,
+            AuthMethod::PublicKey { key_path, .. } => {
+                let key_pair = load_key_pair(&key_path)?;
+                let hash_alg = session
+                    .best_supported_rsa_hash()
+                    .await
+                    .map_err(|e| SshError::AuthFailed(e.to_string()))?
+                    .flatten();
+                session
+                    .authenticate_publickey(
+                        &session_info.username,
+                        PrivateKeyWithHashAlg::new(Arc::new(key_pair), hash_alg),
+                    )
+                    .await
+                    .map_err(|e| SshError::AuthFailed(e.to_string()))?
+            }
+            AuthMethod::None => session
+                .authenticate_none(&session_info.username)
+                .await
+                .map_err(|e| SshError::AuthFailed(e.to_string()))?,
+        };
+
+        if !auth_result.success() {
+            return Err(SshError::AuthFailed("Authentication rejected".to_string()));
+        }
+
+        Ok(Self {
+            handle: Some(session),
+            session_info,
+            connected: true,
+        })
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.connected && self.handle.is_some()
+    }
+
+    pub fn handle(&self) -> Option<&client::Handle<ClientHandler>> {
+        self.handle.as_ref()
+    }
+
+    pub async fn disconnect(&mut self) -> Result<(), SshError> {
+        if let Some(handle) = self.handle.take() {
+            handle
+                .disconnect(Disconnect::ByApplication, "", "")
+                .await
+                .map_err(|e| SshError::ConnectionFailed(e.to_string()))?;
+        }
+        self.connected = false;
+        Ok(())
+    }
+
+    pub fn session_info(&self) -> &SessionInfo {
+        &self.session_info
+    }
+}
+
+fn load_key_pair(path: &std::path::Path) -> Result<PrivateKey, SshError> {
+    let path_str = path.to_string_lossy().to_string();
+    load_secret_key(&path_str, None)
+        .map_err(|e| SshError::AuthFailed(format!("Failed to load key: {}", e)))
+}

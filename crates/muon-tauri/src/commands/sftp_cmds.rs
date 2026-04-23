@@ -1,0 +1,233 @@
+use std::sync::Arc;
+use std::time::UNIX_EPOCH;
+
+use base64::Engine;
+use russh_sftp::client::SftpSession;
+use tauri::State;
+use tokio::sync::Mutex;
+
+use crate::AppState;
+
+async fn get_sftp(
+    state: &tauri::async_runtime::Mutex<AppState>,
+    session_id: &str,
+) -> Result<Arc<Mutex<Option<SftpSession>>>, String> {
+    let state = state.lock().await;
+    let entry = state
+        .sftp_sessions
+        .get(session_id)
+        .ok_or_else(|| "No SFTP session for this connection".to_string())?;
+    Ok(entry.clone())
+}
+
+#[tauri::command]
+pub async fn sftp_connect(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+) -> Result<(), String> {
+    let sftp_session = {
+        let state = state.lock().await;
+        let channel = state
+            .ssh_manager
+            .open_sftp_channel(&session_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        let stream = channel.into_stream();
+        let sftp = SftpSession::new(stream)
+            .await
+            .map_err(|e| format!("SFTP init failed: {}", e))?;
+        Arc::new(Mutex::new(Some(sftp)))
+    };
+
+    let mut state = state.lock().await;
+    state.sftp_sessions.insert(session_id, sftp_session);
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn sftp_disconnect(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+) -> Result<(), String> {
+    let mut state = state.lock().await;
+    if let Some(sftp_arc) = state.sftp_sessions.remove(&session_id) {
+        let mut guard = sftp_arc.lock().await;
+        if let Some(sftp) = guard.take() {
+            let _ = sftp.close().await;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn sftp_list_dir(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    path: String,
+) -> Result<serde_json::Value, String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let guard = sftp_arc.lock().await;
+    let sftp = guard
+        .as_ref()
+        .ok_or_else(|| "SFTP session closed".to_string())?;
+
+    let read_dir = sftp.read_dir(&path).await.map_err(|e| e.to_string())?;
+
+    let mut entries = Vec::new();
+    for entry in read_dir {
+        let name = entry.file_name();
+        let meta = entry.metadata();
+        let file_type = meta.file_type();
+
+        let entry_path = if path == "/" {
+            format!("/{}", name)
+        } else {
+            format!("{}/{}", path, name)
+        };
+
+        let modified = meta.modified().ok().and_then(|t| {
+            t.duration_since(UNIX_EPOCH)
+                .ok()
+                .map(|d| d.as_millis() as u64)
+        });
+
+        entries.push(serde_json::json!({
+            "name": name,
+            "path": entry_path,
+            "isDir": file_type.is_dir(),
+            "isFile": file_type.is_file(),
+            "isSymlink": file_type.is_symlink(),
+            "size": meta.len(),
+            "modified": modified,
+        }));
+    }
+
+    Ok(serde_json::Value::Array(entries))
+}
+
+#[tauri::command]
+pub async fn sftp_mkdir(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    path: String,
+) -> Result<(), String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let guard = sftp_arc.lock().await;
+    let sftp = guard
+        .as_ref()
+        .ok_or_else(|| "SFTP session closed".to_string())?;
+    sftp.create_dir(&path).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn sftp_remove(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    path: String,
+) -> Result<(), String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let guard = sftp_arc.lock().await;
+    let sftp = guard
+        .as_ref()
+        .ok_or_else(|| "SFTP session closed".to_string())?;
+
+    let meta = sftp.metadata(&path).await.map_err(|e| e.to_string())?;
+    if meta.is_dir() {
+        sftp.remove_dir(&path).await.map_err(|e| e.to_string())
+    } else {
+        sftp.remove_file(&path).await.map_err(|e| e.to_string())
+    }
+}
+
+#[tauri::command]
+pub async fn sftp_rename(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    from: String,
+    to: String,
+) -> Result<(), String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let guard = sftp_arc.lock().await;
+    let sftp = guard
+        .as_ref()
+        .ok_or_else(|| "SFTP session closed".to_string())?;
+    sftp.rename(&from, &to).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn sftp_read_file(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    path: String,
+) -> Result<String, String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let guard = sftp_arc.lock().await;
+    let sftp = guard
+        .as_ref()
+        .ok_or_else(|| "SFTP session closed".to_string())?;
+    let data = sftp.read(&path).await.map_err(|e| e.to_string())?;
+    Ok(base64::Engine::encode(
+        &base64::engine::general_purpose::STANDARD,
+        &data,
+    ))
+}
+
+#[tauri::command]
+pub async fn sftp_write_file(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    path: String,
+    data: String,
+) -> Result<(), String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let guard = sftp_arc.lock().await;
+    let sftp = guard
+        .as_ref()
+        .ok_or_else(|| "SFTP session closed".to_string())?;
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&data)
+        .map_err(|e| e.to_string())?;
+    sftp.write(&path, &decoded).await.map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn sftp_stat(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    path: String,
+) -> Result<serde_json::Value, String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let guard = sftp_arc.lock().await;
+    let sftp = guard
+        .as_ref()
+        .ok_or_else(|| "SFTP session closed".to_string())?;
+
+    let meta = sftp.metadata(&path).await.map_err(|e| e.to_string())?;
+    let modified = meta.modified().ok().and_then(|t| {
+        t.duration_since(UNIX_EPOCH)
+            .ok()
+            .map(|d| d.as_millis() as u64)
+    });
+
+    Ok(serde_json::json!({
+        "isDir": meta.is_dir(),
+        "isFile": meta.is_regular(),
+        "isSymlink": meta.is_symlink(),
+        "size": meta.len(),
+        "modified": modified,
+    }))
+}
+
+#[tauri::command]
+pub async fn sftp_home(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+) -> Result<String, String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let guard = sftp_arc.lock().await;
+    let sftp = guard
+        .as_ref()
+        .ok_or_else(|| "SFTP session closed".to_string())?;
+    sftp.canonicalize(".").await.map_err(|e| e.to_string())
+}

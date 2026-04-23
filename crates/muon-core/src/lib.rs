@@ -1,5 +1,6 @@
 pub mod config;
 pub mod credentials;
+pub mod filesystem;
 pub mod logging;
 pub mod session;
 pub mod snippets;

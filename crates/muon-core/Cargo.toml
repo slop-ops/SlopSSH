@@ -20,3 +20,4 @@ uuid = { workspace = true }
 chrono = { workspace = true }
 russh = "0.60"
 russh-sftp = "2"
+async-trait = "0.1"

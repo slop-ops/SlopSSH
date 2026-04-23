@@ -4,9 +4,9 @@ Last updated: 2026-04-24 (Session 2)
 
 ## Session Summary
 
-**Completed:** Phases 1-4 (core), partial Phase 3/4 UI
-**Total commits:** 6 (session 1) + pending (session 2)
-**Lines of code:** ~4,200 Rust, ~900 TypeScript/Svelte
+**Completed:** Phases 1-4 (core), Phase 5 (core), partial Phase 2
+**Total commits:** 6 (session 1) + 1 + pending
+**Lines of code:** ~5,400 Rust, ~1,500 TypeScript/Svelte
 
 ---
 
@@ -27,11 +27,6 @@ Last updated: 2026-04-24 (Session 2)
 | 1.9 | Tauri state management (state.rs) | DONE | `c0c4488` |
 | 1.10 | Basic IPC ping (greet command) | DONE | `c0c4488` |
 
-### What was built:
-- **muon-core** crate: config (paths, settings), session (info, folder, store), credentials (cache), snippets (manager), logging
-- **muon-tauri** crate: Tauri 2 app with IPC commands
-- **frontend**: Svelte 5 + Vite + TypeScript with @tauri-apps/api integration
-
 ---
 
 ## Phase 2: SSH Engine
@@ -43,7 +38,7 @@ Last updated: 2026-04-24 (Session 2)
 | 2.1 | Add russh + russh-sftp dependencies | DONE | `5d08492` |
 | 2.2 | SSH connection struct (connect/disconnect) | DONE | `5d08492` |
 | 2.3 | Authentication engine (password, pubkey) | DONE | `5d08492` |
-| 2.4 | Host key verification (known_hosts) | STUB | `5d08492` |
+| 2.4 | Host key verification (known_hosts) | DONE | session 2 |
 | 2.5 | Shell channel (PTY, xterm-256color) | DONE | `5d08492` |
 | 2.6 | Proxy support (HTTP CONNECT, SOCKS5) | DONE | `5d08492` |
 | 2.7 | Jump host tunneling (multi-hop) | TODO | |
@@ -53,12 +48,11 @@ Last updated: 2026-04-24 (Session 2)
 | 2.11 | Connection pool | TODO | |
 | 2.12 | Unit tests | TODO | |
 
-### What was built:
-- `SshConnection` wrapping russh `Handle<ClientHandler>` with connect/disconnect
-- `AuthMethod` enum: Password, PublicKey (with RSA hash), None
-- `ShellChannel` with PTY allocation (xterm-256color), shell, resize, concurrent read/write
-- `ProxyConfig` with HTTP CONNECT (Basic auth) and SOCKS5 support
-- `SessionManager` managing multiple SSH connections, shell channels, and read loops
+### What was built (session 2):
+- `HostKeyVerifier` with known_hosts parsing (plain, [host]:port, wildcard patterns)
+- `ClientHandler` now carries host/port for server key verification
+- Unknown hosts auto-accepted and added to known_hosts
+- Changed hosts rejected
 
 ---
 
@@ -78,8 +72,8 @@ Last updated: 2026-04-24 (Session 2)
 
 ### What was built (session 2):
 - `update_session`, `delete_session`, `create_folder` IPC commands
-- Session tree recursive delete and update operations
-- Full CRUD cycle for sessions via Tauri IPC
+- Recursive session tree manipulation (remove from tree, re-add to folder)
+- Frontend NewSessionDialog.svelte for creating sessions
 
 ---
 
@@ -102,20 +96,43 @@ Last updated: 2026-04-24 (Session 2)
 
 ### What was built (session 2):
 - **Terminal data bridge**: ShellChannel restructured with `Arc<Mutex<Channel>>` for concurrent read/write
-- **Read loop**: `spawn_read_loop()` spawns tokio task that reads SSH channel data with 100ms timeout polling and calls a callback
-- **Event emission**: `ssh_open_shell` Tauri command spawns read loop with callback that base64-encodes data and emits `terminal-output-{channelId}` events
-- **SessionManager**: Added `spawn_shell_read_loop()`, `close_shell()`, read loop handle tracking, automatic cleanup on disconnect
-- **TerminalHolder.svelte**: Tab container with closable tabs, active tab switching
-- **NewSessionDialog.svelte**: Modal dialog for creating new SSH sessions (name, host, port, username, auth type)
-- **AppShell update**: Toolbar with sidebar toggle and new session button, integrated TerminalHolder
+- **Read loop**: `spawn_read_loop()` spawns tokio task with 100ms timeout polling and callback
+- **Event emission**: `ssh_open_shell` emits `terminal-output-{channelId}` events with base64 data
+- **TerminalHolder.svelte**: Closable tab container with active tab switching
+- **SessionManager cleanup**: Read loop handles abort, shell close on disconnect
 
 ---
 
 ## Phase 5: SFTP & File Browser
 
-**Status: NOT STARTED**
+**Status: CORE COMPLETE**
 
-All 13 tasks TODO.
+| # | Task | Status | Commit |
+|---|------|--------|--------|
+| 5.1 | SFTP filesystem (russh-sftp) | DONE | session 2 |
+| 5.2 | Local filesystem adapter | DONE | session 2 |
+| 5.3 | FileSystem trait | DONE | session 2 |
+| 5.4 | File transfer engine | TODO | |
+| 5.5 | Background transfers | TODO | |
+| 5.6 | File browser UI | DONE | session 2 |
+| 5.7 | Address bar | DONE | session 2 |
+| 5.8 | Context menus | PARTIAL | session 2 |
+| 5.9 | Drag and drop | TODO | |
+| 5.10 | Transfer queue UI | TODO | |
+| 5.11 | Archive operations | TODO | |
+| 5.12 | Remote file editing | TODO | |
+| 5.13 | Sudo fallback | TODO | |
+
+### What was built (session 2):
+- **FileSystem trait** (`muon-core/src/filesystem/types.rs`): Common async interface for list_dir, stat, mkdir, remove, rename, read_file, write_file, exists
+- **LocalFileSystem** (`local.rs`): `tokio::fs` wrapper implementing FileSystem trait, sorted directory listing
+- **RemoteFileSystem** (`remote.rs`): russh-sftp wrapper implementing FileSystem trait, with session management
+- **SFTP Tauri IPC** (`sftp_cmds.rs`): 10 commands - connect, disconnect, list_dir, mkdir, remove, rename, read_file, write_file, stat, home
+- **FileBrowser.svelte**: Remote file browser with breadcrumb navigation, path editing, directory operations
+- **FileList.svelte**: Table-based file listing with icon, name, size, modified, rename/delete actions
+- **Frontend SFTP API**: Full set of invoke wrappers for all SFTP commands
+
+---
 
 ## Phase 6: Tools & Utilities
 
@@ -157,20 +174,21 @@ All 6 tasks TODO.
 
 ## Technical Debt / Known Issues
 
-1. ~~**Terminal read loop:** Currently uses `sshReadShell` which doesn't exist.~~ **FIXED** — Now uses event-based terminal output with `spawn_read_loop()`
-2. **Host key verification:** Always returns `Unknown` — needs known_hosts file parsing
+1. ~~**Terminal read loop:** Not implemented~~ **FIXED** — Event-based terminal output with read loop
+2. ~~**Host key verification:** Always returns `Unknown`~~ **FIXED** — Full known_hosts parsing and verification
 3. **Keyboard-interactive auth:** Not yet implemented
 4. **Passphrase-protected keys:** `load_secret_key` is called with `None` for passphrase — needs UI integration
-5. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved with russh internal receiver access
-6. **No error handling UI:** SSH errors shown in console only (partially addressed with error state in Sidebar)
+5. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved
+6. **SFTP channel:** Opens a new SSH session channel for SFTP — should reuse connection
+7. **No file transfer progress:** SFTP read/write is all-or-nothing — needs streaming with progress events
 
 ---
 
 ## Next Session
 
-**Priority 1:** Host key verification with known_hosts parsing (Phase 2.4)
-**Priority 2:** Phase 4.7 — Snippet panel (send commands to terminal)
-**Priority 3:** Phase 4.8 — Reconnection UI (disconnected overlay)
-**Priority 4:** Phase 5.1-5.3 — SFTP filesystem (FileSystem trait, local + remote)
-**Prerequisites:** Terminal data bridge now functional. All Phase 1-4 core tasks complete.
-**Estimated complexity:** Medium — host key verification and SFTP are both substantial features.
+**Priority 1:** Phase 4.7 — Snippet panel (send commands to terminal)
+**Priority 2:** Phase 4.8 — Reconnection UI (disconnected overlay)
+**Priority 3:** Phase 5.4-5.5 — File transfer engine with progress tracking
+**Priority 4:** Phase 6.1-6.2 — Process viewer and log viewer tools
+**Prerequisites:** Terminal data bridge, SFTP core, and session CRUD all working.
+**Estimated complexity:** Medium — snippet panel and reconnection UI are straightforward; transfer engine needs design.

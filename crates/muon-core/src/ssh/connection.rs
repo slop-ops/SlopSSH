@@ -4,6 +4,7 @@ use russh::keys::{PrivateKey, PrivateKeyWithHashAlg, load_secret_key, ssh_key};
 use russh::*;
 
 use super::auth::AuthMethod;
+use super::host_keys::HostKeyStatus;
 use crate::session::info::SessionInfo;
 
 #[derive(Debug, thiserror::Error)]
@@ -26,16 +27,45 @@ pub enum SshError {
     Other(String),
 }
 
-pub struct ClientHandler;
+pub struct ClientHandler {
+    pub host: String,
+    pub port: u16,
+    pub host_key_status: HostKeyStatus,
+}
+
+impl ClientHandler {
+    pub fn new(host: String, port: u16) -> Self {
+        Self {
+            host,
+            port,
+            host_key_status: HostKeyStatus::Unknown,
+        }
+    }
+}
 
 impl client::Handler for ClientHandler {
     type Error = russh::Error;
 
     async fn check_server_key(
         &mut self,
-        _server_public_key: &ssh_key::PublicKey,
+        server_public_key: &ssh_key::PublicKey,
     ) -> Result<bool, Self::Error> {
-        Ok(true)
+        let status = super::host_keys::verify_host_key(&self.host, self.port, server_public_key);
+        match status {
+            HostKeyStatus::Trusted => {
+                self.host_key_status = HostKeyStatus::Trusted;
+                Ok(true)
+            }
+            HostKeyStatus::Changed => {
+                self.host_key_status = HostKeyStatus::Changed;
+                Ok(false)
+            }
+            HostKeyStatus::Unknown => {
+                self.host_key_status = HostKeyStatus::Unknown;
+                let _ = super::host_keys::add_host_key(&self.host, self.port, server_public_key);
+                Ok(true)
+            }
+        }
     }
 }
 
@@ -54,7 +84,7 @@ impl SshConnection {
             ..Default::default()
         };
 
-        let handler = ClientHandler;
+        let handler = ClientHandler::new(session_info.host.clone(), session_info.port);
 
         let mut session = client::connect(
             Arc::new(config),

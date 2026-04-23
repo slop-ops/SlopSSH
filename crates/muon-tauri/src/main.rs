@@ -6,8 +6,10 @@ mod state;
 
 use commands::{
     create_folder, create_session, delete_session, get_app_version, get_settings, greet,
-    list_sessions, save_settings, ssh_close_shell, ssh_connect, ssh_disconnect, ssh_open_shell,
-    ssh_resize_shell, ssh_write_shell, update_session,
+    list_sessions, save_settings, sftp_connect, sftp_disconnect, sftp_home, sftp_list_dir,
+    sftp_mkdir, sftp_read_file, sftp_remove, sftp_rename, sftp_stat, sftp_write_file,
+    ssh_close_shell, ssh_connect, ssh_disconnect, ssh_open_shell, ssh_resize_shell,
+    ssh_write_shell, update_session,
 };
 use state::AppState;
 
@@ -43,6 +45,16 @@ pub fn run() {
             ssh_write_shell,
             ssh_resize_shell,
             ssh_close_shell,
+            sftp_connect,
+            sftp_disconnect,
+            sftp_list_dir,
+            sftp_mkdir,
+            sftp_remove,
+            sftp_rename,
+            sftp_read_file,
+            sftp_write_file,
+            sftp_stat,
+            sftp_home,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Muon SSH");

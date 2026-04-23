@@ -15,6 +15,7 @@ tokio = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true }
+russh-sftp = "2"
 tauri = { version = "2", features = [] }
 tauri-plugin-shell = "2"
 

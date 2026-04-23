@@ -56,6 +56,46 @@ export async function sshCloseShell(sessionId: string, channelId: string): Promi
   return invoke('ssh_close_shell', { sessionId, channelId })
 }
 
+export async function sftpConnect(sessionId: string): Promise<void> {
+  return invoke('sftp_connect', { sessionId })
+}
+
+export async function sftpDisconnect(sessionId: string): Promise<void> {
+  return invoke('sftp_disconnect', { sessionId })
+}
+
+export async function sftpListDir(sessionId: string, path: string): Promise<any[]> {
+  return invoke('sftp_list_dir', { sessionId, path })
+}
+
+export async function sftpMkdir(sessionId: string, path: string): Promise<void> {
+  return invoke('sftp_mkdir', { sessionId, path })
+}
+
+export async function sftpRemove(sessionId: string, path: string): Promise<void> {
+  return invoke('sftp_remove', { sessionId, path })
+}
+
+export async function sftpRename(sessionId: string, from: string, to: string): Promise<void> {
+  return invoke('sftp_rename', { sessionId, from, to })
+}
+
+export async function sftpReadFile(sessionId: string, path: string): Promise<string> {
+  return invoke<string>('sftp_read_file', { sessionId, path })
+}
+
+export async function sftpWriteFile(sessionId: string, path: string, data: string): Promise<void> {
+  return invoke('sftp_write_file', { sessionId, path, data })
+}
+
+export async function sftpStat(sessionId: string, path: string): Promise<any> {
+  return invoke('sftp_stat', { sessionId, path })
+}
+
+export async function sftpHome(sessionId: string): Promise<string> {
+  return invoke<string>('sftp_home', { sessionId })
+}
+
 export async function getAppVersion(): Promise<string> {
   return invoke<string>('get_app_version')
 }

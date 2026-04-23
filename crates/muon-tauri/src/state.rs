@@ -1,3 +1,9 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
+use russh_sftp::client::SftpSession;
+use tokio::sync::Mutex;
+
 use muon_core::config::settings::Settings;
 use muon_core::credentials::CredentialCache;
 use muon_core::session::folder::SessionFolder;
@@ -10,6 +16,7 @@ pub struct AppState {
     #[allow(dead_code)]
     pub credential_cache: CredentialCache,
     pub ssh_manager: SessionManager,
+    pub sftp_sessions: HashMap<String, Arc<Mutex<Option<SftpSession>>>>,
 }
 
 impl AppState {
@@ -19,6 +26,7 @@ impl AppState {
             session_store,
             credential_cache: CredentialCache::new(),
             ssh_manager: SessionManager::new(),
+            sftp_sessions: HashMap::new(),
         }
     }
 }
@@ -30,6 +38,7 @@ impl Default for AppState {
             session_store: SessionStore::from(SessionFolder::new("Root")),
             credential_cache: CredentialCache::new(),
             ssh_manager: SessionManager::new(),
+            sftp_sessions: HashMap::new(),
         }
     }
 }

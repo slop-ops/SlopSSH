@@ -155,6 +155,21 @@ impl SessionManager {
         Ok(())
     }
 
+    pub async fn open_sftp_channel(
+        &self,
+        session_id: &str,
+    ) -> Result<russh::Channel<russh::client::Msg>, SshError> {
+        let session = self
+            .sessions
+            .get(session_id)
+            .ok_or(SshError::NotConnected)?;
+        let handle = session.connection.handle().ok_or(SshError::NotConnected)?;
+        handle
+            .channel_open_session()
+            .await
+            .map_err(|e| SshError::ChannelError(format!("Failed to open SFTP channel: {}", e)))
+    }
+
     pub fn is_connected(&self, session_id: &str) -> bool {
         self.sessions
             .get(session_id)

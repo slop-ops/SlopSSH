@@ -1,12 +1,12 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-23 (Session 1)
+Last updated: 2026-04-24 (Session 2)
 
 ## Session Summary
 
-**Completed:** Phases 1-4 (partial)
-**Total commits:** 6
-**Lines of code:** ~3,500 Rust, ~500 TypeScript/Svelte
+**Completed:** Phases 1-4 (core), partial Phase 3/4 UI
+**Total commits:** 6 (session 1) + pending (session 2)
+**Lines of code:** ~4,200 Rust, ~900 TypeScript/Svelte
 
 ---
 
@@ -56,16 +56,15 @@ Last updated: 2026-04-23 (Session 1)
 ### What was built:
 - `SshConnection` wrapping russh `Handle<ClientHandler>` with connect/disconnect
 - `AuthMethod` enum: Password, PublicKey (with RSA hash), None
-- `ShellChannel` with PTY allocation (xterm-256color), shell, resize, read/write
+- `ShellChannel` with PTY allocation (xterm-256color), shell, resize, concurrent read/write
 - `ProxyConfig` with HTTP CONNECT (Basic auth) and SOCKS5 support
-- `SessionManager` managing multiple SSH connections and shell channels
-- All Tauri IPC: ssh_connect, ssh_disconnect, ssh_open_shell, ssh_write_shell, ssh_resize_shell
+- `SessionManager` managing multiple SSH connections, shell channels, and read loops
 
 ---
 
 ## Phase 3: Session Management
 
-**Status: CORE COMPLETE**
+**Status: COMPLETE**
 
 | # | Task | Status | Commit |
 |---|------|--------|--------|
@@ -75,34 +74,40 @@ Last updated: 2026-04-23 (Session 1)
 | 3.4 | Session import (SSH config, legacy) | TODO | |
 | 3.5 | Credential store (keyring) | TODO | |
 | 3.6 | Credential cache (in-memory) | DONE | `fc9c0af` |
-| 3.7 | Tauri IPC commands (full CRUD) | DONE | `559681a` |
+| 3.7 | Tauri IPC commands (full CRUD) | DONE | session 2 |
+
+### What was built (session 2):
+- `update_session`, `delete_session`, `create_folder` IPC commands
+- Session tree recursive delete and update operations
+- Full CRUD cycle for sessions via Tauri IPC
 
 ---
 
 ## Phase 4: Terminal Integration
 
-**Status: PARTIAL**
+**Status: COMPLETE (core)**
 
 | # | Task | Status | Commit |
 |---|------|--------|--------|
 | 4.1 | xterm.js setup | DONE | `8364883` |
 | 4.2 | Terminal.svelte component | DONE | `8364883` |
 | 4.3 | Terminal themes (dark/light) | DONE | `8364883` |
-| 4.4 | PTY data bridge (Tauri events) | PARTIAL | `8364883` |
-| 4.5 | Terminal session manager (Rust-side) | DONE | `559681a` |
-| 4.6 | Terminal tabs UI | TODO | |
+| 4.4 | PTY data bridge (Tauri events) | DONE | session 2 |
+| 4.5 | Terminal session manager (Rust-side) | DONE | session 2 |
+| 4.6 | Terminal tabs UI | DONE | session 2 |
 | 4.7 | Snippet panel | TODO | |
 | 4.8 | Reconnection UI | TODO | |
 | 4.9 | Local terminal (portable-pty) | TODO | |
 | 4.10 | Copy/paste | TODO | |
 
-### What was built:
-- Terminal.svelte with xterm.js, WebGL addon, FitAddon
-- Dark/light terminal themes (One Dark inspired)
-- API layer (invoke.ts) wrapping all Tauri IPC commands
-- AppShell layout with sidebar + main content
-- Sidebar with session list, password input, connect action
-- `$lib` path alias configured
+### What was built (session 2):
+- **Terminal data bridge**: ShellChannel restructured with `Arc<Mutex<Channel>>` for concurrent read/write
+- **Read loop**: `spawn_read_loop()` spawns tokio task that reads SSH channel data with 100ms timeout polling and calls a callback
+- **Event emission**: `ssh_open_shell` Tauri command spawns read loop with callback that base64-encodes data and emits `terminal-output-{channelId}` events
+- **SessionManager**: Added `spawn_shell_read_loop()`, `close_shell()`, read loop handle tracking, automatic cleanup on disconnect
+- **TerminalHolder.svelte**: Tab container with closable tabs, active tab switching
+- **NewSessionDialog.svelte**: Modal dialog for creating new SSH sessions (name, host, port, username, auth type)
+- **AppShell update**: Toolbar with sidebar toggle and new session button, integrated TerminalHolder
 
 ---
 
@@ -152,19 +157,20 @@ All 6 tasks TODO.
 
 ## Technical Debt / Known Issues
 
-1. **Terminal read loop:** Currently uses `sshReadShell` which doesn't exist. Need to implement Tauri event-based terminal output (Rust emits `terminal-output` events with base64 data)
+1. ~~**Terminal read loop:** Currently uses `sshReadShell` which doesn't exist.~~ **FIXED** — Now uses event-based terminal output with `spawn_read_loop()`
 2. **Host key verification:** Always returns `Unknown` — needs known_hosts file parsing
 3. **Keyboard-interactive auth:** Not yet implemented
 4. **Passphrase-protected keys:** `load_secret_key` is called with `None` for passphrase — needs UI integration
-5. **No error handling UI:** SSH errors shown in console only
+5. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved with russh internal receiver access
+6. **No error handling UI:** SSH errors shown in console only (partially addressed with error state in Sidebar)
 
 ---
 
 ## Next Session
 
-**Priority 1:** Fix terminal data bridge (event-based output from Rust to frontend)
-**Priority 2:** Host key verification with known_hosts parsing
-**Priority 3:** Phase 4.6 — Terminal tabs UI
-**Priority 4:** Phase 5 — SFTP & File browser
-**Prerequisites:** All Phase 1-3 core tasks complete. Phase 4 partially done.
-**Estimated complexity:** Medium-High — terminal data bridge is critical for a working app.
+**Priority 1:** Host key verification with known_hosts parsing (Phase 2.4)
+**Priority 2:** Phase 4.7 — Snippet panel (send commands to terminal)
+**Priority 3:** Phase 4.8 — Reconnection UI (disconnected overlay)
+**Priority 4:** Phase 5.1-5.3 — SFTP filesystem (FileSystem trait, local + remote)
+**Prerequisites:** Terminal data bridge now functional. All Phase 1-4 core tasks complete.
+**Estimated complexity:** Medium — host key verification and SFTP are both substantial features.

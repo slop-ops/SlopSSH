@@ -77,7 +77,7 @@ cd frontend && npm run lint
 
 ### Migration Reference
 
-The original Java source is at `muon-app/src/main/java/muon/app/`. Refer to it when porting features. Key mapping:
+The original Java source is at `/home/hotadmin/Documents/muon-ssh/muon-app/src/main/java/muon/app/`. Refer to it when porting features. Key mapping:
 
 | Java Package | Rust Location | Svelte Location |
 |-------------|--------------|----------------|

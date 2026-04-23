@@ -1,9 +1,15 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 :root {
-  font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', 'JetBrains Mono', system-ui, -apple-system, sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #0f0f0f;
-  background-color: #f6f6f6;
+  color: #e0e0e0;
+  background-color: #1a1a2e;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -14,72 +20,31 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  overflow: hidden;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    color: #e0e0e0;
-    background-color: #1a1a2e;
-  }
+#app {
+  height: 100vh;
 }
 
-main {
-  text-align: center;
-  padding: 2em;
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
 
-.logo {
-  margin-bottom: 1em;
+::-webkit-scrollbar-track {
+  background: transparent;
 }
 
-h1 {
-  font-size: 2.5em;
-  margin: 0;
+::-webkit-scrollbar-thumb {
+  background: #3a3a4e;
+  border-radius: 3px;
 }
 
-input {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #0f0f0f;
-  background-color: #ffffff;
-  transition: border-color 0.25s;
-  margin-right: 0.5em;
+::-webkit-scrollbar-thumb:hover {
+  background: #4a4a5e;
 }
 
-@media (prefers-color-scheme: dark) {
-  input {
-    color: #e0e0e0;
-    background-color: #2a2a3e;
-  }
-}
-
-input:focus {
-  outline: none;
-  border-color: #4a90d9;
-}
-
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  color: #ffffff;
-  background-color: #4a90d9;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-
-button:hover {
-  background-color: #3a7bc8;
-}
-
-button:focus {
-  outline: none;
-  border-color: #4a90d9;
+::selection {
+  background: #4a90d966;
 }

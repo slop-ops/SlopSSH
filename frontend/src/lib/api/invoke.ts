@@ -20,6 +20,18 @@ export async function createSession(session: any): Promise<string> {
   return invoke<string>('create_session', { session })
 }
 
+export async function updateSession(session: any): Promise<void> {
+  return invoke('update_session', { session })
+}
+
+export async function deleteSession(sessionId: string): Promise<void> {
+  return invoke('delete_session', { sessionId })
+}
+
+export async function createFolder(name: string, parentId?: string): Promise<string> {
+  return invoke<string>('create_folder', { name, parentId: parentId ?? null })
+}
+
 export async function sshConnect(sessionId: string, password?: string): Promise<string> {
   return invoke<string>('ssh_connect', { sessionId, password: password ?? null })
 }
@@ -38,6 +50,10 @@ export async function sshWriteShell(sessionId: string, channelId: string, data: 
 
 export async function sshResizeShell(sessionId: string, channelId: string, cols: number, rows: number): Promise<void> {
   return invoke('ssh_resize_shell', { sessionId, channelId, cols, rows })
+}
+
+export async function sshCloseShell(sessionId: string, channelId: string): Promise<void> {
+  return invoke('ssh_close_shell', { sessionId, channelId })
 }
 
 export async function getAppVersion(): Promise<string> {

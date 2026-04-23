@@ -1,3 +1,4 @@
+use muon_core::session::folder::SessionFolder;
 use muon_core::session::info::SessionInfo;
 use tauri::State;
 
@@ -22,7 +23,63 @@ pub async fn create_session(
         info.id = uuid::Uuid::new_v4().to_string();
     }
     let id = info.id.clone();
-    state.session_store.add_session(None, info);
+    let folder_id = info.folder_id.clone();
+    state.session_store.add_session(folder_id.as_deref(), info);
     state.session_store.save().map_err(|e| e.to_string())?;
     Ok(id)
+}
+
+#[tauri::command]
+pub async fn update_session(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session: serde_json::Value,
+) -> Result<(), String> {
+    let mut state = state.lock().await;
+    let updated: SessionInfo = serde_json::from_value(session).map_err(|e| e.to_string())?;
+    let root = state.session_store.root_mut();
+    remove_session_from_tree(root, &updated.id);
+    let folder_id = updated.folder_id.clone();
+    state
+        .session_store
+        .add_session(folder_id.as_deref(), updated);
+    state.session_store.save().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn delete_session(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+) -> Result<(), String> {
+    let mut state = state.lock().await;
+    let root = state.session_store.root_mut();
+    remove_session_from_tree(root, &session_id);
+    state.session_store.save().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn create_folder(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    name: String,
+    parent_id: Option<String>,
+) -> Result<String, String> {
+    let mut state = state.lock().await;
+    let folder = SessionFolder::new(&name);
+    let id = folder.id.clone();
+    state.session_store.add_folder(parent_id.as_deref(), folder);
+    state.session_store.save().map_err(|e| e.to_string())?;
+    Ok(id)
+}
+
+fn remove_session_from_tree(folder: &mut SessionFolder, id: &str) -> bool {
+    let before = folder.items.len();
+    folder.items.retain(|item| item.id != id);
+    if folder.items.len() < before {
+        return true;
+    }
+    for sub in &mut folder.folders {
+        if remove_session_from_tree(sub, id) {
+            return true;
+        }
+    }
+    false
 }

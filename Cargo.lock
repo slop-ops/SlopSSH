@@ -2731,6 +2731,7 @@ name = "muon-tauri"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "muon-core",
  "serde",
  "serde_json",

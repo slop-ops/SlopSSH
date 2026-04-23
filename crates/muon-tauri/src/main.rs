@@ -6,6 +6,7 @@ mod state;
 
 use commands::{
     create_session, get_app_version, get_settings, greet, list_sessions, save_settings,
+    ssh_connect, ssh_disconnect, ssh_open_shell, ssh_resize_shell, ssh_write_shell,
 };
 use state::AppState;
 
@@ -32,6 +33,11 @@ pub fn run() {
             list_sessions,
             create_session,
             get_app_version,
+            ssh_connect,
+            ssh_disconnect,
+            ssh_open_shell,
+            ssh_write_shell,
+            ssh_resize_shell,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Muon SSH");

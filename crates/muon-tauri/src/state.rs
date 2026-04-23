@@ -2,12 +2,14 @@ use muon_core::config::settings::Settings;
 use muon_core::credentials::CredentialCache;
 use muon_core::session::folder::SessionFolder;
 use muon_core::session::store::SessionStore;
+use muon_core::ssh::session_manager::SessionManager;
 
 pub struct AppState {
     pub settings: Settings,
     pub session_store: SessionStore,
     #[allow(dead_code)]
     pub credential_cache: CredentialCache,
+    pub ssh_manager: SessionManager,
 }
 
 impl AppState {
@@ -16,6 +18,7 @@ impl AppState {
             settings,
             session_store,
             credential_cache: CredentialCache::new(),
+            ssh_manager: SessionManager::new(),
         }
     }
 }
@@ -26,6 +29,7 @@ impl Default for AppState {
             settings: Settings::default(),
             session_store: SessionStore::from(SessionFolder::new("Root")),
             credential_cache: CredentialCache::new(),
+            ssh_manager: SessionManager::new(),
         }
     }
 }

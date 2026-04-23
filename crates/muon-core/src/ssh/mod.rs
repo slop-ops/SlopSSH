@@ -4,3 +4,4 @@ pub mod connection;
 pub mod host_keys;
 pub mod port_forward;
 pub mod proxy;
+pub mod session_manager;

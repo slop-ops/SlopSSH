@@ -231,3 +231,141 @@ pub async fn sftp_home(
         .ok_or_else(|| "SFTP session closed".to_string())?;
     sftp.canonicalize(".").await.map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub async fn sftp_upload_sudo(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    remote_path: String,
+    data: String,
+) -> Result<(), String> {
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&data)
+        .map_err(|e| e.to_string())?;
+
+    let file_name = std::path::Path::new(&remote_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "muon_tmp".to_string());
+    let tmp_path = format!("/tmp/.muon_upload_{}", file_name);
+
+    {
+        let guard = sftp_arc.lock().await;
+        let sftp = guard
+            .as_ref()
+            .ok_or_else(|| "SFTP session closed".to_string())?;
+        sftp.write(&tmp_path, &decoded)
+            .await
+            .map_err(|e| e.to_string())?;
+    }
+
+    let handle = {
+        let state = state.lock().await;
+        state
+            .ssh_manager
+            .get_handle(&session_id)
+            .ok_or_else(|| "Not connected".to_string())?
+    };
+
+    let escaped_tmp = shell_escape(&tmp_path);
+    let escaped_target = shell_escape(&remote_path);
+    let cmd = format!(
+        "sudo cp {} {} && rm -f {}",
+        escaped_tmp, escaped_target, escaped_tmp
+    );
+
+    let result = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cmd, 60)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if result.exit_code != 0 {
+        let cleanup = format!("rm -f {}", escaped_tmp);
+        let _ = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cleanup, 10).await;
+        return Err(format!(
+            "sudo cp failed (exit {}): {}",
+            result.exit_code,
+            result.stdout_string()
+        ));
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
+pub async fn sftp_download_sudo(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    remote_path: String,
+) -> Result<String, String> {
+    let handle = {
+        let state = state.lock().await;
+        state
+            .ssh_manager
+            .get_handle(&session_id)
+            .ok_or_else(|| "Not connected".to_string())?
+    };
+
+    let file_name = std::path::Path::new(&remote_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "muon_tmp".to_string());
+    let tmp_path = format!("/tmp/.muon_download_{}", file_name);
+
+    let escaped_src = shell_escape(&remote_path);
+    let escaped_tmp = shell_escape(&tmp_path);
+    let cmd = format!("sudo cp {} {}", escaped_src, escaped_tmp);
+
+    let result = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cmd, 60)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if result.exit_code != 0 {
+        return Err(format!(
+            "sudo cp failed (exit {}): {}",
+            result.exit_code,
+            result.stdout_string()
+        ));
+    }
+
+    let sftp_arc = get_sftp(&state, &session_id).await?;
+    let data = {
+        let guard = sftp_arc.lock().await;
+        let sftp = guard
+            .as_ref()
+            .ok_or_else(|| "SFTP session closed".to_string())?;
+        sftp.read(&tmp_path).await.map_err(|e| e.to_string())?
+    };
+
+    let cleanup = format!("rm -f {}", escaped_tmp);
+    let _ = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cleanup, 10).await;
+
+    Ok(base64::Engine::encode(
+        &base64::engine::general_purpose::STANDARD,
+        &data,
+    ))
+}
+
+fn shell_escape(s: &str) -> String {
+    if s.contains(' ')
+        || s.contains('"')
+        || s.contains('\'')
+        || s.contains('$')
+        || s.contains('`')
+        || s.contains('\\')
+        || s.contains('(')
+        || s.contains(')')
+        || s.contains('&')
+        || s.contains('|')
+        || s.contains(';')
+        || s.contains('<')
+        || s.contains('>')
+        || s.contains('*')
+        || s.contains('?')
+        || s.contains('~')
+    {
+        format!("'{}'", s.replace('\'', "'\\''"))
+    } else {
+        s.to_string()
+    }
+}

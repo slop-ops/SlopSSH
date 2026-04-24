@@ -255,3 +255,18 @@ export async function archiveExtract(
 ): Promise<void> {
   return invoke('archive_extract', { sessionId, archivePath, targetDir })
 }
+
+export async function sftpUploadSudo(
+  sessionId: string,
+  remotePath: string,
+  data: string,
+): Promise<void> {
+  return invoke('sftp_upload_sudo', { sessionId, remotePath, data })
+}
+
+export async function sftpDownloadSudo(
+  sessionId: string,
+  remotePath: string,
+): Promise<string> {
+  return invoke<string>('sftp_download_sudo', { sessionId, remotePath })
+}

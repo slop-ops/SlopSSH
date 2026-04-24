@@ -126,27 +126,30 @@
 </script>
 
 {#if open && settings}
-  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) open = false }}>
-    <div class="dialog">
+  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) open = false }} role="dialog" aria-modal="true" aria-label="Settings">
+    <div class="dialog" role="document">
       <div class="dialog-header">
         <h3>Settings</h3>
         <button class="close-btn" onclick={() => (open = false)}>x</button>
       </div>
 
       <div class="dialog-body">
-        <div class="tabs">
+        <div class="tabs" role="tablist">
           {#each tabs as tab}
             <button
               class="tab"
               class:active={activeTab === tab.id}
               onclick={() => (activeTab = tab.id)}
+              role="tab"
+              aria-selected={activeTab === tab.id}
+              aria-controls="tabpanel-{tab.id}"
             >
               {tab.label}
             </button>
           {/each}
         </div>
 
-        <div class="content">
+        <div class="content" role="tabpanel" id="tabpanel-{activeTab}">
           {#if activeTab === 'general'}
             <div class="field">
               <label>Language</label>

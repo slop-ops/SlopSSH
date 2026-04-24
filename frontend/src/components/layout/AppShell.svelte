@@ -206,48 +206,48 @@
   })
 </script>
 
-<div class="app-shell">
+<div class="app-shell" role="application" aria-label="Muon SSH">
   {#if showSidebar}
-    <aside class="sidebar">
+    <aside class="sidebar" role="navigation" aria-label="Session list">
       <Sidebar onConnect={handleConnect} onNewSession={() => (showNewSession = true)} />
     </aside>
   {/if}
-  <main class="content">
-    <div class="toolbar">
-      <button class="toolbar-btn" onclick={toggleSidebar}>
+  <main class="content" role="main">
+    <div class="toolbar" role="toolbar" aria-label="Main toolbar">
+      <button class="toolbar-btn" onclick={toggleSidebar} aria-label={showSidebar ? 'Hide sidebar' : 'Show sidebar'} aria-expanded={showSidebar}>
         {showSidebar ? '<' : '>'}
       </button>
-      <button class="toolbar-btn" onclick={() => (showNewSession = true)}>+ New Session</button>
+      <button class="toolbar-btn" onclick={() => (showNewSession = true)} aria-label="New session">+ New Session</button>
       {#if activeSessionId}
-        <div class="toolbar-separator"></div>
-        <button class="toolbar-btn" class:active={activeView === 'terminal'} onclick={() => (activeView = 'terminal')}>Terminal</button>
-        <button class="toolbar-btn" class:active={activeView === 'files'} onclick={() => (activeView = 'files')}>Files</button>
-        <button class="toolbar-btn" class:active={activeView === 'tools'} onclick={() => (activeView = 'tools')}>Tools</button>
+        <div class="toolbar-separator" role="separator"></div>
+        <button class="toolbar-btn" class:active={activeView === 'terminal'} onclick={() => (activeView = 'terminal')} aria-pressed={activeView === 'terminal'}>Terminal</button>
+        <button class="toolbar-btn" class:active={activeView === 'files'} onclick={() => (activeView = 'files')} aria-pressed={activeView === 'files'}>Files</button>
+        <button class="toolbar-btn" class:active={activeView === 'tools'} onclick={() => (activeView = 'tools')} aria-pressed={activeView === 'tools'}>Tools</button>
       {/if}
       <div class="toolbar-spacer"></div>
-      <button class="toolbar-btn theme-toggle" onclick={handleToggleTheme} title="Toggle theme">
+      <button class="toolbar-btn theme-toggle" onclick={handleToggleTheme} title="Toggle theme" aria-label={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}>
         {theme === 'dark' ? '&#9728;' : '&#9790;'}
       </button>
-      <button class="toolbar-btn" onclick={() => (showSettings = true)}>Settings</button>
+      <button class="toolbar-btn" onclick={() => (showSettings = true)} aria-label="Open settings">Settings</button>
     </div>
 
     {#if activeSessionId}
       <div class="main-views">
-        <div class="view" class:hidden={activeView !== 'terminal'}>
+        <div class="view" class:hidden={activeView !== 'terminal'} role="tabpanel" aria-label="Terminal">
           <TerminalHolder bind:tabs bind:activeTabId />
         </div>
-        <div class="view" class:hidden={activeView !== 'files'}>
+        <div class="view" class:hidden={activeView !== 'files'} role="tabpanel" aria-label="File browser">
           <div class="files-layout">
             <FileBrowser sessionId={activeSessionId} />
             <TransferQueue />
           </div>
         </div>
-        <div class="view" class:hidden={activeView !== 'tools'}>
+        <div class="view" class:hidden={activeView !== 'tools'} role="tabpanel" aria-label="Tools">
           <ToolsPanel sessionId={activeSessionId} />
         </div>
       </div>
     {:else}
-      <div class="empty-state">
+      <div class="empty-state" role="status">
         <p>No active session</p>
         <p class="hint">Connect to a session from the sidebar to get started</p>
       </div>

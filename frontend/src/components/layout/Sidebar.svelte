@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import ImportDialog from '$components/session/ImportDialog.svelte'
 
   let {
     onConnect,
@@ -14,6 +15,7 @@
   let connectingId = $state('')
   let error = $state('')
   let editingId = $state<string | null>(null)
+  let showImport = $state(false)
 
   $effect(() => {
     loadSessions()
@@ -69,7 +71,10 @@
 <div class="sidebar-content">
   <div class="header">
     <h2>Sessions</h2>
-    <button class="add-btn" onclick={onNewSession}>+</button>
+    <div class="header-actions">
+      <button class="import-btn" onclick={() => (showImport = true)} title="Import SSH Config">&#8595;</button>
+      <button class="add-btn" onclick={onNewSession}>+</button>
+    </div>
   </div>
 
   {#if error}
@@ -127,6 +132,10 @@
   </div>
 </div>
 
+{#if showImport}
+  <ImportDialog onClose={async () => { showImport = false; await loadSessions() }} />
+{/if}
+
 <style>
   .sidebar-content {
     padding: 8px;
@@ -150,6 +159,11 @@
     letter-spacing: 1px;
   }
 
+  .header-actions {
+    display: flex;
+    gap: 4px;
+  }
+
   .add-btn {
     background: transparent;
     border: 1px solid var(--border-primary);
@@ -163,6 +177,26 @@
     align-items: center;
     justify-content: center;
     padding: 0;
+  }
+
+  .import-btn {
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .import-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .add-btn:hover {

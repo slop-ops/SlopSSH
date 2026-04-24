@@ -1,5 +1,7 @@
 pub mod folder;
+pub mod import;
 pub mod info;
+pub mod pool;
 pub mod store;
 
 use serde::{Deserialize, Serialize};

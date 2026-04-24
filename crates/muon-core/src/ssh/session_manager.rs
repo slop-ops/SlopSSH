@@ -1,8 +1,9 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use super::auth::AuthMethod;
 use super::channel::ShellChannel;
-use super::connection::{SshConnection, SshError};
+use super::connection::{ClientHandler, ConnectionOptions, SshConnection, SshError};
 use crate::session::info::SessionInfo;
 
 struct ActiveSession {
@@ -27,8 +28,55 @@ impl SessionManager {
         session_info: SessionInfo,
         auth_method: AuthMethod,
     ) -> Result<String, SshError> {
+        let options = ConnectionOptions {
+            keep_alive_interval_secs: Some(60),
+            keep_alive_max_count: 3,
+            enable_compression: false,
+            connection_timeout_secs: 30,
+        };
+        self.connect_with_options(session_info, auth_method, options)
+            .await
+    }
+
+    pub async fn connect_with_options(
+        &mut self,
+        session_info: SessionInfo,
+        auth_method: AuthMethod,
+        options: ConnectionOptions,
+    ) -> Result<String, SshError> {
         let id = session_info.id.clone();
-        let connection = SshConnection::connect(session_info, auth_method).await?;
+
+        let connection = if !session_info.jump_hosts.is_empty() {
+            let jump_hosts = session_info
+                .jump_hosts
+                .iter()
+                .filter_map(|jh| serde_json::from_str(jh).ok())
+                .collect::<Vec<super::jump_host::JumpHost>>();
+
+            if jump_hosts.is_empty() {
+                SshConnection::connect_with_options(session_info, auth_method, options).await?
+            } else {
+                let handle = super::jump_host::JumpHostTunnel::connect_via_jumps(
+                    &session_info,
+                    &auth_method,
+                    &jump_hosts,
+                )
+                .await?;
+
+                let mut conn = SshConnection {
+                    handle: None,
+                    session_info: crate::session::info::SessionInfo::default(),
+                    connected: false,
+                };
+                conn.handle = Some(Arc::new(handle));
+                conn.session_info = session_info;
+                conn.connected = true;
+                conn
+            }
+        } else {
+            SshConnection::connect_with_options(session_info, auth_method, options).await?
+        };
+
         self.sessions.insert(
             id.clone(),
             ActiveSession {
@@ -179,8 +227,8 @@ impl SessionManager {
     pub fn get_handle(
         &self,
         session_id: &str,
-    ) -> Option<&russh::client::Handle<super::connection::ClientHandler>> {
-        self.sessions.get(session_id)?.connection.handle()
+    ) -> Option<Arc<russh::client::Handle<ClientHandler>>> {
+        self.sessions.get(session_id)?.connection.handle().cloned()
     }
 }
 

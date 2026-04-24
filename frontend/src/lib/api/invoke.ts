@@ -182,3 +182,59 @@ export async function deployPublicKey(
 export async function readPublicKey(path: string): Promise<string> {
   return invoke<string>('read_public_key', { path })
 }
+
+export async function portForwardStart(
+  sessionId: string,
+  bindHost: string,
+  bindPort: number,
+  targetHost: string,
+  targetPort: number,
+  direction: 'local' | 'remote',
+): Promise<string> {
+  return invoke<string>('port_forward_start', {
+    sessionId,
+    bindHost,
+    bindPort,
+    targetHost,
+    targetPort,
+    direction,
+  })
+}
+
+export async function portForwardStop(forwardId: string): Promise<void> {
+  return invoke('port_forward_stop', { forwardId })
+}
+
+export async function portForwardList(): Promise<string[]> {
+  return invoke('port_forward_list')
+}
+
+export async function importSshConfig(path?: string): Promise<any[]> {
+  return invoke('import_ssh_config', { path: path ?? null })
+}
+
+export async function importSshConfigToFolder(path?: string): Promise<string> {
+  return invoke<string>('import_ssh_config_to_folder', { path: path ?? null })
+}
+
+export async function credentialSave(
+  sessionId: string,
+  field: string,
+  value: string,
+): Promise<void> {
+  return invoke('credential_save', { sessionId, field, value })
+}
+
+export async function credentialGet(
+  sessionId: string,
+  field: string,
+): Promise<string | null> {
+  return invoke<string | null>('credential_get', { sessionId, field })
+}
+
+export async function credentialDelete(
+  sessionId: string,
+  field: string,
+): Promise<void> {
+  return invoke('credential_delete', { sessionId, field })
+}

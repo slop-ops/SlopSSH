@@ -27,6 +27,26 @@ pub enum SshError {
     Other(String),
 }
 
+#[derive(Debug, Clone)]
+pub struct ConnectionOptions {
+    pub keep_alive_interval_secs: Option<u64>,
+    pub keep_alive_max_count: u32,
+    pub enable_compression: bool,
+    pub connection_timeout_secs: u64,
+}
+
+impl Default for ConnectionOptions {
+    fn default() -> Self {
+        Self {
+            keep_alive_interval_secs: Some(60),
+            keep_alive_max_count: 3,
+            enable_compression: false,
+            connection_timeout_secs: 30,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ClientHandler {
     pub host: String,
     pub port: u16,
@@ -70,9 +90,9 @@ impl client::Handler for ClientHandler {
 }
 
 pub struct SshConnection {
-    handle: Option<client::Handle<ClientHandler>>,
-    session_info: SessionInfo,
-    connected: bool,
+    pub(crate) handle: Option<Arc<client::Handle<ClientHandler>>>,
+    pub(crate) session_info: SessionInfo,
+    pub(crate) connected: bool,
 }
 
 impl SshConnection {
@@ -80,7 +100,19 @@ impl SshConnection {
         session_info: SessionInfo,
         auth_method: AuthMethod,
     ) -> Result<Self, SshError> {
+        Self::connect_with_options(session_info, auth_method, ConnectionOptions::default()).await
+    }
+
+    pub async fn connect_with_options(
+        session_info: SessionInfo,
+        auth_method: AuthMethod,
+        options: ConnectionOptions,
+    ) -> Result<Self, SshError> {
         let config = client::Config {
+            keepalive_interval: options
+                .keep_alive_interval_secs
+                .map(std::time::Duration::from_secs),
+            keepalive_max: options.keep_alive_max_count as usize,
             ..Default::default()
         };
 
@@ -125,7 +157,69 @@ impl SshConnection {
         }
 
         Ok(Self {
-            handle: Some(session),
+            handle: Some(Arc::new(session)),
+            session_info,
+            connected: true,
+        })
+    }
+
+    pub async fn connect_via_proxy(
+        session_info: SessionInfo,
+        auth_method: AuthMethod,
+        proxy: super::proxy::ProxyConfig,
+        options: ConnectionOptions,
+    ) -> Result<Self, SshError> {
+        let config = client::Config {
+            keepalive_interval: options
+                .keep_alive_interval_secs
+                .map(std::time::Duration::from_secs),
+            keepalive_max: options.keep_alive_max_count as usize,
+            ..Default::default()
+        };
+
+        let handler = ClientHandler::new(session_info.host.clone(), session_info.port);
+
+        let tcp_stream =
+            super::proxy::connect_via_proxy(&session_info.host, session_info.port, &proxy)
+                .await
+                .map_err(|e| SshError::ProxyError(e.to_string()))?;
+
+        let mut session = client::connect_stream(Arc::new(config), tcp_stream, handler)
+            .await
+            .map_err(|e| SshError::ConnectionFailed(e.to_string()))?;
+
+        let auth_result = match auth_method {
+            AuthMethod::Password { password } => session
+                .authenticate_password(&session_info.username, &password)
+                .await
+                .map_err(|e| SshError::AuthFailed(e.to_string()))?,
+            AuthMethod::PublicKey { key_path, .. } => {
+                let key_pair = load_key_pair(&key_path)?;
+                let hash_alg = session
+                    .best_supported_rsa_hash()
+                    .await
+                    .map_err(|e| SshError::AuthFailed(e.to_string()))?
+                    .flatten();
+                session
+                    .authenticate_publickey(
+                        &session_info.username,
+                        PrivateKeyWithHashAlg::new(Arc::new(key_pair), hash_alg),
+                    )
+                    .await
+                    .map_err(|e| SshError::AuthFailed(e.to_string()))?
+            }
+            AuthMethod::None => session
+                .authenticate_none(&session_info.username)
+                .await
+                .map_err(|e| SshError::AuthFailed(e.to_string()))?,
+        };
+
+        if !auth_result.success() {
+            return Err(SshError::AuthFailed("Authentication rejected".to_string()));
+        }
+
+        Ok(Self {
+            handle: Some(Arc::new(session)),
             session_info,
             connected: true,
         })
@@ -135,7 +229,7 @@ impl SshConnection {
         self.connected && self.handle.is_some()
     }
 
-    pub fn handle(&self) -> Option<&client::Handle<ClientHandler>> {
+    pub fn handle(&self) -> Option<&Arc<client::Handle<ClientHandler>>> {
         self.handle.as_ref()
     }
 

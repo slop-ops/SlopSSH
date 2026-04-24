@@ -1,4 +1,6 @@
+pub mod import_cmds;
 pub mod key_cmds;
+pub mod port_forward_cmds;
 pub mod session_cmds;
 pub mod settings_cmds;
 pub mod sftp_cmds;
@@ -8,7 +10,9 @@ pub mod system_cmds;
 pub mod tools_cmds;
 pub mod transfer_cmds;
 
+pub use import_cmds::*;
 pub use key_cmds::*;
+pub use port_forward_cmds::*;
 pub use session_cmds::{
     create_folder, create_session, delete_session, list_sessions, update_session,
 };

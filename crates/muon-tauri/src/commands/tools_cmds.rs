@@ -16,7 +16,7 @@ pub async fn remote_exec(
         .ok_or_else(|| "Not connected".to_string())?;
 
     let result = muon_core::tools::remote_exec::RemoteExecutor::execute(
-        handle,
+        &handle,
         &command,
         timeout_secs.unwrap_or(30),
     )

@@ -1,3 +1,5 @@
+pub mod store;
+
 use std::collections::HashMap;
 
 pub struct CredentialCache {

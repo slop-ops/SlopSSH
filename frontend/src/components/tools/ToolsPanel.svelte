@@ -7,6 +7,7 @@
   import SystemLoad from './SystemLoad.svelte'
   import PortViewer from './PortViewer.svelte'
   import KeyManager from './KeyManager.svelte'
+  import PortForwarding from './PortForwarding.svelte'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -21,6 +22,7 @@
     { id: 'load', label: 'System Load' },
     { id: 'ports', label: 'Ports' },
     { id: 'keys', label: 'SSH Keys' },
+    { id: 'forwarding', label: 'Forwarding' },
   ]
 </script>
 
@@ -53,6 +55,8 @@
       <PortViewer {sessionId} />
     {:else if activeTool === 'keys'}
       <KeyManager {sessionId} />
+    {:else if activeTool === 'forwarding'}
+      <PortForwarding {sessionId} />
     {/if}
   </div>
 </div>

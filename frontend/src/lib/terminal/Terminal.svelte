@@ -68,6 +68,25 @@
       }
     })
 
+    terminal.onSelectionChange(() => {
+      if (terminal?.hasSelection()) {
+        const selection = terminal.getSelection()
+        if (selection) {
+          navigator.clipboard.writeText(selection).catch(() => {})
+        }
+      }
+    })
+
+    terminalEl.addEventListener('contextmenu', (e) => {
+      e.preventDefault()
+      navigator.clipboard.readText().then((text) => {
+        if (text && connected) {
+          const encoded = btoa(text)
+          api.sshWriteShell(sessionId, channelId, encoded).catch(console.error)
+        }
+      }).catch(() => {})
+    })
+
     unlisten = await listen<string>(`terminal-output-${channelId}`, (event) => {
       const decoded = atob(event.payload)
       terminal?.write(decoded)

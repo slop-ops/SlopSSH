@@ -57,6 +57,7 @@ pub struct ClientHandler {
     pub port: u16,
     pub host_key_status: HostKeyStatus,
     pub remote_forwards: RemoteForwardMap,
+    pub x11_display: Option<Arc<super::x11::X11Display>>,
 }
 
 impl ClientHandler {
@@ -66,6 +67,7 @@ impl ClientHandler {
             port,
             host_key_status: HostKeyStatus::Unknown,
             remote_forwards: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            x11_display: None,
         }
     }
 
@@ -79,6 +81,22 @@ impl ClientHandler {
             port,
             host_key_status: HostKeyStatus::Unknown,
             remote_forwards,
+            x11_display: None,
+        }
+    }
+
+    pub fn with_x11(
+        host: String,
+        port: u16,
+        remote_forwards: RemoteForwardMap,
+        x11_display: Arc<super::x11::X11Display>,
+    ) -> Self {
+        Self {
+            host,
+            port,
+            host_key_status: HostKeyStatus::Unknown,
+            remote_forwards,
+            x11_display: Some(x11_display),
         }
     }
 }
@@ -135,6 +153,22 @@ impl client::Handler for ClientHandler {
 
         Ok(())
     }
+
+    async fn server_channel_open_x11(
+        &mut self,
+        channel: Channel<client::Msg>,
+        _originator_address: &str,
+        _originator_port: u32,
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        if let Some(display) = &self.x11_display {
+            let display = display.clone();
+            tokio::spawn(async move {
+                super::x11::X11Forwarder::spawn_forward(channel, display);
+            });
+        }
+        Ok(())
+    }
 }
 
 async fn forward_channel_tcp(
@@ -182,6 +216,8 @@ pub struct SshConnection {
     pub(crate) session_info: SessionInfo,
     pub(crate) connected: bool,
     pub(crate) remote_forwards: RemoteForwardMap,
+    #[allow(dead_code)]
+    pub(crate) x11_display: Option<Arc<super::x11::X11Display>>,
 }
 
 impl SshConnection {
@@ -226,11 +262,26 @@ impl SshConnection {
             ..Default::default()
         };
 
-        let handler = ClientHandler::with_remote_forwards(
-            session_info.host.clone(),
-            session_info.port,
-            remote_forwards.clone(),
-        );
+        let x11_display = if session_info.x11_forwarding {
+            super::x11::X11Display::from_env().map(Arc::new)
+        } else {
+            None
+        };
+
+        let handler = if let Some(ref display) = x11_display {
+            ClientHandler::with_x11(
+                session_info.host.clone(),
+                session_info.port,
+                remote_forwards.clone(),
+                display.clone(),
+            )
+        } else {
+            ClientHandler::with_remote_forwards(
+                session_info.host.clone(),
+                session_info.port,
+                remote_forwards.clone(),
+            )
+        };
 
         let mut session = client::connect(
             Arc::new(config),
@@ -308,6 +359,7 @@ impl SshConnection {
             session_info,
             connected: true,
             remote_forwards,
+            x11_display,
         })
     }
 
@@ -340,11 +392,26 @@ impl SshConnection {
             ..Default::default()
         };
 
-        let handler = ClientHandler::with_remote_forwards(
-            session_info.host.clone(),
-            session_info.port,
-            remote_forwards.clone(),
-        );
+        let x11_display = if session_info.x11_forwarding {
+            super::x11::X11Display::from_env().map(Arc::new)
+        } else {
+            None
+        };
+
+        let handler = if let Some(ref display) = x11_display {
+            ClientHandler::with_x11(
+                session_info.host.clone(),
+                session_info.port,
+                remote_forwards.clone(),
+                display.clone(),
+            )
+        } else {
+            ClientHandler::with_remote_forwards(
+                session_info.host.clone(),
+                session_info.port,
+                remote_forwards.clone(),
+            )
+        };
 
         let tcp_stream =
             super::proxy::connect_via_proxy(&session_info.host, session_info.port, &proxy)
@@ -423,6 +490,7 @@ impl SshConnection {
             session_info,
             connected: true,
             remote_forwards,
+            x11_display,
         })
     }
 

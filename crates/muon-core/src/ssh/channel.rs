@@ -37,6 +37,43 @@ impl ShellChannel {
         })
     }
 
+    pub async fn open_with_x11(
+        handle: &russh::client::Handle<ClientHandler>,
+        cols: u16,
+        rows: u16,
+        x11_display: &super::x11::X11Display,
+    ) -> Result<Self, SshError> {
+        let channel = handle
+            .channel_open_session()
+            .await
+            .map_err(|e| SshError::ChannelError(e.to_string()))?;
+
+        channel
+            .request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[])
+            .await
+            .map_err(|e| SshError::ChannelError(format!("PTY request failed: {}", e)))?;
+
+        channel
+            .request_x11(
+                false,
+                true,
+                x11_display.auth_protocol(),
+                String::new(),
+                x11_display.screen_number,
+            )
+            .await
+            .map_err(|e| SshError::ChannelError(format!("X11 request failed: {}", e)))?;
+
+        channel
+            .request_shell(true)
+            .await
+            .map_err(|e| SshError::ChannelError(format!("Shell request failed: {}", e)))?;
+
+        Ok(Self {
+            channel: Arc::new(Mutex::new(channel)),
+        })
+    }
+
     pub async fn write(&self, data: &[u8]) -> Result<(), SshError> {
         let ch = self.channel.lock().await;
         ch.data(data)

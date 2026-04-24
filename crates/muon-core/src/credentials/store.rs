@@ -278,10 +278,12 @@ mod tests {
 
         assert!(store.get_credential("s1", "password").unwrap().is_none());
         assert!(store.get_credential("s1", "passphrase").unwrap().is_none());
-        assert!(store
-            .get_credential("s1", "proxy_password")
-            .unwrap()
-            .is_none());
+        assert!(
+            store
+                .get_credential("s1", "proxy_password")
+                .unwrap()
+                .is_none()
+        );
         assert_eq!(
             store.get_credential("s2", "password").unwrap(),
             Some("other".to_string())

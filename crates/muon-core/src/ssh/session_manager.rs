@@ -12,6 +12,7 @@ struct ActiveSession {
     connection: SshConnection,
     shell_channels: HashMap<String, ShellChannel>,
     read_loop_handles: HashMap<String, tokio::task::JoinHandle<()>>,
+    x11_display: Option<Arc<super::x11::X11Display>>,
 }
 
 pub struct SessionManager {
@@ -50,6 +51,12 @@ impl SessionManager {
         let id = session_info.id.clone();
         let remote_forwards: RemoteForwardMap = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
 
+        let x11_display = if session_info.x11_forwarding {
+            super::x11::X11Display::from_env().map(Arc::new)
+        } else {
+            None
+        };
+
         let connection = if !session_info.jump_hosts.is_empty() {
             let jump_hosts = session_info
                 .jump_hosts
@@ -78,6 +85,7 @@ impl SessionManager {
                     session_info: crate::session::info::SessionInfo::default(),
                     connected: false,
                     remote_forwards: remote_forwards.clone(),
+                    x11_display: x11_display.clone(),
                 };
                 conn.handle = Some(Arc::new(handle));
                 conn.session_info = session_info;
@@ -100,6 +108,7 @@ impl SessionManager {
                 connection,
                 shell_channels: HashMap::new(),
                 read_loop_handles: HashMap::new(),
+                x11_display,
             },
         );
         Ok(id)
@@ -130,7 +139,13 @@ impl SessionManager {
             .get(session_id)
             .ok_or(SshError::NotConnected)?;
         let handle = session.connection.handle().ok_or(SshError::NotConnected)?;
-        let channel = ShellChannel::open(handle, cols, rows).await?;
+
+        let channel = if let Some(display) = &session.x11_display {
+            ShellChannel::open_with_x11(handle, cols, rows, display).await?
+        } else {
+            ShellChannel::open(handle, cols, rows).await?
+        };
+
         let session = self
             .sessions
             .get_mut(session_id)

@@ -305,3 +305,47 @@ export async function detectEditors(): Promise<any[]> {
 export async function openInEditor(filePath: string): Promise<void> {
   return invoke('open_in_editor', { filePath })
 }
+
+export async function pluginList(): Promise<any[]> {
+  return invoke('plugin_list')
+}
+
+export async function pluginDiscover(): Promise<any[]> {
+  return invoke('plugin_discover')
+}
+
+export async function pluginSetEnabled(pluginId: string, enabled: boolean): Promise<void> {
+  return invoke('plugin_set_enabled', { pluginId, enabled })
+}
+
+export async function pluginRemove(pluginId: string): Promise<void> {
+  return invoke('plugin_remove', { pluginId })
+}
+
+export async function pluginGetSetting(pluginId: string, key: string): Promise<string | null> {
+  return invoke<string | null>('plugin_get_setting', { pluginId, key })
+}
+
+export async function pluginSetSetting(pluginId: string, key: string, value: string): Promise<void> {
+  return invoke('plugin_set_setting', { pluginId, key, value })
+}
+
+export async function pluginGetAllSettings(pluginId: string): Promise<Record<string, string>> {
+  return invoke('plugin_get_all_settings', { pluginId })
+}
+
+export async function pluginFireEvent(
+  pluginId: string,
+  eventType: string,
+  payload: any,
+): Promise<void> {
+  return invoke('plugin_fire_event', { pluginId, eventType, payload })
+}
+
+export async function pluginShowNotification(
+  pluginId: string,
+  title: string,
+  body: string,
+): Promise<void> {
+  return invoke('plugin_show_notification', { pluginId, title, body })
+}

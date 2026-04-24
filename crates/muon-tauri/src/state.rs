@@ -8,6 +8,7 @@ use muon_core::config::settings::Settings;
 use muon_core::credentials::CredentialCache;
 use muon_core::file_transfer::engine::TransferEngine;
 use muon_core::session::folder::SessionFolder;
+use muon_core::session::pool::ConnectionPool;
 use muon_core::session::store::SessionStore;
 use muon_core::ssh::port_forward::PortForwardManager;
 use muon_core::ssh::session_manager::SessionManager;
@@ -21,6 +22,7 @@ pub struct AppState {
     pub sftp_sessions: HashMap<String, Arc<Mutex<Option<SftpSession>>>>,
     pub transfer_engine: Arc<TransferEngine>,
     pub port_forward_manager: PortForwardManager,
+    pub connection_pool: ConnectionPool,
 }
 
 impl AppState {
@@ -33,6 +35,7 @@ impl AppState {
             sftp_sessions: HashMap::new(),
             transfer_engine: Arc::new(TransferEngine::new()),
             port_forward_manager: PortForwardManager::new(),
+            connection_pool: ConnectionPool::new(3),
         }
     }
 }
@@ -47,6 +50,7 @@ impl Default for AppState {
             sftp_sessions: HashMap::new(),
             transfer_engine: Arc::new(TransferEngine::new()),
             port_forward_manager: PortForwardManager::new(),
+            connection_pool: ConnectionPool::new(3),
         }
     }
 }

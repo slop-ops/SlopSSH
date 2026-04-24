@@ -1,7 +1,9 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use super::info::SessionInfo;
 use crate::ssh::auth::AuthMethod;
-use crate::ssh::connection::{ConnectionOptions, SshConnection, SshError};
-use std::collections::HashMap;
+use crate::ssh::connection::{ClientHandler, ConnectionOptions, SshConnection, SshError};
 
 struct PooledConnection {
     connection: SshConnection,
@@ -26,15 +28,16 @@ impl ConnectionPool {
         session_info: &SessionInfo,
         auth_method: &AuthMethod,
         options: &ConnectionOptions,
-    ) -> Result<PooledConnectionGuard, SshError> {
+    ) -> Result<Arc<russh::client::Handle<ClientHandler>>, SshError> {
         if let Some(pool) = self.pools.get_mut(&session_info.id) {
             for conn in pool.iter_mut() {
                 if !conn.in_use && conn.connection.is_connected() {
                     conn.in_use = true;
-                    return Ok(PooledConnectionGuard {
-                        session_id: session_info.id.clone(),
-                        index: 0,
-                    });
+                    return conn
+                        .connection
+                        .handle()
+                        .cloned()
+                        .ok_or(SshError::NotConnected);
                 }
             }
 
@@ -45,14 +48,15 @@ impl ConnectionPool {
                     options.clone(),
                 )
                 .await?;
+                let handle = connection
+                    .handle()
+                    .cloned()
+                    .ok_or(SshError::NotConnected)?;
                 pool.push(PooledConnection {
                     connection,
                     in_use: true,
                 });
-                return Ok(PooledConnectionGuard {
-                    session_id: session_info.id.clone(),
-                    index: pool.len() - 1,
-                });
+                return Ok(handle);
             }
 
             Err(SshError::Other("Connection pool exhausted".to_string()))
@@ -63,18 +67,19 @@ impl ConnectionPool {
                 options.clone(),
             )
             .await?;
+            let handle = connection
+                .handle()
+                .cloned()
+                .ok_or(SshError::NotConnected)?;
             let session_id = session_info.id.clone();
             self.pools.insert(
-                session_id.clone(),
+                session_id,
                 vec![PooledConnection {
                     connection,
                     in_use: true,
                 }],
             );
-            Ok(PooledConnectionGuard {
-                session_id,
-                index: 0,
-            })
+            Ok(handle)
         }
     }
 
@@ -93,17 +98,20 @@ impl ConnectionPool {
         let mut to_remove = Vec::new();
         for (session_id, pool) in &mut self.pools {
             pool.retain(|conn| conn.in_use || conn.connection.is_connected());
-            pool.iter_mut().for_each(|conn| {
-                if !conn.in_use {
-                    conn.in_use = false;
-                }
-            });
             if pool.is_empty() {
                 to_remove.push(session_id.clone());
             }
         }
         for id in to_remove {
             self.pools.remove(&id);
+        }
+    }
+
+    pub async fn close_session(&mut self, session_id: &str) {
+        if let Some(pool) = self.pools.remove(session_id) {
+            for mut conn in pool {
+                let _ = conn.connection.disconnect().await;
+            }
         }
     }
 
@@ -127,21 +135,6 @@ impl ConnectionPool {
             .get(session_id)
             .map(|pool| pool.len())
             .unwrap_or(0)
-    }
-}
-
-pub struct PooledConnectionGuard {
-    session_id: String,
-    index: usize,
-}
-
-impl PooledConnectionGuard {
-    pub fn session_id(&self) -> &str {
-        &self.session_id
-    }
-
-    pub fn index(&self) -> usize {
-        self.index
     }
 }
 

@@ -45,6 +45,13 @@ pub async fn ssh_disconnect(
     session_id: String,
 ) -> Result<(), String> {
     let mut state = state.lock().await;
+    if let Some(sftp_arc) = state.sftp_sessions.remove(&session_id) {
+        let mut guard = sftp_arc.lock().await;
+        if let Some(sftp) = guard.take() {
+            let _ = sftp.close().await;
+        }
+    }
+    state.connection_pool.close_session(&session_id).await;
     state
         .ssh_manager
         .disconnect(&session_id)

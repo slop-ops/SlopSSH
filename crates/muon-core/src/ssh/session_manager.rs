@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use super::auth::AuthMethod;
 use super::channel::ShellChannel;
-use super::connection::{ClientHandler, ConnectionOptions, SshConnection, SshError};
+use super::connection::{ClientHandler, ConnectionOptions, RemoteForwardMap, SshConnection, SshError};
 use crate::session::info::SessionInfo;
 
 struct ActiveSession {
@@ -46,6 +46,8 @@ impl SessionManager {
         options: ConnectionOptions,
     ) -> Result<String, SshError> {
         let id = session_info.id.clone();
+        let remote_forwards: RemoteForwardMap =
+            Arc::new(tokio::sync::Mutex::new(HashMap::new()));
 
         let connection = if !session_info.jump_hosts.is_empty() {
             let jump_hosts = session_info
@@ -55,7 +57,13 @@ impl SessionManager {
                 .collect::<Vec<super::jump_host::JumpHost>>();
 
             if jump_hosts.is_empty() {
-                SshConnection::connect_with_options(session_info, auth_method, options).await?
+                SshConnection::connect_with_options(
+                    session_info,
+                    auth_method,
+                    options,
+                    remote_forwards.clone(),
+                )
+                .await?
             } else {
                 let handle = super::jump_host::JumpHostTunnel::connect_via_jumps(
                     &session_info,
@@ -68,6 +76,7 @@ impl SessionManager {
                     handle: None,
                     session_info: crate::session::info::SessionInfo::default(),
                     connected: false,
+                    remote_forwards: remote_forwards.clone(),
                 };
                 conn.handle = Some(Arc::new(handle));
                 conn.session_info = session_info;
@@ -75,7 +84,13 @@ impl SessionManager {
                 conn
             }
         } else {
-            SshConnection::connect_with_options(session_info, auth_method, options).await?
+            SshConnection::connect_with_options(
+                session_info,
+                auth_method,
+                options,
+                remote_forwards.clone(),
+            )
+            .await?
         };
 
         self.sessions.insert(
@@ -230,6 +245,12 @@ impl SessionManager {
         session_id: &str,
     ) -> Option<Arc<russh::client::Handle<ClientHandler>>> {
         self.sessions.get(session_id)?.connection.handle().cloned()
+    }
+
+    pub fn get_remote_forward_map(&self, session_id: &str) -> Option<RemoteForwardMap> {
+        self.sessions
+            .get(session_id)
+            .map(|s| s.connection.remote_forwards.clone())
     }
 }
 

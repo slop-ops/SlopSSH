@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
-use super::connection::{ClientHandler, SshError};
+use super::connection::{ClientHandler, RemoteForwardMap, SshError};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -53,13 +53,22 @@ impl PortForwardRule {
     }
 }
 
+struct ForwardEntry {
+    task: tokio::task::JoinHandle<()>,
+    direction: ForwardDirection,
+    bind_host: String,
+    bind_port: u32,
+    forward_map: Option<RemoteForwardMap>,
+    ssh_handle: Option<Arc<russh::client::Handle<ClientHandler>>>,
+}
+
 pub struct PortForwardManager {
-    active: Vec<(String, tokio::task::JoinHandle<()>)>,
+    entries: Vec<(String, ForwardEntry)>,
 }
 
 impl PortForwardManager {
     pub fn new() -> Self {
-        Self { active: Vec::new() }
+        Self { entries: Vec::new() }
     }
 
     pub fn start_local(
@@ -92,29 +101,81 @@ impl PortForwardManager {
             }
         });
 
-        self.active.push((forward_id.clone(), task));
+        self.entries.push((
+            forward_id.clone(),
+            ForwardEntry {
+                task,
+                direction: ForwardDirection::Local,
+                bind_host: rule.bind_host.clone(),
+                bind_port: rule.bind_port as u32,
+                forward_map: None,
+                ssh_handle: None,
+            },
+        ));
         Ok(forward_id)
     }
 
-    pub fn start_remote(
+    pub async fn start_remote(
         &mut self,
-        _handle: Arc<russh::client::Handle<ClientHandler>>,
+        handle: Arc<russh::client::Handle<ClientHandler>>,
         rule: PortForwardRule,
+        forward_map: RemoteForwardMap,
     ) -> Result<String, SshError> {
         let forward_id = rule.id.clone();
+        let bind_host = rule.bind_host.clone();
+        let bind_port = rule.bind_port as u32;
+        let target_host = rule.target_host.clone();
+        let target_port = rule.target_port;
 
-        let task = tokio::spawn(async {
+        {
+            let mut map = forward_map.lock().await;
+            map.insert(
+                (bind_host.clone(), bind_port),
+                (target_host, target_port),
+            );
+        }
+
+        let actual_port = handle
+            .tcpip_forward(&bind_host, bind_port)
+            .await
+            .map_err(|e| SshError::ChannelError(format!("tcpip_forward failed: {}", e)))?;
+
+        let idle_task = tokio::spawn(async {
             let _ = tokio::signal::ctrl_c().await;
         });
 
-        self.active.push((forward_id.clone(), task));
+        let handle_clone = handle.clone();
+        self.entries.push((
+            forward_id.clone(),
+            ForwardEntry {
+                task: idle_task,
+                direction: ForwardDirection::Remote,
+                bind_host: bind_host.clone(),
+                bind_port: actual_port,
+                forward_map: Some(forward_map),
+                ssh_handle: Some(handle_clone),
+            },
+        ));
         Ok(forward_id)
     }
 
     pub async fn stop(&mut self, forward_id: &str) -> Result<(), SshError> {
-        if let Some(pos) = self.active.iter().position(|(id, _)| id == forward_id) {
-            let (_, handle) = self.active.remove(pos);
-            handle.abort();
+        if let Some(pos) = self.entries.iter().position(|(id, _)| id == forward_id) {
+            let (_, entry) = self.entries.remove(pos);
+            entry.task.abort();
+
+            if entry.direction == ForwardDirection::Remote {
+                if let Some(map) = &entry.forward_map {
+                    let mut map = map.lock().await;
+                    map.remove(&(entry.bind_host.clone(), entry.bind_port));
+                }
+                if let Some(handle) = &entry.ssh_handle {
+                    let _ = handle
+                        .cancel_tcpip_forward(&entry.bind_host, entry.bind_port)
+                        .await;
+                }
+            }
+
             Ok(())
         } else {
             Err(SshError::ChannelError(format!(
@@ -125,13 +186,24 @@ impl PortForwardManager {
     }
 
     pub async fn stop_all(&mut self) {
-        for (_, handle) in self.active.drain(..) {
-            handle.abort();
+        for (_, entry) in self.entries.drain(..) {
+            entry.task.abort();
+            if entry.direction == ForwardDirection::Remote {
+                if let Some(map) = &entry.forward_map {
+                    let mut map = map.lock().await;
+                    map.remove(&(entry.bind_host.clone(), entry.bind_port));
+                }
+                if let Some(handle) = &entry.ssh_handle {
+                    let _ = handle
+                        .cancel_tcpip_forward(&entry.bind_host, entry.bind_port)
+                        .await;
+                }
+            }
         }
     }
 
     pub fn list_active(&self) -> Vec<&str> {
-        self.active.iter().map(|(id, _)| id.as_str()).collect()
+        self.entries.iter().map(|(id, _)| id.as_str()).collect()
     }
 }
 

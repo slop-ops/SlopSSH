@@ -1,11 +1,17 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use russh::keys::{PrivateKey, PrivateKeyWithHashAlg, load_secret_key, ssh_key};
 use russh::*;
+use tokio::net::TcpStream;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 use super::auth::AuthMethod;
 use super::host_keys::HostKeyStatus;
 use crate::session::info::SessionInfo;
+
+pub type RemoteForwardMap =
+    Arc<tokio::sync::Mutex<HashMap<(String, u32), (String, u16)>>>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SshError {
@@ -51,6 +57,7 @@ pub struct ClientHandler {
     pub host: String,
     pub port: u16,
     pub host_key_status: HostKeyStatus,
+    pub remote_forwards: RemoteForwardMap,
 }
 
 impl ClientHandler {
@@ -59,6 +66,16 @@ impl ClientHandler {
             host,
             port,
             host_key_status: HostKeyStatus::Unknown,
+            remote_forwards: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+        }
+    }
+
+    pub fn with_remote_forwards(host: String, port: u16, remote_forwards: RemoteForwardMap) -> Self {
+        Self {
+            host,
+            port,
+            host_key_status: HostKeyStatus::Unknown,
+            remote_forwards,
         }
     }
 }
@@ -87,12 +104,81 @@ impl client::Handler for ClientHandler {
             }
         }
     }
+
+    async fn server_channel_open_forwarded_tcpip(
+        &mut self,
+        channel: Channel<client::Msg>,
+        connected_address: &str,
+        connected_port: u32,
+        _originator_address: &str,
+        _originator_port: u32,
+        _session: &mut client::Session,
+    ) -> Result<(), Self::Error> {
+        let key = (connected_address.to_string(), connected_port);
+        let target = {
+            let map = self.remote_forwards.lock().await;
+            map.get(&key).cloned()
+        };
+
+        if let Some((target_host, target_port)) = target {
+            let _ = tokio::spawn(async move {
+                if let Ok(mut tcp_stream) =
+                    TcpStream::connect((target_host.as_str(), target_port)).await
+                {
+                    let _ = forward_channel_tcp(channel, &mut tcp_stream).await;
+                }
+            });
+        }
+
+        Ok(())
+    }
+}
+
+async fn forward_channel_tcp(
+    mut channel: Channel<client::Msg>,
+    tcp_stream: &mut TcpStream,
+) -> Result<(), SshError> {
+    let (mut tcp_read, mut tcp_write) = tcp_stream.split();
+    let mut buf = vec![0u8; 8192];
+
+    loop {
+        tokio::select! {
+            channel_data = channel.wait() => {
+                match channel_data {
+                    Some(ChannelMsg::Data { data }) => {
+                        if tcp_write.write_all(&data).await.is_err() {
+                            break;
+                        }
+                    }
+                    Some(ChannelMsg::Eof) | None => break,
+                    _ => {}
+                }
+            }
+            tcp_result = tcp_read.read(&mut buf) => {
+                match tcp_result {
+                    Ok(0) => {
+                        let _ = channel.eof().await;
+                        break;
+                    }
+                    Ok(n) => {
+                        if channel.data(&buf[..n]).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 pub struct SshConnection {
     pub(crate) handle: Option<Arc<client::Handle<ClientHandler>>>,
     pub(crate) session_info: SessionInfo,
     pub(crate) connected: bool,
+    pub(crate) remote_forwards: RemoteForwardMap,
 }
 
 impl SshConnection {
@@ -100,13 +186,20 @@ impl SshConnection {
         session_info: SessionInfo,
         auth_method: AuthMethod,
     ) -> Result<Self, SshError> {
-        Self::connect_with_options(session_info, auth_method, ConnectionOptions::default()).await
+        Self::connect_with_options(
+            session_info,
+            auth_method,
+            ConnectionOptions::default(),
+            Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+        )
+        .await
     }
 
     pub async fn connect_with_options(
         session_info: SessionInfo,
         auth_method: AuthMethod,
         options: ConnectionOptions,
+        remote_forwards: RemoteForwardMap,
     ) -> Result<Self, SshError> {
         let preferred = if options.enable_compression {
             russh::Preferred {
@@ -130,7 +223,11 @@ impl SshConnection {
             ..Default::default()
         };
 
-        let handler = ClientHandler::new(session_info.host.clone(), session_info.port);
+        let handler = ClientHandler::with_remote_forwards(
+            session_info.host.clone(),
+            session_info.port,
+            remote_forwards.clone(),
+        );
 
         let mut session = client::connect(
             Arc::new(config),
@@ -174,6 +271,7 @@ impl SshConnection {
             handle: Some(Arc::new(session)),
             session_info,
             connected: true,
+            remote_forwards,
         })
     }
 
@@ -182,6 +280,7 @@ impl SshConnection {
         auth_method: AuthMethod,
         proxy: super::proxy::ProxyConfig,
         options: ConnectionOptions,
+        remote_forwards: RemoteForwardMap,
     ) -> Result<Self, SshError> {
         let preferred = if options.enable_compression {
             russh::Preferred {
@@ -205,7 +304,11 @@ impl SshConnection {
             ..Default::default()
         };
 
-        let handler = ClientHandler::new(session_info.host.clone(), session_info.port);
+        let handler = ClientHandler::with_remote_forwards(
+            session_info.host.clone(),
+            session_info.port,
+            remote_forwards.clone(),
+        );
 
         let tcp_stream =
             super::proxy::connect_via_proxy(&session_info.host, session_info.port, &proxy)
@@ -250,6 +353,7 @@ impl SshConnection {
             handle: Some(Arc::new(session)),
             session_info,
             connected: true,
+            remote_forwards,
         })
     }
 
@@ -327,5 +431,13 @@ mod tests {
         assert_eq!(handler.host, "example.com");
         assert_eq!(handler.port, 22);
         assert_eq!(handler.host_key_status, HostKeyStatus::Unknown);
+    }
+
+    #[test]
+    fn test_client_handler_with_remote_forwards() {
+        let map: RemoteForwardMap = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+        let handler = ClientHandler::with_remote_forwards("example.com".to_string(), 22, map);
+        assert_eq!(handler.host, "example.com");
+        assert_eq!(handler.port, 22);
     }
 }

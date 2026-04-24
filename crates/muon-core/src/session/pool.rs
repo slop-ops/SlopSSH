@@ -3,7 +3,9 @@ use std::sync::Arc;
 
 use super::info::SessionInfo;
 use crate::ssh::auth::AuthMethod;
-use crate::ssh::connection::{ClientHandler, ConnectionOptions, SshConnection, SshError};
+use crate::ssh::connection::{
+    ClientHandler, ConnectionOptions, RemoteForwardMap, SshConnection, SshError,
+};
 
 struct PooledConnection {
     connection: SshConnection,
@@ -42,10 +44,13 @@ impl ConnectionPool {
             }
 
             if pool.len() < self.max_per_session {
+                let forward_map: RemoteForwardMap =
+                    Arc::new(tokio::sync::Mutex::new(HashMap::new()));
                 let connection = SshConnection::connect_with_options(
                     session_info.clone(),
                     auth_method.clone(),
                     options.clone(),
+                    forward_map,
                 )
                 .await?;
                 let handle = connection.handle().cloned().ok_or(SshError::NotConnected)?;
@@ -58,10 +63,13 @@ impl ConnectionPool {
 
             Err(SshError::Other("Connection pool exhausted".to_string()))
         } else {
+            let forward_map: RemoteForwardMap =
+                Arc::new(tokio::sync::Mutex::new(HashMap::new()));
             let connection = SshConnection::connect_with_options(
                 session_info.clone(),
                 auth_method.clone(),
                 options.clone(),
+                forward_map,
             )
             .await?;
             let handle = connection.handle().cloned().ok_or(SshError::NotConnected)?;

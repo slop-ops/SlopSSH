@@ -41,10 +41,17 @@ pub async fn port_forward_start(
             .port_forward_manager
             .start_local(handle, rule)
             .map_err(|e| e.to_string())?,
-        muon_core::ssh::port_forward::ForwardDirection::Remote => state
-            .port_forward_manager
-            .start_remote(handle, rule)
-            .map_err(|e| e.to_string())?,
+        muon_core::ssh::port_forward::ForwardDirection::Remote => {
+            let forward_map = state
+                .ssh_manager
+                .get_remote_forward_map(&session_id)
+                .ok_or_else(|| "Not connected".to_string())?;
+            state
+                .port_forward_manager
+                .start_remote(handle, rule, forward_map)
+                .await
+                .map_err(|e| e.to_string())?
+        }
     };
 
     Ok(forward_id)

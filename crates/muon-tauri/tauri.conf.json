@@ -47,6 +47,15 @@
     "category": "Development",
     "shortDescription": "A modern SSH client built with Rust and Tauri",
     "longDescription": "Muon SSH is a cross-platform SSH/SCP/SFTP client with terminal emulation, dual-pane file browser, port forwarding, and remote system tools.",
+    "fileAssociations": [
+      {
+        "ext": ["muon"],
+        "name": "Muon SSH Session",
+        "description": "Muon SSH session configuration file",
+        "mimeType": "application/x-muon-ssh-session",
+        "role": "Editor"
+      }
+    ],
     "windows": {
       "certificateThumbprint": null,
       "digestAlgorithm": "sha256",

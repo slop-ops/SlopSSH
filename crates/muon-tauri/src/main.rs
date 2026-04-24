@@ -1,6 +1,6 @@
 use muon_core::config::settings::SettingsManager;
 use muon_core::session::store::SessionStore;
-use tauri::{Emitter, Manager};
+use tauri::{Emitter, Listener, Manager};
 
 mod commands;
 mod menu;
@@ -182,6 +182,21 @@ pub fn run() {
                     }
                 });
             }
+
+            let app_handle = app.handle().clone();
+            app.listen("tauri://file-drop", move |event: tauri::Event| {
+                let payload = event.payload();
+                if let Ok(files) = serde_json::from_str::<Vec<String>>(payload) {
+                    for file in files {
+                        if file.ends_with(".muon") {
+                            let _ = app_handle.emit(
+                                "open-session-file",
+                                serde_json::json!({ "path": file }),
+                            );
+                        }
+                    }
+                }
+            });
 
             Ok(())
         })

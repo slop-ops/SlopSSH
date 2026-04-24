@@ -42,9 +42,11 @@ pub async fn ssh_connect(
 
     let enable_compression = state.settings.enable_compression;
 
+    let jump_credentials = resolve_jump_credentials(&state, &session_info);
+
     state
         .ssh_manager
-        .connect(session_info, auth, enable_compression)
+        .connect(session_info, auth, enable_compression, &jump_credentials)
         .await
         .map_err(|e| e.to_string())
 }
@@ -161,4 +163,23 @@ fn find_session<'a>(
         }
     }
     None
+}
+
+fn resolve_jump_credentials(
+    state: &crate::AppState,
+    session_info: &muon_core::session::info::SessionInfo,
+) -> std::collections::HashMap<String, String> {
+    let mut creds = std::collections::HashMap::new();
+
+    for jh_str in &session_info.jump_hosts {
+        if let Ok(jh) = serde_json::from_str::<muon_core::ssh::jump_host::JumpHost>(jh_str)
+            && let Some(ref pk) = jh.password_key
+            && let Ok(Some(password)) =
+                state.credential_store.get_credential(pk, "password")
+        {
+            creds.insert(pk.clone(), password);
+        }
+    }
+
+    creds
 }

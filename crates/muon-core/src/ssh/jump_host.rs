@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use russh::keys::{PrivateKey, PrivateKeyWithHashAlg, load_secret_key, ssh_key};
@@ -38,6 +39,7 @@ impl JumpHostTunnel {
         target: &SessionInfo,
         target_auth: &AuthMethod,
         jump_hosts: &[JumpHost],
+        jump_credentials: &HashMap<String, String>,
     ) -> Result<client::Handle<ClientHandler>, SshError> {
         if jump_hosts.is_empty() {
             return Err(SshError::Other("No jump hosts provided".to_string()));
@@ -53,9 +55,10 @@ impl JumpHostTunnel {
             };
 
             let handle = if let Some(ref ph) = prev_handle {
-                Self::connect_through_jump(ph, jump, &next_host, next_port).await?
+                Self::connect_through_jump(ph, jump, &next_host, next_port, jump_credentials)
+                    .await?
             } else {
-                Self::connect_direct(jump).await?
+                Self::connect_direct(jump, jump_credentials).await?
             };
 
             prev_handle = Some(handle);
@@ -99,6 +102,7 @@ impl JumpHostTunnel {
 
     async fn connect_direct(
         jump: &JumpHost,
+        jump_credentials: &HashMap<String, String>,
     ) -> Result<client::Handle<JumpClientHandler>, SshError> {
         let config = client::Config {
             ..Default::default()
@@ -109,7 +113,7 @@ impl JumpHostTunnel {
             .await
             .map_err(|e| SshError::ConnectionFailed(format!("Jump host connect failed: {}", e)))?;
 
-        Self::authenticate_jump(&mut session, jump).await?;
+        Self::authenticate_jump(&mut session, jump, jump_credentials).await?;
 
         Ok(session)
     }
@@ -119,6 +123,7 @@ impl JumpHostTunnel {
         jump: &JumpHost,
         next_host: &str,
         next_port: u16,
+        jump_credentials: &HashMap<String, String>,
     ) -> Result<client::Handle<JumpClientHandler>, SshError> {
         let channel = prev_handle
             .channel_open_direct_tcpip(next_host, next_port as u32, "127.0.0.1", 0)
@@ -147,28 +152,30 @@ impl JumpHostTunnel {
                     ))
                 })?;
 
-        Self::authenticate_jump(&mut session, jump).await?;
+        Self::authenticate_jump(&mut session, jump, jump_credentials).await?;
 
         Ok(session)
+    }
+
+    fn resolve_password(jump: &JumpHost, jump_credentials: &HashMap<String, String>) -> Option<String> {
+        jump.password_key
+            .as_ref()
+            .and_then(|pk| jump_credentials.get(pk).cloned())
     }
 
     async fn authenticate_jump(
         session: &mut client::Handle<JumpClientHandler>,
         jump: &JumpHost,
+        jump_credentials: &HashMap<String, String>,
     ) -> Result<(), SshError> {
         let auth_result = match jump.auth_type {
             AuthType::Password => {
-                if let Some(ref _pk) = jump.password_key {
-                    session
-                        .authenticate_password(&jump.username, "")
-                        .await
-                        .map_err(|e| SshError::AuthFailed(e.to_string()))?
-                } else {
-                    session
-                        .authenticate_none(&jump.username)
-                        .await
-                        .map_err(|e| SshError::AuthFailed(e.to_string()))?
-                }
+                let password =
+                    Self::resolve_password(jump, jump_credentials).unwrap_or_default();
+                session
+                    .authenticate_password(&jump.username, &password)
+                    .await
+                    .map_err(|e| SshError::AuthFailed(e.to_string()))?
             }
             AuthType::PublicKey => {
                 if let Some(ref key_path) = jump.private_key_path {

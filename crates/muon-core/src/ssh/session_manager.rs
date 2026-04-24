@@ -31,6 +31,7 @@ impl SessionManager {
         session_info: SessionInfo,
         auth_method: AuthMethod,
         enable_compression: bool,
+        jump_credentials: &HashMap<String, String>,
     ) -> Result<String, SshError> {
         let options = ConnectionOptions {
             keep_alive_interval_secs: Some(60),
@@ -38,7 +39,7 @@ impl SessionManager {
             enable_compression,
             connection_timeout_secs: 30,
         };
-        self.connect_with_options(session_info, auth_method, options)
+        self.connect_with_options(session_info, auth_method, options, jump_credentials)
             .await
     }
 
@@ -47,6 +48,7 @@ impl SessionManager {
         session_info: SessionInfo,
         auth_method: AuthMethod,
         options: ConnectionOptions,
+        jump_credentials: &HashMap<String, String>,
     ) -> Result<String, SshError> {
         let id = session_info.id.clone();
         let remote_forwards: RemoteForwardMap = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
@@ -77,6 +79,7 @@ impl SessionManager {
                     &session_info,
                     &auth_method,
                     &jump_hosts,
+                    jump_credentials,
                 )
                 .await?;
 

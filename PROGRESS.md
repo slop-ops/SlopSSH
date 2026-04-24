@@ -1,13 +1,13 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-24 (Session 8)
+Last updated: 2026-04-25 (Session 9)
 
 ## Session Summary
 
-**Completed:** Phases 1-7 (all core), Phase 9 (complete), Phase 2.8 (remote port forwarding), Phase 4.9 (local terminal), Phase 10.1-10.4 (OS integration), Phase 11.1 (tests)
-**Session 8 delivered:** Native menus, system tray, window management, streaming uploads, keyboard-interactive auth, 80 new unit tests
-**Session 8 commits:** See git log
-**Test count:** 109
+**Completed:** Phases 1-7 (all core), Phase 2 (all 12/12), Phase 9 (complete), Phase 10 (7/8), Phase 11 (3/6), Phase 8 (4/7)
+**Session 9 delivered:** X11 forwarding, jump host credential integration, error handling audit, GitHub Actions CI, auto-updater, plugin system foundation, Linux packaging
+**Test count:** 138 (up from 109)
+**Total IPC commands:** 62 (up from 58)
 
 ---
 
@@ -38,44 +38,39 @@ Last updated: 2026-04-24 (Session 8)
 |---|------|--------|-------|
 | 2.1 | Add russh + russh-sftp dependencies | DONE | |
 | 2.2 | SSH connection struct (connect/disconnect) | DONE | |
-| 2.3 | Authentication engine (password, pubkey) | DONE | |
-| 2.4 | Host key verification (known_hosts) | DONE | session 6: fixed bracketed port parsing, added tests |
+| 2.3 | Authentication engine (password, pubkey, keyboard-interactive) | DONE | session 8 |
+| 2.4 | Host key verification (known_hosts) | DONE | session 6 |
 | 2.5 | Shell channel (PTY, xterm-256color) | DONE | |
 | 2.6 | Proxy support (HTTP CONNECT, SOCKS5) | DONE | |
-| 2.7 | Jump host tunneling (multi-hop) | DONE | |
-| 2.8 | Port forwarding (local -L, remote -R) | DONE | session 7: remote via tcpip_forward + cancel_tcpip_forward |
-| 2.9 | X11 forwarding | TODO | |
-| 2.10 | Keep-alive & compression | DONE | session 6: compression wired via Preferred.compression |
-| 2.11 | Connection pool | DONE | session 6: integrated into AppState, cleanup on disconnect |
-| 2.12 | Unit tests | DONE | session 6: 27 tests across 6 modules |
+| 2.7 | Jump host tunneling (multi-hop) | DONE | session 9: credential store integration |
+| 2.8 | Port forwarding (local -L, remote -R) | DONE | session 7 |
+| 2.9 | X11 forwarding | DONE | session 9: X11Display, X11Forwarder, server_channel_open_x11 |
+| 2.10 | Keep-alive & compression | DONE | session 6 |
+| 2.11 | Connection pool | DONE | session 6 |
+| 2.12 | Unit tests | DONE | session 8: 27 tests across 6 modules |
 
-### What was built (session 8):
+### What was built (session 9):
 
-- **Keyboard-interactive auth** (`auth.rs`, `connection.rs`):
-  - `AuthMethod::KeyboardInteractive { responses: Vec<String> }` variant added
-  - Uses `authenticate_keyboard_interactive_start` + `authenticate_keyboard_interactive_respond` API from russh 0.60
-  - Pre-configured responses used to answer server prompts
-  - Full support in both direct and proxy connections
-  - Jump host connections return clear error for unsupported keyboard-interactive
-  - `ssh_cmds.rs`: Updated to use `session_info.auth_type` for routing auth method selection
-  - `AuthType::KeyboardInteractive` already existed in `SessionInfo` from earlier sessions
+- **X11 forwarding** (`x11.rs`, `connection.rs`, `channel.rs`):
+  - `X11Display` parses `$DISPLAY` env var, resolves Unix socket path `/tmp/.X11-unix/X{n}`
+  - `X11Forwarder` spawns bidirectional relay between SSH X11 channel and local X socket
+  - `ClientHandler::server_channel_open_x11` callback forwards incoming X11 channels
+  - `ShellChannel::open_with_x11` requests X11 forwarding on PTY channels
+  - `SessionManager` auto-detects `x11_forwarding` flag and uses X11 shell open
+  - Works with both direct and proxy connections
+  - 7 unit tests for X11Display parsing
 
-- **Passphrase-protected keys** (`connection.rs`):
-  - `load_key_pair_with_passphrase(path, passphrase)` added alongside `load_key_pair`
-  - `PublicKey` auth now properly uses passphrase when provided
-  - Applies to both direct and proxy connection paths
-
-- **Streaming uploads** (`engine.rs`):
-  - `perform_upload` rewritten: opens remote file via `SftpSession::create()`, writes chunks via `AsyncWrite`
-  - No longer buffers entire file in memory — uses 32KB chunk streaming
-  - Progress tracked per-chunk during write instead of after buffering
-  - Proper `flush()` + `shutdown()` on remote file completion
+- **Jump host credential integration** (`jump_host.rs`, `session_manager.rs`, `ssh_cmds.rs`):
+  - `JumpHostTunnel::connect_via_jumps` now accepts `HashMap<String, String>` of pre-resolved credentials
+  - `resolve_jump_credentials()` in Tauri layer looks up passwords from credential store before mutable borrow
+  - Jump hosts with `password_key` field now properly retrieve stored passwords
+  - No more empty string password fallback for configured jump hosts
 
 ---
 
 ## Phase 3: Session Management
 
-**Status: COMPLETE**
+**Status: COMPLETE (7/7)**
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
@@ -103,7 +98,7 @@ Last updated: 2026-04-24 (Session 8)
 | 4.6 | Terminal tabs UI | DONE | |
 | 4.7 | Snippet panel | DONE | |
 | 4.8 | Reconnection UI | DONE | |
-| 4.9 | Local terminal (portable-pty) | DONE | session 7: full local PTY support |
+| 4.9 | Local terminal (portable-pty) | DONE | session 7 |
 | 4.10 | Copy/paste | DONE | |
 
 ---
@@ -165,9 +160,44 @@ Last updated: 2026-04-24 (Session 8)
 
 ## Phase 8: Plugin System
 
-**Status: NOT STARTED**
+**Status: PARTIAL (4/7)**
 
-All 7 tasks TODO.
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 8.1 | Plugin API definition | DONE | session 9: PluginManifest, PluginCapability, PluginPanel |
+| 8.2 | WASM host functions | DONE | session 9: PluginHost with capability whitelisting |
+| 8.3 | Plugin loader | DONE | session 9: WasmLoader via wasmtime, PluginManager discover |
+| 8.4 | Plugin sandboxing | DONE | session 9: fuel-based execution limits, capability whitelist |
+| 8.5 | K8s context plugin | TODO | |
+| 8.6 | Plugin settings UI | TODO | |
+| 8.7 | Plugin IPC | TODO | |
+
+### What was built (session 9):
+
+- **Plugin API** (`plugin/api.rs`):
+  - `PluginManifest`: id, name, version, description, author, capabilities
+  - `PluginCapability`: ExecuteCommand, ReadSetting, ShowNotification, OnSessionConnect, OnSessionDisconnect, RenderPanel
+  - `PluginPanel`: title, content_type (HTML/JSON/Markdown/Text), content
+  - `PluginEvent`: event_type + JSON payload
+
+- **Plugin host** (`plugin/host.rs`):
+  - `PluginHost`: capability whitelisting, per-plugin settings storage
+  - `PluginManager`: discover `.wasm` files from `~/.config/muon-ssh/plugins/`, enable/disable/remove
+  - `LoadedPlugin`: manifest + wasm_path + enabled flag
+  - 8 unit tests
+
+- **WASM loader** (`plugin/loader.rs`):
+  - `WasmLoader`: wasmtime Engine with multi-memory + fuel consumption
+  - `load_module()`: loads WASM from file, extracts manifest
+  - `create_store()`: creates fuel-limited execution store
+  - 4 unit tests
+
+- **Tauri integration** (`commands/plugin_cmds.rs`):
+  - `plugin_list`, `plugin_discover`, `plugin_set_enabled`, `plugin_remove`
+  - `PluginManager` added to `AppState`
+  - Total IPC commands: 62
+
+---
 
 ## Phase 9: Internationalization
 
@@ -185,77 +215,65 @@ All 7 tasks TODO.
 
 ## Phase 10: OS Integration & Packaging
 
-**Status: PARTIAL (4/8)**
+**Status: PARTIAL (7/8)**
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 10.1 | Native menus | DONE | session 8: File, Edit, Session, View, Tools, Help menus with shortcuts |
-| 10.2 | System tray | DONE | session 8: tray icon with Show Window / Quit, left-click to show |
+| 10.1 | Native menus | DONE | session 8 |
+| 10.2 | System tray | DONE | session 8 |
 | 10.3 | File type associations | TODO | |
-| 10.4 | Window management | DONE | session 8: save/restore position+size, close-to-tray (hide instead of quit) |
-| 10.5 | Auto-updater | TODO | |
-| 10.6 | Windows packaging | TODO | |
-| 10.7 | Linux packaging | TODO | |
-| 10.8 | GitHub Actions CI | TODO | |
+| 10.4 | Window management | DONE | session 8 |
+| 10.5 | Auto-updater | DONE | session 9: GitHub releases API via reqwest |
+| 10.6 | Windows packaging | DONE | session 9: NSIS + MSI targets configured |
+| 10.7 | Linux packaging | DONE | session 9: deb + AppImage, .desktop file |
+| 10.8 | GitHub Actions CI | DONE | session 9: test + build-linux jobs |
 
-### What was built (session 8):
+### What was built (session 9):
 
-- **Native menus** (`menu.rs`):
-  - `File`: New Session, Import Sessions, Close Tab, Quit
-  - `Edit`: Copy, Paste, Select All, Settings
-  - `Session`: Connect, Disconnect, Duplicate, Delete
-  - `View`: Toggle Sidebar, Local Terminal, Zoom In/Out/Reset, Fullscreen
-  - `Tools`: File Browser, Process Viewer, Log Viewer, Disk Analyzer, Search, Port Forwarding, Port Viewer, SSH Key Manager
-  - `Help`: About, Check for Updates
-  - Menu events forwarded to frontend via `menu-event` Tauri event
-  - `AppShell.svelte`: Full `menu-event` listener that routes menu IDs to UI actions
+- **Auto-updater** (`updater/github.rs`):
+  - `UpdateChecker`: queries GitHub releases API (`/repos/{owner}/{repo}/releases/latest`)
+  - `UpdateInfo`: current_version, latest_version, download_url, release_notes, release_url
+  - Semantic version comparison (`parse_version`, `is_version_newer`)
+  - Handles pre-release suffixes (e.g., `1.2.3-beta`)
+  - Tauri commands: `get_version`, `check_for_updates`
+  - 10 unit tests
 
-- **System tray** (`menu.rs`):
-  - `TrayIconBuilder` with app icon, tooltip "Muon SSH"
-  - Right-click menu: Show Window, Quit
-  - Left-click: shows and focuses main window
-  - Enabled `tray-icon` and `image-png` features in tauri
+- **GitHub Actions CI** (`.github/workflows/ci.yml`):
+  - `test` job: fmt check, clippy, cargo test, frontend check/lint/build
+  - `build-linux` job: full Tauri app build on Ubuntu
+  - Cargo registry caching between runs
+  - Triggers on push/PR to master
 
-- **Window management** (`main.rs`):
-  - `WindowBounds` struct: x, y, width, height persisted to `~/.config/muon-ssh/window_bounds.json`
-  - `load_window_bounds()` on startup: restores size and position
-  - `save_window_bounds_on_close()` on close requested: saves current geometry
-  - Close-to-tray: `api.prevent_close()` + `window.hide()` instead of quitting
-  - Tray "Quit" item calls `app.exit(0)` for actual exit
-  - Tauri capabilities updated with window permissions
+- **Linux packaging** (`tauri.conf.json`, `muon-ssh.desktop`):
+  - `.deb` with dependency declarations (webkit2gtk-4.1, gtk3, appindicator)
+  - AppImage target configured
+  - `.desktop` file for Linux desktop integration
 
 ---
 
 ## Phase 11: Polish & Testing
 
-**Status: PARTIAL (2/6)**
+**Status: PARTIAL (3/6)**
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 11.1 | Unit tests | DONE | session 8: 109 tests (up from 29) |
+| 11.1 | Unit tests | DONE | 138 tests (up from 109) |
 | 11.2 | Frontend E2E tests | TODO | |
-| 11.3 | Error handling audit | TODO | |
+| 11.3 | Error handling audit | DONE | session 9: removed production unwrap, improved 13+ error messages |
 | 11.4 | Performance profiling | TODO | |
 | 11.5 | Accessibility | TODO | |
 | 11.6 | Documentation | TODO | |
 
-### Test breakdown (109 tests):
+### What was built (session 9):
 
-- `config::settings::tests` (3)
-- `config::paths::tests` (11) — NEW session 8
-- `credentials::store::tests` (12) — NEW session 8
-- `file_transfer::progress::tests` (13) — NEW session 8
-- `file_transfer::engine::tests` (17) — NEW session 8
-- `session::store::tests` (6)
-- `session::import::tests` (3)
-- `session::folder::tests` (9) — NEW session 8
-- `snippets::tests` (3)
-- `ssh::auth::tests` (4)
-- `ssh::connection::tests` (5)
-- `ssh::host_keys::tests` (5)
-- `ssh::port_forward::tests` (10) — NEW session 8
-- `ssh::proxy::tests` (5) — NEW session 8
-- `ssh::channel::tests` (3) — NEW session 8
+- **Error handling audit**:
+  - Removed only production `.unwrap()` in `proxy.rs` (HTTP CONNECT auth header)
+  - Replaced 13+ bare `"Not connected"` errors with contextual session ID messages
+  - Replaced `"SFTP session closed"` with session-contextual messages across 10 locations
+  - Replaced `"Transfer not found"` with transfer ID context
+  - Replaced `"Session not found"` with session ID context
+  - Zero production `panic!()`, zero `todo!()`/`unimplemented!()`
+  - Zero production `.unwrap()` remaining (all in `#[cfg(test)]` only)
 
 ---
 
@@ -267,15 +285,15 @@ All 7 tasks TODO.
 4. ~~**Reconnection UI:** Not implemented~~ **FIXED**
 5. ~~**File transfer progress:** All-or-nothing~~ **FIXED**
 6. ~~**Keyboard-interactive auth:** Not yet implemented~~ **FIXED** session 8
-7. ~~**Passphrase-protected keys:** `load_secret_key` called with `None`~~ **FIXED** session 8: passphrase now passed through
+7. ~~**Passphrase-protected keys:** `load_secret_key` called with `None`~~ **FIXED** session 8
 8. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved
 9. **SFTP channel:** Opens a new SSH session channel for SFTP — should reuse connection via pool (now possible)
-10. ~~**Transfer upload buffering:** Upload reads entire file into memory~~ **FIXED** session 8: streaming via AsyncWrite
+10. ~~**Transfer upload buffering:** Upload reads entire file into memory~~ **FIXED** session 8
 11. ~~**Remote exec uses shell channel:**~~ **FIXED**
 12. ~~**Remote port forwarding:** Stub only~~ **FIXED** session 7
 13. ~~**Credential store is file-based, not OS keyring:**~~ **FIXED** session 6
-14. **Jump host auth:** Jump hosts only support password with empty string or pubkey — should integrate with credential store
-15. **X11 forwarding:** Not implemented (Phase 2.9)
+14. ~~**Jump host auth:** Jump hosts only support password with empty string or pubkey~~ **FIXED** session 9
+15. ~~**X11 forwarding:** Not implemented~~ **FIXED** session 9
 16. ~~**Connection pool not integrated:**~~ **FIXED** session 6
 17. ~~**Compression not wired:**~~ **FIXED** session 6
 
@@ -287,16 +305,16 @@ All 7 tasks TODO.
 
 | # | Item | What's needed |
 |---|------|---------------|
-| A | **X11 forwarding** (2.9) | Request X11 channel, forward to Unix socket |
-| B | **Phase 8: Plugin system** | WASM runtime via wasmtime |
-| C | **Phase 10: OS integration** (remaining) | File associations, auto-updater, packaging, CI |
-| D | **Phase 11: Polish** (remaining) | E2E tests, error audit, performance, accessibility |
-| E | **Jump host credential integration** | Use credential store for jump host passwords |
-| F | **GitHub Actions CI** | Build matrix: Linux, Windows |
+| A | **Plugin examples** (8.5-8.7) | K8s context plugin, plugin settings UI, plugin IPC events |
+| B | **File type associations** (10.3) | Register `.muon` session files |
+| C | **Frontend E2E tests** (11.2) | Playwright tests for critical UI flows |
+| D | **Performance profiling** (11.4) | Terminal throughput, SFTP transfer benchmarks |
+| E | **Accessibility** (11.5) | Keyboard navigation, screen reader support |
+| F | **Documentation** (11.6) | README, CONTRIBUTING, architecture docs |
 
-**Estimated complexity:** High — remaining items are either new subsystems (X11, plugins, packaging) or require deeper integration work.
+**Estimated complexity:** Medium — remaining items are polish, example plugins, and documentation.
 
-### Test Count: 109
+### Test Count: 138
 
 - `config::settings::tests` (3)
 - `config::paths::tests` (11)
@@ -313,3 +331,7 @@ All 7 tasks TODO.
 - `ssh::port_forward::tests` (10)
 - `ssh::proxy::tests` (5)
 - `ssh::channel::tests` (3)
+- `ssh::x11::tests` (7) — NEW session 9
+- `updater::github::tests` (10) — NEW session 9
+- `plugin::host::tests` (8) — NEW session 9
+- `plugin::loader::tests` (4) — NEW session 9

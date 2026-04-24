@@ -49,22 +49,40 @@ pub async fn import_ssh_config_to_folder(
 
 #[tauri::command]
 pub async fn credential_save(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     session_id: String,
     field: String,
     value: String,
 ) -> Result<(), String> {
-    muon_core::credentials::store::CredentialStore::save_credential(&session_id, &field, &value)
+    let state = state.lock().await;
+    state
+        .credential_store
+        .save_credential(&session_id, &field, &value)
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn credential_get(session_id: String, field: String) -> Result<Option<String>, String> {
-    muon_core::credentials::store::CredentialStore::get_credential(&session_id, &field)
+pub async fn credential_get(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    field: String,
+) -> Result<Option<String>, String> {
+    let state = state.lock().await;
+    state
+        .credential_store
+        .get_credential(&session_id, &field)
         .map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn credential_delete(session_id: String, field: String) -> Result<(), String> {
-    muon_core::credentials::store::CredentialStore::delete_credential(&session_id, &field)
+pub async fn credential_delete(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+    field: String,
+) -> Result<(), String> {
+    let state = state.lock().await;
+    state
+        .credential_store
+        .delete_credential(&session_id, &field)
         .map_err(|e| e.to_string())
 }

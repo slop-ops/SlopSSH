@@ -297,3 +297,11 @@ export async function localTerminalResize(
 export async function localTerminalClose(channelId: string): Promise<void> {
   return invoke('local_terminal_close', { channelId })
 }
+
+export async function detectEditors(): Promise<any[]> {
+  return invoke('detect_editors')
+}
+
+export async function openInEditor(filePath: string): Promise<void> {
+  return invoke('open_in_editor', { filePath })
+}

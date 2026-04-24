@@ -22,6 +22,6 @@ pub use settings_cmds::get_app_version;
 pub use sftp_cmds::*;
 pub use snippet_cmds::*;
 pub use ssh_cmds::*;
-pub use system_cmds::{get_settings, greet, save_settings};
+pub use system_cmds::{detect_editors, get_settings, greet, open_in_editor, save_settings};
 pub use tools_cmds::*;
 pub use transfer_cmds::*;

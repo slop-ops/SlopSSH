@@ -16,11 +16,23 @@
     { id: 'terminal', label: 'Terminal' },
     { id: 'files', label: 'File Browser' },
     { id: 'connection', label: 'Connection' },
+    { id: 'editor', label: 'Editor' },
   ]
 
+  let detectedEditors: any[] = $state([])
+
   $effect(() => {
-    if (open) loadSettings()
+    if (open) {
+      loadSettings()
+      loadEditors()
+    }
   })
+
+  async function loadEditors() {
+    try {
+      detectedEditors = await api.detectEditors()
+    } catch {}
+  }
 
   async function loadSettings() {
     loading = true
@@ -167,6 +179,35 @@
               <label>Keep-Alive Interval (seconds)</label>
               <input type="number" bind:value={settings.keep_alive_interval_secs} min="0" max="600" />
             </div>
+          {/if}
+
+          {#if activeTab === 'editor'}
+            <div class="field">
+              <label>External Editor</label>
+              <input type="text" bind:value={settings.external_editor} placeholder="Auto-detected" />
+              <span class="hint">Leave empty for auto-detection. Enter command name or full path.</span>
+            </div>
+            {#if detectedEditors.length > 0}
+              <div class="field">
+                <label>Detected Editors</label>
+                <div class="editor-list">
+                  {#each detectedEditors as editor}
+                    <button
+                      class="editor-item"
+                      class:selected={settings.external_editor === editor.command}
+                      onclick={() => (settings.external_editor = editor.command)}
+                    >
+                      <span class="editor-name">{editor.name}</span>
+                      <span class="editor-path">{editor.path || editor.command}</span>
+                    </button>
+                  {/each}
+                </div>
+              </div>
+            {:else}
+              <div class="field">
+                <span class="hint">No editors detected on this system.</span>
+              </div>
+            {/if}
           {/if}
         </div>
 
@@ -379,5 +420,50 @@
   .cancel-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+  }
+
+  .hint {
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .editor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .editor-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: inherit;
+    text-align: left;
+    transition: border-color 0.15s;
+  }
+
+  .editor-item:hover {
+    border-color: var(--border-active);
+  }
+
+  .editor-item.selected {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+
+  .editor-name {
+    font-weight: 500;
+  }
+
+  .editor-path {
+    font-size: 10px;
+    color: var(--text-tertiary);
   }
 </style>

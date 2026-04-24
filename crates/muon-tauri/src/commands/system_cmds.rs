@@ -27,3 +27,19 @@ pub async fn save_settings(
     state.settings = new_settings;
     Ok(())
 }
+
+#[tauri::command]
+pub fn detect_editors() -> Result<serde_json::Value, String> {
+    let editors = muon_core::config::editor::detect_editors();
+    serde_json::to_value(&editors).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub fn open_in_editor(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    file_path: String,
+) -> Result<(), String> {
+    let state = state.blocking_lock();
+    let editor = &state.settings.external_editor;
+    muon_core::config::editor::open_in_editor(editor, &file_path).map_err(|e| e.to_string())
+}

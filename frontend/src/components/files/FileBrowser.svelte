@@ -1,5 +1,6 @@
 <script lang="ts">
   import FileList from './FileList.svelte'
+  import ContextMenu from '../common/ContextMenu.svelte'
   import * as api from '$lib/api/invoke'
 
   let { sessionId }: { sessionId: string } = $props()
@@ -11,6 +12,7 @@
   let pathInput = $state('')
   let editingPath = $state(false)
   let dragOverState = $state(false)
+  let contextMenu = $state<{ x: number; y: number; entry: any } | null>(null)
 
   $effect(() => {
     if (sessionId) loadHome()
@@ -180,15 +182,66 @@
     }))
     e.dataTransfer.effectAllowed = 'copy'
   }
+
+  function handleContextMenu(entry: any, e: MouseEvent) {
+    e.preventDefault()
+    contextMenu = { x: e.clientX, y: e.clientY, entry }
+  }
+
+  function handleContextMenuAction(action: string) {
+    if (!contextMenu) return
+    const entry = contextMenu.entry
+    contextMenu = null
+
+    switch (action) {
+      case 'open':
+        navigate(entry)
+        break
+      case 'rename':
+        renameEntry(entry)
+        break
+      case 'delete':
+        deleteEntry(entry)
+        break
+      case 'mkdir':
+        createDirectory()
+        break
+      case 'refresh':
+        loadDir(currentPath)
+        break
+    }
+  }
+
+  function getContextMenuItems() {
+    if (!contextMenu?.entry) {
+      return [
+        { label: 'New Folder', action: 'mkdir' },
+        { label: '', separator: true },
+        { label: 'Refresh', action: 'refresh' },
+      ]
+    }
+    const entry = contextMenu.entry
+    return [
+      ...(entry.isDir ? [{ label: 'Open', action: 'open' }] : []),
+      { label: 'Rename', action: 'rename' },
+      { label: 'Delete', action: 'delete' },
+      { label: '', separator: true },
+      { label: 'New Folder', action: 'mkdir' },
+    ]
+  }
 </script>
 
-<div
-  class="file-browser"
-  class:drag-over={dragOverState}
-  ondragover={handleDragOver}
-  ondragleave={handleDragLeave}
-  ondrop={handleDrop}
->
+  <div
+    class="file-browser"
+    class:drag-over={dragOverState}
+    ondragover={handleDragOver}
+    ondragleave={handleDragLeave}
+    ondrop={handleDrop}
+    oncontextmenu={(e) => {
+      e.preventDefault()
+      contextMenu = { x: e.clientX, y: e.clientY, entry: null }
+    }}
+  >
   <div class="address-bar">
     {#if editingPath}
       <form onsubmit={(e: Event) => { e.preventDefault(); submitPath() }} class="path-form">
@@ -233,10 +286,21 @@
         onDelete={deleteEntry}
         onRename={renameEntry}
         onDragStart={handleFileDragStart}
+        onContextMenu={handleContextMenu}
       />
     {/if}
   </div>
 </div>
+
+{#if contextMenu}
+  <ContextMenu
+    items={getContextMenuItems()}
+    x={contextMenu.x}
+    y={contextMenu.y}
+    onaction={handleContextMenuAction}
+    onclose={() => (contextMenu = null)}
+  />
+{/if}
 
 <style>
   .file-browser {

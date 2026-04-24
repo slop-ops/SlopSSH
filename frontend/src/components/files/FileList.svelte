@@ -15,12 +15,14 @@
     onDelete,
     onRename,
     onDragStart,
+    onContextMenu,
   }: {
     entries: FileEntry[]
     onNavigate: (entry: FileEntry) => void
     onDelete: (entry: FileEntry) => void
     onRename: (entry: FileEntry) => void
     onDragStart?: (entry: FileEntry, e: DragEvent) => void
+    onContextMenu?: (entry: FileEntry, e: MouseEvent) => void
   } = $props()
 
   let selectedPath = $state<string | null>(null)
@@ -84,6 +86,7 @@
         onclick={() => (selectedPath = entry.path)}
         ondblclick={() => handleDoubleClick(entry)}
         ondragstart={(e) => handleDragStart(entry, e)}
+        oncontextmenu={(e) => { e.preventDefault(); onContextMenu?.(entry, e) }}
       >
         <td class="col-icon">
           <span class="icon" class:dir={entry.isDir} class:file={entry.isFile}>

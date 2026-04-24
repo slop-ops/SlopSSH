@@ -1,6 +1,7 @@
 <script lang="ts">
   import FileList from './FileList.svelte'
   import ContextMenu from '../common/ContextMenu.svelte'
+  import FileEditor from './FileEditor.svelte'
   import * as api from '$lib/api/invoke'
 
   let { sessionId }: { sessionId: string } = $props()
@@ -13,6 +14,7 @@
   let editingPath = $state(false)
   let dragOverState = $state(false)
   let contextMenu = $state<{ x: number; y: number; entry: any } | null>(null)
+  let editingFile = $state<string | null>(null)
 
   $effect(() => {
     if (sessionId) loadHome()
@@ -215,6 +217,9 @@
       case 'archive':
         archiveEntry(entry)
         break
+      case 'edit':
+        editingFile = entry.path
+        break
     }
   }
 
@@ -255,7 +260,7 @@
     }
     const entry = contextMenu.entry
     return [
-      ...(entry.isDir ? [{ label: 'Open', action: 'open' }] : []),
+      ...(entry.isDir ? [{ label: 'Open', action: 'open' }] : [{ label: 'Edit', action: 'edit' }]),
       { label: 'Rename', action: 'rename' },
       { label: 'Delete', action: 'delete' },
       { label: '', separator: true },
@@ -335,6 +340,17 @@
     y={contextMenu.y}
     onaction={handleContextMenuAction}
     onclose={() => (contextMenu = null)}
+  />
+{/if}
+
+{#if editingFile}
+  <FileEditor
+    sessionId={sessionId}
+    filePath={editingFile}
+    onclose={() => {
+      editingFile = null
+      loadDir(currentPath)
+    }}
   />
 {/if}
 

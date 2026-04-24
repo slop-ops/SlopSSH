@@ -48,10 +48,7 @@ impl ConnectionPool {
                     options.clone(),
                 )
                 .await?;
-                let handle = connection
-                    .handle()
-                    .cloned()
-                    .ok_or(SshError::NotConnected)?;
+                let handle = connection.handle().cloned().ok_or(SshError::NotConnected)?;
                 pool.push(PooledConnection {
                     connection,
                     in_use: true,
@@ -67,10 +64,7 @@ impl ConnectionPool {
                 options.clone(),
             )
             .await?;
-            let handle = connection
-                .handle()
-                .cloned()
-                .ok_or(SshError::NotConnected)?;
+            let handle = connection.handle().cloned().ok_or(SshError::NotConnected)?;
             let session_id = session_info.id.clone();
             self.pools.insert(
                 session_id,

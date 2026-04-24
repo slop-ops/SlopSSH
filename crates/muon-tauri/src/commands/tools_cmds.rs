@@ -59,13 +59,9 @@ pub async fn archive_create(
         _ => return Err(format!("Unsupported archive format: {}", format)),
     };
 
-    let result = muon_core::tools::remote_exec::RemoteExecutor::execute(
-        &handle,
-        &command,
-        120,
-    )
-    .await
-    .map_err(|e| e.to_string())?;
+    let result = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &command, 120)
+        .await
+        .map_err(|e| e.to_string())?;
 
     if result.exit_code != 0 {
         return Err(format!(
@@ -98,9 +94,7 @@ pub async fn archive_extract(
         .await
         .map_err(|e| e.to_string())?;
 
-    let command = if archive_path.ends_with(".tar.gz")
-        || archive_path.ends_with(".tgz")
-    {
+    let command = if archive_path.ends_with(".tar.gz") || archive_path.ends_with(".tgz") {
         format!(
             "tar -xzf {} -C {}",
             shell_escape(&archive_path),

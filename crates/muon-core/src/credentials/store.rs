@@ -126,7 +126,12 @@ impl CredentialStore {
         format!("muon-ssh:{}:{}", session_id, field)
     }
 
-    pub fn save_credential(&self, session_id: &str, field: &str, value: &str) -> anyhow::Result<()> {
+    pub fn save_credential(
+        &self,
+        session_id: &str,
+        field: &str,
+        value: &str,
+    ) -> anyhow::Result<()> {
         let key = Self::key_for_session(session_id, field);
         self.backend.save(&key, value)
     }

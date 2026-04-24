@@ -167,8 +167,10 @@ impl HostKeyVerifier {
                     if pattern_host == host && pattern_port == port {
                         return true;
                     }
-                } else if let Some(bracketed) = pattern.strip_prefix('[').and_then(|s| s.strip_suffix(']'))
-                    && bracketed == host && port == 22
+                } else if let Some(bracketed) =
+                    pattern.strip_prefix('[').and_then(|s| s.strip_suffix(']'))
+                    && bracketed == host
+                    && port == 22
                 {
                     return true;
                 }
@@ -228,27 +230,32 @@ mod tests {
 
     #[test]
     fn test_host_matches_simple() {
-        assert!(HostKeyVerifier::host_matches("example.com", "example.com", 22));
-        assert!(!HostKeyVerifier::host_matches("example.com", "other.com", 22));
+        assert!(HostKeyVerifier::host_matches(
+            "example.com",
+            "example.com",
+            22
+        ));
+        assert!(!HostKeyVerifier::host_matches(
+            "example.com",
+            "other.com",
+            22
+        ));
     }
 
     #[test]
     fn test_host_matches_with_port() {
-        assert!(HostKeyVerifier::host_matches(
-            "[example.com]:2222",
-            "example.com",
-            2222
-        ), "exact bracketed pattern should match");
-        assert!(!HostKeyVerifier::host_matches(
-            "[example.com]:2222",
-            "example.com",
-            22
-        ), "wrong port should not match");
-        assert!(!HostKeyVerifier::host_matches(
-            "[example.com]:2222",
-            "other.com",
-            2222
-        ), "wrong host should not match");
+        assert!(
+            HostKeyVerifier::host_matches("[example.com]:2222", "example.com", 2222),
+            "exact bracketed pattern should match"
+        );
+        assert!(
+            !HostKeyVerifier::host_matches("[example.com]:2222", "example.com", 22),
+            "wrong port should not match"
+        );
+        assert!(
+            !HostKeyVerifier::host_matches("[example.com]:2222", "other.com", 2222),
+            "wrong host should not match"
+        );
     }
 
     #[test]
@@ -272,9 +279,21 @@ mod tests {
 
     #[test]
     fn test_host_matches_wildcard() {
-        assert!(HostKeyVerifier::host_matches("*.example.com", "www.example.com", 22));
-        assert!(HostKeyVerifier::host_matches("*.example.com", "api.example.com", 22));
-        assert!(!HostKeyVerifier::host_matches("*.example.com", "example.com", 22));
+        assert!(HostKeyVerifier::host_matches(
+            "*.example.com",
+            "www.example.com",
+            22
+        ));
+        assert!(HostKeyVerifier::host_matches(
+            "*.example.com",
+            "api.example.com",
+            22
+        ));
+        assert!(!HostKeyVerifier::host_matches(
+            "*.example.com",
+            "example.com",
+            22
+        ));
         assert!(HostKeyVerifier::host_matches("server?", "server1", 22));
         assert!(HostKeyVerifier::host_matches("server?", "server2", 22));
         assert!(!HostKeyVerifier::host_matches("server?", "server12", 22));
@@ -282,6 +301,10 @@ mod tests {
 
     #[test]
     fn test_host_matches_revoked_marker() {
-        assert!(!HostKeyVerifier::host_matches("@revoked example.com", "example.com", 22));
+        assert!(!HostKeyVerifier::host_matches(
+            "@revoked example.com",
+            "example.com",
+            22
+        ));
     }
 }

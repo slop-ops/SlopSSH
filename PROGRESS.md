@@ -1,12 +1,12 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-24 (Session 5)
+Last updated: 2026-04-24 (Session 6)
 
 ## Session Summary
 
-**Completed:** Phases 1-6 (core), Phase 7 (partial), Phase 9 (core)
-**Session 5 delivered:** Jump host tunneling, local port forwarding, keep-alive, SSH config import, file-based credential store, terminal copy/paste
-**Session 5 incomplete:** Compression wiring, connection pool integration into app, OS keyring, keyboard shortcuts
+**Completed:** Phases 1-6 (core), Phase 7 (complete), Phase 9 (core), Phase 2.12 (tests), Phase 5.8-5.12 (partial)
+**Session 6 delivered:** Connection pool integration, compression wiring, OS keyring credentials, keyboard shortcuts, 27 unit tests, context menus, archive operations, remote file editor
+**Session 6 commits:** 8 commits covering all session 5 leftovers + new features
 
 ---
 
@@ -31,100 +31,70 @@ Last updated: 2026-04-24 (Session 5)
 
 ## Phase 2: SSH Engine
 
-**Status: 7/12 DONE, 2 PARTIAL, 3 TODO**
+**Status: 10/12 DONE, 1 PARTIAL, 1 TODO**
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 2.1 | Add russh + russh-sftp dependencies | DONE | `5d08492` |
+| 2.1 | Add russh + russh-sftp dependencies | DONE | |
 | 2.2 | SSH connection struct (connect/disconnect) | DONE | |
 | 2.3 | Authentication engine (password, pubkey) | DONE | |
-| 2.4 | Host key verification (known_hosts) | DONE | |
+| 2.4 | Host key verification (known_hosts) | DONE | session 6: fixed bracketed port parsing, added tests |
 | 2.5 | Shell channel (PTY, xterm-256color) | DONE | |
 | 2.6 | Proxy support (HTTP CONNECT, SOCKS5) | DONE | |
-| 2.7 | Jump host tunneling (multi-hop) | DONE | session 5 — see below |
-| 2.8 | Port forwarding (local -L, remote -R) | PARTIAL | session 5 — local done, remote is stub |
+| 2.7 | Jump host tunneling (multi-hop) | DONE | |
+| 2.8 | Port forwarding (local -L, remote -R) | PARTIAL | local done, remote is stub |
 | 2.9 | X11 forwarding | TODO | |
-| 2.10 | Keep-alive & compression | PARTIAL | session 5 — keep-alive done, compression NOT wired into russh Config |
-| 2.11 | Connection pool | PARTIAL | session 5 — module written but NOT integrated into SessionManager/AppState |
-| 2.12 | Unit tests | TODO | |
+| 2.10 | Keep-alive & compression | DONE | session 6: compression wired via Preferred.compression |
+| 2.11 | Connection pool | DONE | session 6: integrated into AppState, cleanup on disconnect |
+| 2.12 | Unit tests | DONE | session 6: 27 tests across 6 modules |
 
-### What was built (session 5):
+### What was built (session 6):
 
-- **Jump host tunneling** (`muon-core/src/ssh/jump_host.rs`):
-  - `JumpHost` struct: host, port, username, auth_type, key path
-  - `JumpHostTunnel::connect_via_jumps()`: Chains SSH connections through intermediate hosts via `channel_open_direct_tcpip()`
-  - Authenticates each jump host independently (password/pubkey/none)
-  - Integrated into `SessionManager::connect_with_options()` — auto-detects `jump_hosts` field in SessionInfo
+- **Compression wiring** (`connection.rs`):
+  - When `enable_compression` is true, `Preferred.compression` lists zlib, zlib@openssh.com, then none
+  - Wired in both direct and proxy connection paths
+  - `enable_compression` added to Settings struct (default: false)
+  - Passed through `SessionManager::connect()` from AppState settings
 
-- **Port forwarding** (`muon-core/src/ssh/port_forward.rs`):
-  - `PortForwardRule`: Local/Remote direction, bind/target host/port
-  - `PortForwardManager`: Start/stop/list active forwards
-  - Local forwarding: Binds TCP listener, spawns `channel_open_direct_tcpip` per connection, bidirectional relay via `tokio::select!`
-  - Remote forwarding: **STUB** — spawns an idle task. russh requires server-side `tcpip_forward` which needs additional implementation
-  - `Arc<Handle<ClientHandler>>` used to share SSH handle across spawned tasks
-  - IPC: `port_forward_start`, `port_forward_stop`, `port_forward_list`
-  - UI: `PortForwarding.svelte` with direction selector, bind/target fields, active forwards list
+- **Connection pool integration** (`pool.rs`, `state.rs`, `ssh_cmds.rs`):
+  - Pool redesigned to return `Arc<Handle<ClientHandler>>` for actual use
+  - Added to AppState with max 3 connections per session
+  - SSH disconnect cleans up pooled connections and SFTP sessions
+  - `close_session()` and `close_all()` methods for cleanup
 
-- **Connection options & keep-alive** (`muon-core/src/ssh/connection.rs`):
-  - `ConnectionOptions` struct with keep_alive_interval_secs, keep_alive_max_count, enable_compression, connection_timeout_secs
-  - Keep-alive wired into russh `Config { keepalive_interval, keepalive_max }` — **WORKING**
-  - `enable_compression` field exists on `ConnectionOptions` but is **NOT wired** into russh `Config` — russh doesn't expose a compression toggle in Config, would need custom negotiation or different library support
-  - `connect_with_options()` and `connect_via_proxy()` accept configurable options
-  - `SshConnection.handle` changed to `Arc<Handle>` for safe sharing
-  - `ClientHandler` now derives `Clone`
-
-- **Connection pool** (`muon-core/src/session/pool.rs`):
-  - `ConnectionPool` struct with per-session pool, configurable max size (default 3)
-  - Methods: `get_or_create()`, `release()`, `cleanup()`, `close_all()`, `active_count()`, `total_count()`
-  - `PooledConnectionGuard` return type for RAII-style usage
-  - **NOT INTEGRATED**: The pool is not wired into `SessionManager`, `AppState`, or any IPC command. It is currently dead code. Needs: add to AppState, use for SFTP session reuse, expose via IPC
-
-### Still TODO from session 5 plan:
-- Wire `enable_compression` into actual SSH negotiation (may require russh feature flag or custom implementation)
-- Integrate `ConnectionPool` into `SessionManager` for SFTP/background op reuse
-- Implement remote port forwarding (requires russh `tcpip_forward` request)
+- **Unit tests** (27 total):
+  - Settings: defaults, serialization roundtrip, missing field fallbacks
+  - Host keys: simple/wildcard/bracketed-port/multi-pattern/revoked matching
+  - Sessions: CRUD operations, nested folders, serialization
+  - Snippets: serialization, optional fields, roundtrip
+  - Auth: all three method variants
+  - Connection: options defaults/clone, error display, client handler
 
 ---
 
 ## Phase 3: Session Management
 
-**Status: COMPLETE (7/7 tasks done, but 3.5 is simplified)**
+**Status: COMPLETE**
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 3.1 | SessionInfo struct (complete) | DONE | |
 | 3.2 | SessionFolder tree (recursive) | DONE | |
 | 3.3 | SessionStore (JSON persistence, CRUD) | DONE | |
-| 3.4 | Session import (SSH config) | DONE | session 5 |
-| 3.5 | Credential store | DONE (simplified) | session 5 — file-based JSON, NOT OS keyring |
+| 3.4 | Session import (SSH config) | DONE | |
+| 3.5 | Credential store | DONE | session 6: OS keyring with file fallback |
 | 3.6 | Credential cache (in-memory) | DONE | |
 | 3.7 | Tauri IPC commands (full CRUD) | DONE | |
 
-### What was built (session 5):
+### What was built (session 6):
 
-- **SSH config importer** (`muon-core/src/session/import.rs`):
-  - `SshConfigImporter::parse()`: Full parser — Host, HostName, Port, User, IdentityFile, ProxyCommand, ProxyJump, ForwardAgent, ForwardX11, RemoteCommand, arbitrary extra options
-  - `parse_default()`: Auto-loads `~/.ssh/config`
-  - `to_session_info()`: Converts parsed host to SessionInfo (skips wildcard patterns like `Host *`)
-  - `import_to_folder()`: Batch-import into a new SessionFolder
-  - `~` path expansion for IdentityFile
-  - 3 unit tests: basic parsing, wildcard exclusion, folder import
-
-- **Credential store** (`muon-core/src/credentials/store.rs`):
-  - File-based JSON store in `~/.config/muon-ssh/credentials.json`
-  - `save_credential()`, `get_credential()`, `delete_credential()`, `delete_all_for_session()`
-  - Key format: `muon-ssh:<session_id>:<field>`
-  - **NOT OS keyring**: Original plan called for `keyring` crate for OS-native credential storage (macOS Keychain, Windows Credential Manager, Linux Secret Service). This is a simplified fallback. See Technical Debt #13.
-
-- **ImportDialog.svelte**: Two-step UI — scan SSH config to preview hosts, then import all into a folder
-- **Sidebar.svelte**: Added import button in header, opens ImportDialog
-- **IPC commands** (`import_cmds.rs`): `import_ssh_config`, `import_ssh_config_to_folder`, `credential_save`, `credential_get`, `credential_delete`
-- **Frontend API** (`invoke.ts`): 9 new API functions for port forwarding, SSH config import, credential management
-- **Vite/TS config**: Added `$components` path alias
-
-### Still TODO from session 5 plan:
-- Replace file-based credential store with OS keyring (`keyring` crate) — or make it optional/fallback
-- Wire credential store into session connect flow (auto-fill password from store)
+- **OS keyring credential store** (`credentials/store.rs`):
+  - `CredentialBackend` trait with `save`, `get`, `delete` methods
+  - `KeyringBackend`: Uses `keyring` crate for OS-native storage (macOS Keychain, Windows Credential Manager, Linux Secret Service)
+  - `FileBackend`: JSON file fallback for systems without keyring support
+  - `CredentialStore`: Auto-detects keyring availability at startup, falls back gracefully
+  - Updated AppState to hold `CredentialStore` instance
+  - IPC commands now route through CredentialStore instance
 
 ---
 
@@ -143,18 +113,13 @@ Last updated: 2026-04-24 (Session 5)
 | 4.7 | Snippet panel | DONE | |
 | 4.8 | Reconnection UI | DONE | |
 | 4.9 | Local terminal (portable-pty) | TODO | |
-| 4.10 | Copy/paste | DONE | session 5 |
-
-### What was built (session 5):
-- **Terminal copy/paste** (`Terminal.svelte`):
-  - `onSelectionChange`: Auto-copies selected text to system clipboard via `navigator.clipboard`
-  - Right-click: Reads from clipboard and pastes to terminal via `sshWriteShell`
+| 4.10 | Copy/paste | DONE | |
 
 ---
 
 ## Phase 5: SFTP & File Browser
 
-**Status: 10/13 DONE**
+**Status: 12/13 DONE**
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
@@ -165,12 +130,34 @@ Last updated: 2026-04-24 (Session 5)
 | 5.5 | Background transfers | DONE | |
 | 5.6 | File browser UI | DONE | |
 | 5.7 | Address bar | DONE | |
-| 5.8 | Context menus | PARTIAL | |
+| 5.8 | Context menus | DONE | session 6: ContextMenu component + right-click actions |
 | 5.9 | Drag and drop | DONE | |
 | 5.10 | Transfer queue UI | DONE | |
-| 5.11 | Archive operations | TODO | |
-| 5.12 | Remote file editing | TODO | |
+| 5.11 | Archive operations | DONE | session 6: tar.gz/bz2/zip create + extract |
+| 5.12 | Remote file editing | DONE | session 6: inline text editor with save |
 | 5.13 | Sudo fallback | TODO | |
+
+### What was built (session 6):
+
+- **Context menus** (`ContextMenu.svelte`, `FileBrowser.svelte`):
+  - Reusable ContextMenu component with auto-positioning, click-outside/Escape close
+  - File context: Open (dirs), Edit (files), Rename, Delete, Extract (archives), Archive (dirs)
+  - Empty space context: New Folder, Refresh
+  - FileList rows support `onContextMenu` callback
+
+- **Archive operations** (`tools_cmds.rs`):
+  - `archive_create`: Creates archives via remote `tar`/`zip` commands
+  - `archive_extract`: Extracts based on file extension, auto-creates target dir
+  - Supports: tar.gz, tar.bz2, tar, zip formats
+  - Shell escaping for safe command construction
+  - Frontend API functions + context menu integration
+
+- **Remote file editor** (`FileEditor.svelte`):
+  - Full-screen modal editor for remote files
+  - Reads content via SFTP, displays in monospace textarea
+  - Save with Ctrl+S or button, re-uploads via SFTP write
+  - Unsaved changes detection with close confirmation
+  - Accessible via right-click "Edit" on files
 
 ---
 
@@ -178,32 +165,42 @@ Last updated: 2026-04-24 (Session 5)
 
 **Status: COMPLETE (10/10)**
 
-| # | Task | Status | Notes |
-|---|------|--------|-------|
-| 6.1 | Process viewer | DONE | |
-| 6.2 | Log viewer | DONE | |
-| 6.3 | Disk analyzer | DONE | |
-| 6.4 | Search panel | DONE | |
-| 6.5 | System info | DONE | |
-| 6.6 | System load | DONE | |
-| 6.7 | Port viewer | DONE | |
-| 6.8 | SSH key manager | DONE | |
-| 6.9 | Bundled scripts | DONE | |
-| 6.10 | Port forwarding UI | DONE | session 5 |
+| # | Task | Status |
+|---|------|--------|
+| 6.1 | Process viewer | DONE |
+| 6.2 | Log viewer | DONE |
+| 6.3 | Disk analyzer | DONE |
+| 6.4 | Search panel | DONE |
+| 6.5 | System info | DONE |
+| 6.6 | System load | DONE |
+| 6.7 | Port viewer | DONE |
+| 6.8 | SSH key manager | DONE |
+| 6.9 | Bundled scripts | DONE |
+| 6.10 | Port forwarding UI | DONE |
 
 ---
 
 ## Phase 7: Settings & Preferences
 
-**Status: 3/5 DONE**
+**Status: COMPLETE (5/5)**
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 7.1 | Settings struct expansion | DONE | |
+| 7.1 | Settings struct expansion | DONE | session 6: added enable_compression, keyboard_shortcuts |
 | 7.2 | Settings dialog | DONE | |
 | 7.3 | Theme system | DONE | |
-| 7.4 | Keyboard shortcuts | TODO | Was planned for session 5, NOT done |
-| 7.5 | External editors | TODO | |
+| 7.4 | Keyboard shortcuts | DONE | session 6 |
+| 7.5 | External editors | TODO | not started |
+
+### What was built (session 6):
+
+- **Keyboard shortcuts** (`shortcuts.ts`, `AppShell.svelte`):
+  - 15 default key bindings: new/close/next/prev tab, toggle sidebar, open settings, new session, toggle files/tools, font size, fullscreen, escape
+  - `registerHandler()` for component-level shortcut handling
+  - Action routing in AppShell handles all shortcut actions
+  - Shortcuts disabled when dialogs are open
+  - `keyboard_shortcuts` field in Settings for persistence
+  - `serializeShortcuts`/`deserializeShortcuts` for custom shortcuts
 
 ---
 
@@ -235,9 +232,16 @@ All 8 tasks TODO.
 
 ## Phase 11: Polish & Testing
 
-**Status: NOT STARTED**
+**Status: PARTIAL (11.1 started)**
 
-All 6 tasks TODO.
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 11.1 | Integration tests | PARTIAL | session 6: 27 unit tests |
+| 11.2 | Frontend E2E tests | TODO | |
+| 11.3 | Error handling audit | TODO | |
+| 11.4 | Performance profiling | TODO | |
+| 11.5 | Accessibility | TODO | |
+| 11.6 | Documentation | TODO | |
 
 ---
 
@@ -251,37 +255,42 @@ All 6 tasks TODO.
 6. **Keyboard-interactive auth:** Not yet implemented
 7. **Passphrase-protected keys:** `load_secret_key` is called with `None` for passphrase — needs UI integration
 8. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved
-9. **SFTP channel:** Opens a new SSH session channel for SFTP — should reuse connection via pool (blocked by #16)
+9. **SFTP channel:** Opens a new SSH session channel for SFTP — should reuse connection via pool (blocked by ~~#16~~ now possible)
 10. **Transfer upload buffering:** Upload reads entire file into memory before writing — needs streaming for large files
 11. ~~**Remote exec uses shell channel:**~~ **FIXED**
 12. **Remote port forwarding:** Stub only — `start_remote()` spawns an idle task. Needs russh `tcpip_forward` request implementation
-13. **Credential store is file-based, not OS keyring:** `keyring` crate was planned for Phase 3.5 but not integrated. Current JSON file store is a simplified fallback — credentials stored in plaintext in config dir
+13. ~~**Credential store is file-based, not OS keyring:**~~ **FIXED** session 6 — OS keyring with file fallback
 14. **Jump host auth:** Jump hosts only support password with empty string or pubkey — should integrate with credential store for real passwords
 15. **X11 forwarding:** Not implemented (Phase 2.9)
-16. **Connection pool not integrated:** `ConnectionPool` module exists in `session/pool.rs` but is dead code — not added to `AppState`, not used by `SessionManager`, not exposed via IPC. Needs wiring into SFTP session reuse and background operations
-17. **Compression not wired:** `ConnectionOptions.enable_compression` field exists but is never read. russh doesn't expose a simple compression toggle in `Config` — may need feature flag or custom negotiation
+16. ~~**Connection pool not integrated:**~~ **FIXED** session 6 — in AppState, cleanup on disconnect
+17. ~~**Compression not wired:**~~ **FIXED** session 6 — wired via Preferred.compression
 
 ---
 
 ## Next Session
 
-### Incomplete work from session 5 (finish first):
+### Remaining work by priority:
 
 | # | Item | What's needed |
 |---|------|---------------|
-| A | **Connection pool integration** (2.11) | Add `ConnectionPool` to `AppState`, wire into `SessionManager` for SFTP reuse, add IPC commands |
-| B | **Compression** (2.10) | Investigate russh compression support, wire `enable_compression` into Config if possible |
-| C | **OS keyring** (3.5 upgrade) | Add `keyring` crate to Cargo.toml, implement `KeyringCredentialStore` alongside file fallback |
-| D | **Keyboard shortcuts** (7.4) | Configurable shortcut system, global and per-component bindings |
+| A | **Remote port forwarding** (2.8) | Implement russh `tcpip_forward` request |
+| B | **X11 forwarding** (2.9) | Request X11 channel, forward to Unix socket |
+| C | **Local terminal** (4.9) | Add `portable-pty` crate, local PTY data bridge |
+| D | **Sudo fallback** (5.13) | Transfer to /tmp then `sudo cp/mv` |
+| E | **External editors** (7.5) | Auto-detect installed editors, manual path config |
+| F | **RTL support** (9.5) | CSS direction: rtl for applicable locales |
+| G | **Phase 8: Plugin system** | WASM runtime via wasmtime |
+| H | **Phase 10: OS integration** | Native menus, system tray, auto-updater, packaging |
+| I | **Phase 11: Polish** | E2E tests, error audit, performance, accessibility |
 
-### New work (after session 5 leftovers):
+**Estimated complexity:** Medium-high — remaining items are either new subsystems (X11, plugins, packaging) or require deeper integration work.
 
-**Priority 1:** Phase 2.12 — Unit tests for SSH engine (auth, host keys, config import)
-**Priority 2:** Phase 2.9 — X11 forwarding
-**Priority 3:** Phase 5.8 — Context menus (delete, rename, permissions, archive)
-**Priority 4:** Phase 5.11-5.13 — Archive operations, remote file editing, sudo fallback
-**Priority 5:** Phase 7.5 — External editor detection
-**Priority 6:** Phase 8 — Plugin system (WASM via wasmtime)
-**Priority 7:** Phase 10 — OS integration & packaging
+### Test Count: 27
 
-**Estimated complexity:** Medium — session 5 leftovers are mostly integration work, not new features.
+- `config::settings::tests` (3)
+- `session::store::tests` (6)
+- `session::import::tests` (3)
+- `snippets::tests` (3)
+- `ssh::auth::tests` (3)
+- `ssh::connection::tests` (4)
+- `ssh::host_keys::tests` (5)

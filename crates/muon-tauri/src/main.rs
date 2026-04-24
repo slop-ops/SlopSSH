@@ -7,14 +7,14 @@ mod state;
 use commands::{
     archive_create, archive_extract, create_folder, create_session, create_snippet,
     credential_delete, credential_get, credential_save, delete_session, delete_snippet,
-    deploy_public_key, generate_key_pair, get_app_version, get_settings, greet,
-    import_ssh_config, import_ssh_config_to_folder, list_local_keys, list_remote_keys,
-    list_sessions, list_snippets, port_forward_list, port_forward_start, port_forward_stop,
-    read_public_key, remote_exec, save_settings, sftp_connect, sftp_disconnect, sftp_home,
-    sftp_list_dir, sftp_mkdir, sftp_read_file, sftp_remove, sftp_rename, sftp_stat,
-    sftp_write_file, ssh_close_shell, ssh_connect, ssh_disconnect, ssh_open_shell,
-    ssh_resize_shell, ssh_write_shell, transfer_cancel, transfer_clear_completed,
-    transfer_download, transfer_list, transfer_upload, update_session, update_snippet,
+    deploy_public_key, generate_key_pair, get_app_version, get_settings, greet, import_ssh_config,
+    import_ssh_config_to_folder, list_local_keys, list_remote_keys, list_sessions, list_snippets,
+    port_forward_list, port_forward_start, port_forward_stop, read_public_key, remote_exec,
+    save_settings, sftp_connect, sftp_disconnect, sftp_home, sftp_list_dir, sftp_mkdir,
+    sftp_read_file, sftp_remove, sftp_rename, sftp_stat, sftp_write_file, ssh_close_shell,
+    ssh_connect, ssh_disconnect, ssh_open_shell, ssh_resize_shell, ssh_write_shell,
+    transfer_cancel, transfer_clear_completed, transfer_download, transfer_list, transfer_upload,
+    update_session, update_snippet,
 };
 use state::AppState;
 

@@ -135,21 +135,30 @@ Last updated: 2026-04-24 (Session 3)
 - **TransferQueue.svelte**: Collapsible transfer queue with progress bars, speed display, cancel, clear completed
 - **Frontend transfer API**: invoke wrappers for all transfer commands
 
+### What was built (session 3 - batch 2):
+- **DiskAnalyzer.svelte**: Remote du -sh with horizontal bar chart, path input, item count/total
+- **SearchPanel.svelte**: Remote find + grep with directory/name/content filters, result limit
+- **SysInfoPanel.svelte**: OS/kernel/uptime/CPU/memory/disk/network info display
+- **SystemLoad.svelte**: Real-time CPU/memory/swap monitoring with SVG sparkline graphs (2s poll)
+- **PortViewer.svelte**: ss -tlnp output parsing, filterable port table
+- **ToolsPanel.svelte**: Updated with all 7 tool tabs
+- **Remote executor**: Fixed to use `channel.exec()` instead of shell injection
+
 ---
 
 ## Phase 6: Tools & Utilities
 
-**Status: PARTIAL (2/9)**
+**Status: COMPLETE (7/9)**
 
 | # | Task | Status | Commit |
 |---|------|--------|--------|
 | 6.1 | Process viewer | DONE | session 3 |
 | 6.2 | Log viewer | DONE | session 3 |
-| 6.3 | Disk analyzer | TODO | |
-| 6.4 | Search panel | TODO | |
-| 6.5 | System info | TODO | |
-| 6.6 | System load | TODO | |
-| 6.7 | Port viewer | TODO | |
+| 6.3 | Disk analyzer | DONE | session 3 |
+| 6.4 | Search panel | DONE | session 3 |
+| 6.5 | System info | DONE | session 3 |
+| 6.6 | System load | DONE | session 3 |
+| 6.7 | Port viewer | DONE | session 3 |
 | 6.8 | SSH key manager | TODO | |
 | 6.9 | Bundled scripts | TODO | |
 
@@ -224,9 +233,9 @@ All 6 tasks TODO.
 
 ## Next Session
 
-**Priority 1:** Phase 6.3-6.4 — Disk analyzer and search panel tools
-**Priority 2:** Phase 6.5-6.6 — System info and system load with real-time graphs
+**Priority 1:** Phase 6.8-6.9 — SSH key manager and bundled scripts
+**Priority 2:** Phase 7.3 — Theme system (CSS variables for dark/light)
 **Priority 3:** Phase 5.9 — Drag and drop for file transfers
-**Priority 4:** Phase 7.3 — Theme system (CSS variables for dark/light)
-**Prerequisites:** Remote executor, tools panel, and file browser all working.
-**Estimated complexity:** Medium — disk analyzer and search panel use existing remote_exec; theme system needs CSS refactor.
+**Priority 4:** Phase 9.1-9.3 — Internationalization (i18n JSON files)
+**Prerequisites:** All tools working via remote_exec, settings dialog functional.
+**Estimated complexity:** Medium — key manager needs keyring integration; i18n is mostly data entry.

@@ -17,14 +17,9 @@ impl RemoteExecutor {
             .map_err(|e| SshError::ChannelError(e.to_string()))?;
 
         channel
-            .request_shell(true)
+            .exec(true, command)
             .await
-            .map_err(|e| SshError::ChannelError(format!("Shell request failed: {}", e)))?;
-
-        channel
-            .data(format!("{}\nexit $?\n", command).as_bytes())
-            .await
-            .map_err(|e| SshError::ChannelError(e.to_string()))?;
+            .map_err(|e| SshError::ChannelError(format!("Exec failed: {}", e)))?;
 
         let mut stdout = Vec::new();
         let mut exit_code: i32 = -1;
@@ -35,6 +30,9 @@ impl RemoteExecutor {
             let result = timeout(deadline, channel.wait()).await;
             match result {
                 Ok(Some(ChannelMsg::Data { data })) => {
+                    stdout.extend_from_slice(&data);
+                }
+                Ok(Some(ChannelMsg::ExtendedData { data, .. })) => {
                     stdout.extend_from_slice(&data);
                 }
                 Ok(Some(ChannelMsg::ExitStatus { exit_status })) => {

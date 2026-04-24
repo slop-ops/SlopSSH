@@ -3,7 +3,9 @@ use std::sync::Arc;
 
 use super::auth::AuthMethod;
 use super::channel::ShellChannel;
-use super::connection::{ClientHandler, ConnectionOptions, RemoteForwardMap, SshConnection, SshError};
+use super::connection::{
+    ClientHandler, ConnectionOptions, RemoteForwardMap, SshConnection, SshError,
+};
 use crate::session::info::SessionInfo;
 
 struct ActiveSession {
@@ -46,8 +48,7 @@ impl SessionManager {
         options: ConnectionOptions,
     ) -> Result<String, SshError> {
         let id = session_info.id.clone();
-        let remote_forwards: RemoteForwardMap =
-            Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+        let remote_forwards: RemoteForwardMap = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
 
         let connection = if !session_info.jump_hosts.is_empty() {
             let jump_hosts = session_info

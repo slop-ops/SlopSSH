@@ -3,15 +3,14 @@ use std::sync::Arc;
 
 use russh::keys::{PrivateKey, PrivateKeyWithHashAlg, load_secret_key, ssh_key};
 use russh::*;
-use tokio::net::TcpStream;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::TcpStream;
 
 use super::auth::AuthMethod;
 use super::host_keys::HostKeyStatus;
 use crate::session::info::SessionInfo;
 
-pub type RemoteForwardMap =
-    Arc<tokio::sync::Mutex<HashMap<(String, u32), (String, u16)>>>;
+pub type RemoteForwardMap = Arc<tokio::sync::Mutex<HashMap<(String, u32), (String, u16)>>>;
 
 #[derive(Debug, thiserror::Error)]
 pub enum SshError {
@@ -70,7 +69,11 @@ impl ClientHandler {
         }
     }
 
-    pub fn with_remote_forwards(host: String, port: u16, remote_forwards: RemoteForwardMap) -> Self {
+    pub fn with_remote_forwards(
+        host: String,
+        port: u16,
+        remote_forwards: RemoteForwardMap,
+    ) -> Self {
         Self {
             host,
             port,
@@ -121,7 +124,7 @@ impl client::Handler for ClientHandler {
         };
 
         if let Some((target_host, target_port)) = target {
-            let _ = tokio::spawn(async move {
+            tokio::spawn(async move {
                 if let Ok(mut tcp_stream) =
                     TcpStream::connect((target_host.as_str(), target_port)).await
                 {

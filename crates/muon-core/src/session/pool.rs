@@ -63,8 +63,7 @@ impl ConnectionPool {
 
             Err(SshError::Other("Connection pool exhausted".to_string()))
         } else {
-            let forward_map: RemoteForwardMap =
-                Arc::new(tokio::sync::Mutex::new(HashMap::new()));
+            let forward_map: RemoteForwardMap = Arc::new(tokio::sync::Mutex::new(HashMap::new()));
             let connection = SshConnection::connect_with_options(
                 session_info.clone(),
                 auth_method.clone(),

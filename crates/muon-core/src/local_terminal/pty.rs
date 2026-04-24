@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use anyhow::Result;
-use portable_pty::{native_pty_system, CommandBuilder, MasterPty, PtySize};
+use portable_pty::{CommandBuilder, MasterPty, PtySize, native_pty_system};
 
 pub struct LocalTerminalSession {
     writer: Option<Box<dyn Write + Send>>,
@@ -16,11 +16,7 @@ pub struct LocalTerminalSession {
 }
 
 impl LocalTerminalSession {
-    pub fn new(
-        cols: u16,
-        rows: u16,
-        on_data: Box<dyn Fn(Vec<u8>) + Send + Sync>,
-    ) -> Result<Self> {
+    pub fn new(cols: u16, rows: u16, on_data: Box<dyn Fn(Vec<u8>) + Send + Sync>) -> Result<Self> {
         let pty_system = native_pty_system();
 
         let pair = pty_system.openpty(PtySize {

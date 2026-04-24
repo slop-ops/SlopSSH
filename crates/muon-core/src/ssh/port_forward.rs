@@ -68,7 +68,9 @@ pub struct PortForwardManager {
 
 impl PortForwardManager {
     pub fn new() -> Self {
-        Self { entries: Vec::new() }
+        Self {
+            entries: Vec::new(),
+        }
     }
 
     pub fn start_local(
@@ -129,10 +131,7 @@ impl PortForwardManager {
 
         {
             let mut map = forward_map.lock().await;
-            map.insert(
-                (bind_host.clone(), bind_port),
-                (target_host, target_port),
-            );
+            map.insert((bind_host.clone(), bind_port), (target_host, target_port));
         }
 
         let actual_port = handle

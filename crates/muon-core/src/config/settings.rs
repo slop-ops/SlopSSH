@@ -19,6 +19,7 @@ pub struct Settings {
     pub connection_timeout_secs: u64,
     pub keep_alive_interval_secs: u64,
     pub enable_compression: bool,
+    pub keyboard_shortcuts: String,
     pub log_level: String,
 }
 
@@ -39,6 +40,7 @@ impl Default for Settings {
             connection_timeout_secs: 30,
             keep_alive_interval_secs: 60,
             enable_compression: false,
+            keyboard_shortcuts: String::new(),
             log_level: "info".to_string(),
         }
     }

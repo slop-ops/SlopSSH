@@ -7,6 +7,7 @@
   import NewSessionDialog from '../session/NewSessionDialog.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
   import { getTheme, toggleTheme } from '$lib/stores/theme'
+  import { registerHandler, setEnabled as setShortcutsEnabled } from '$lib/utils/shortcuts'
 
   interface Tab {
     id: string
@@ -41,6 +42,73 @@
     theme = getTheme()
   }
 
+  function handleShortcutAction(action: string) {
+    switch (action) {
+      case 'new-tab':
+        if (activeSessionId) {
+          handleConnect(activeSessionId, `Tab ${tabs.length + 1}`)
+        }
+        break
+      case 'close-tab':
+        if (activeTabId) {
+          closeTab(activeTabId)
+        }
+        break
+      case 'next-tab': {
+        const idx = tabs.findIndex((t) => t.id === activeTabId)
+        if (idx >= 0 && idx < tabs.length - 1) {
+          activeTabId = tabs[idx + 1].id
+        }
+        break
+      }
+      case 'prev-tab': {
+        const idx = tabs.findIndex((t) => t.id === activeTabId)
+        if (idx > 0) {
+          activeTabId = tabs[idx - 1].id
+        }
+        break
+      }
+      case 'toggle-sidebar':
+        toggleSidebar()
+        break
+      case 'open-settings':
+        showSettings = !showSettings
+        break
+      case 'new-session':
+        showNewSession = true
+        break
+      case 'toggle-files':
+        if (activeSessionId) activeView = activeView === 'files' ? 'terminal' : 'files'
+        break
+      case 'toggle-tools':
+        if (activeSessionId) activeView = activeView === 'tools' ? 'terminal' : 'tools'
+        break
+      case 'escape':
+        if (showNewSession) showNewSession = false
+        else if (showSettings) showSettings = false
+        break
+      case 'refresh':
+        break
+      case 'toggle-fullscreen':
+        if (document.fullscreenElement) {
+          document.exitFullscreen()
+        } else {
+          document.documentElement.requestFullscreen()
+        }
+        break
+    }
+  }
+
+  function closeTab(tabId: string) {
+    tabs = tabs.filter((t) => t.id !== tabId)
+    if (activeTabId === tabId) {
+      activeTabId = tabs.length > 0 ? tabs[tabs.length - 1].id : ''
+    }
+    if (tabs.length === 0) {
+      activeSessionId = ''
+    }
+  }
+
   $effect(() => {
     if (tabs.length > 0) {
       const activeTab = tabs.find((t) => t.id === activeTabId)
@@ -48,6 +116,15 @@
         activeSessionId = activeTab.sessionId
       }
     }
+  })
+
+  $effect(() => {
+    const unregister = registerHandler(handleShortcutAction)
+    return unregister
+  })
+
+  $effect(() => {
+    setShortcutsEnabled(!showNewSession && !showSettings)
   })
 </script>
 

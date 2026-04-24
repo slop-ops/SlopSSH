@@ -10,6 +10,7 @@
   let error = $state('')
   let pathInput = $state('')
   let editingPath = $state(false)
+  let dragOverState = $state(false)
 
   $effect(() => {
     if (sessionId) loadHome()
@@ -113,16 +114,88 @@
     const path = '/' + parts.slice(0, index + 1).join('/')
     loadDir(path)
   }
+
+  function handleDragOver(e: DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragOverState = true
+  }
+
+  function handleDragLeave(e: DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragOverState = false
+  }
+
+  async function handleDrop(e: DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    dragOverState = false
+
+    if (!e.dataTransfer) return
+
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      if (!file) continue
+
+      try {
+        const arrayBuffer = await file.arrayBuffer()
+        const bytes = new Uint8Array(arrayBuffer)
+        let binary = ''
+        for (let j = 0; j < bytes.length; j++) {
+          binary += String.fromCharCode(bytes[j])
+        }
+        const base64 = btoa(binary)
+
+        const remotePath =
+          currentPath === '/' ? `/${file.name}` : `${currentPath}/${file.name}`
+
+        await api.transferUpload(
+          crypto.randomUUID(),
+          sessionId,
+          `__drag__:${base64}`,
+          remotePath,
+          file.size,
+        )
+      } catch (e) {
+        error = String(e)
+      }
+    }
+
+    await loadDir(currentPath)
+  }
+
+  function handleFileDragStart(entry: any, e: DragEvent) {
+    if (!e.dataTransfer) return
+    e.dataTransfer.setData('text/plain', JSON.stringify({
+      type: 'remote-file',
+      sessionId,
+      path: entry.path,
+      name: entry.name,
+      isDir: entry.isDir,
+      size: entry.size,
+    }))
+    e.dataTransfer.effectAllowed = 'copy'
+  }
 </script>
 
-<div class="file-browser">
+<div
+  class="file-browser"
+  class:drag-over={dragOverState}
+  ondragover={handleDragOver}
+  ondragleave={handleDragLeave}
+  ondrop={handleDrop}
+>
   <div class="address-bar">
     {#if editingPath}
       <form onsubmit={(e: Event) => { e.preventDefault(); submitPath() }} class="path-form">
-        <input type="text" bind:value={pathInput} autofocus />
+        <input type="text" bind:value={pathInput} />
       </form>
     {:else}
-      <div class="breadcrumbs" onclick={() => (editingPath = true)}>
+      <div class="breadcrumbs" onclick={() => (editingPath = true)} role="navigation">
         {#each getBreadcrumbs() as part, i}
           {#if i > 0}
             <span class="separator">/</span>
@@ -133,10 +206,16 @@
     {/if}
     <div class="address-actions">
       <button class="icon-btn" onclick={goUp} title="Go up">..</button>
-      <button class="icon-btn" onclick={loadDir.bind(null, currentPath)} title="Refresh">R</button>
+      <button class="icon-btn" onclick={() => loadDir(currentPath)} title="Refresh">R</button>
       <button class="icon-btn" onclick={createDirectory} title="New folder">+</button>
     </div>
   </div>
+
+  {#if dragOverState}
+    <div class="drop-overlay">
+      <div class="drop-message">Drop files here to upload</div>
+    </div>
+  {/if}
 
   {#if error}
     <div class="error">{error}</div>
@@ -148,7 +227,13 @@
     {:else if entries.length === 0}
       <div class="empty">Empty directory</div>
     {:else}
-      <FileList {entries} onNavigate={navigate} onDelete={deleteEntry} onRename={renameEntry} />
+      <FileList
+        {entries}
+        onNavigate={navigate}
+        onDelete={deleteEntry}
+        onRename={renameEntry}
+        onDragStart={handleFileDragStart}
+      />
     {/if}
   </div>
 </div>
@@ -158,15 +243,21 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: #1e1f2b;
+    background: var(--bg-tertiary);
+    position: relative;
+  }
+
+  .file-browser.drag-over {
+    outline: 2px dashed var(--accent);
+    outline-offset: -2px;
   }
 
   .address-bar {
     display: flex;
     align-items: center;
     padding: 6px 8px;
-    background: #16171d;
-    border-bottom: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
     gap: 8px;
   }
 
@@ -183,13 +274,13 @@
   }
 
   .breadcrumbs:hover {
-    background: #2a2a3e;
+    background: var(--bg-hover);
   }
 
   .breadcrumb {
     background: none;
     border: none;
-    color: #4a90d9;
+    color: var(--accent-text);
     cursor: pointer;
     font-size: 12px;
     font-family: inherit;
@@ -198,11 +289,11 @@
   }
 
   .breadcrumb:hover {
-    background: #4a90d922;
+    background: var(--accent-bg);
   }
 
   .separator {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 12px;
   }
 
@@ -212,11 +303,11 @@
 
   .path-form input {
     width: 100%;
-    background: #1a1a2e;
-    border: 1px solid #4a90d9;
+    background: var(--bg-input);
+    border: 1px solid var(--border-active);
     border-radius: 4px;
     padding: 4px 8px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     font-family: monospace;
     outline: none;
@@ -229,8 +320,8 @@
 
   .icon-btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     width: 26px;
     height: 26px;
     border-radius: 4px;
@@ -243,13 +334,33 @@
   }
 
   .icon-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .drop-overlay {
+    position: absolute;
+    inset: 40px 0 0 0;
+    background: var(--accent-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .drop-message {
+    color: var(--accent-text);
+    font-size: 16px;
+    font-weight: 500;
+    padding: 16px 32px;
+    border: 2px dashed var(--accent);
+    border-radius: 8px;
   }
 
   .error {
-    background: #e06c7522;
-    color: #e06c75;
+    background: var(--error-bg);
+    color: var(--error);
     padding: 6px 12px;
     font-size: 12px;
   }
@@ -265,7 +376,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 13px;
   }
 </style>

@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { setTheme, persistTheme } from '$lib/stores/theme'
 
   let { open = $bindable() }: { open: boolean } = $props()
 
@@ -39,6 +40,10 @@
     success = ''
     try {
       await api.saveSettings(settings)
+      if (settings.theme) {
+        setTheme(settings.theme)
+        persistTheme(settings.theme)
+      }
       success = 'Settings saved'
       setTimeout(() => (success = ''), 2000)
     } catch (e) {
@@ -195,14 +200,14 @@
   }
 
   .dialog {
-    background: #1e1f2b;
-    border: 1px solid #2e303a;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
     border-radius: 8px;
     width: 520px;
     max-height: 80vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-lg);
   }
 
   .dialog-header {
@@ -210,19 +215,19 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .dialog-header h3 {
     margin: 0;
     font-size: 14px;
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: #6b7280;
+    color: var(--text-tertiary);
     cursor: pointer;
     font-size: 14px;
     padding: 4px 8px;
@@ -230,8 +235,8 @@
   }
 
   .close-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .dialog-body {
@@ -243,13 +248,13 @@
     display: flex;
     gap: 2px;
     margin-bottom: 16px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .tab {
     background: transparent;
     border: none;
-    color: #9ca3af;
+    color: var(--text-secondary);
     padding: 8px 16px;
     cursor: pointer;
     font-size: 12px;
@@ -258,12 +263,12 @@
   }
 
   .tab:hover {
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .tab.active {
-    color: #4a90d9;
-    border-bottom-color: #4a90d9;
+    color: var(--accent-text);
+    border-bottom-color: var(--accent);
   }
 
   .content {
@@ -280,7 +285,7 @@
 
   .field label {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -288,18 +293,18 @@
   .field input[type="text"],
   .field input[type="number"],
   .field select {
-    background: #16171d;
-    border: 1px solid #2e303a;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 6px 10px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 13px;
     outline: none;
   }
 
   .field input:focus,
   .field select:focus {
-    border-color: #4a90d9;
+    border-color: var(--border-active);
   }
 
   .checkbox-label {
@@ -309,17 +314,17 @@
     gap: 8px;
     text-transform: none !important;
     font-size: 13px !important;
-    color: #e0e0e0 !important;
+    color: var(--text-primary) !important;
     cursor: pointer;
   }
 
   .checkbox-label input[type="checkbox"] {
-    accent-color: #4a90d9;
+    accent-color: var(--accent);
   }
 
   .error {
-    background: #e06c7522;
-    color: #e06c75;
+    background: var(--error-bg);
+    color: var(--error);
     padding: 8px 12px;
     border-radius: 4px;
     font-size: 12px;
@@ -327,8 +332,8 @@
   }
 
   .success {
-    background: #98c37922;
-    color: #98c379;
+    background: var(--success-bg);
+    color: var(--success);
     padding: 8px 12px;
     border-radius: 4px;
     font-size: 12px;
@@ -343,9 +348,9 @@
   }
 
   .save-btn {
-    background: #4a90d9;
+    background: var(--accent);
     border: none;
-    color: #fff;
+    color: var(--text-inverse);
     padding: 6px 20px;
     border-radius: 4px;
     cursor: pointer;
@@ -353,7 +358,7 @@
   }
 
   .save-btn:hover {
-    background: #3a7bc8;
+    background: var(--accent-hover);
   }
 
   .save-btn:disabled {
@@ -363,8 +368,8 @@
 
   .cancel-btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     padding: 6px 20px;
     border-radius: 4px;
     cursor: pointer;
@@ -372,7 +377,7 @@
   }
 
   .cancel-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 </style>

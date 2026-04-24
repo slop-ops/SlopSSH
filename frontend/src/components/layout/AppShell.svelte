@@ -6,6 +6,7 @@
   import ToolsPanel from '../tools/ToolsPanel.svelte'
   import NewSessionDialog from '../session/NewSessionDialog.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
+  import { getTheme, toggleTheme } from '$lib/stores/theme'
 
   interface Tab {
     id: string
@@ -21,6 +22,7 @@
   let showSettings = $state(false)
   let activeView = $state('terminal')
   let activeSessionId = $state('')
+  let theme = $state(getTheme())
 
   function handleConnect(sessionId: string, name: string) {
     activeSessionId = sessionId
@@ -32,6 +34,11 @@
 
   function toggleSidebar() {
     showSidebar = !showSidebar
+  }
+
+  function handleToggleTheme() {
+    toggleTheme()
+    theme = getTheme()
   }
 
   $effect(() => {
@@ -63,6 +70,9 @@
         <button class="toolbar-btn" class:active={activeView === 'tools'} onclick={() => (activeView = 'tools')}>Tools</button>
       {/if}
       <div class="toolbar-spacer"></div>
+      <button class="toolbar-btn theme-toggle" onclick={handleToggleTheme} title="Toggle theme">
+        {theme === 'dark' ? '&#9728;' : '&#9790;'}
+      </button>
       <button class="toolbar-btn" onclick={() => (showSettings = true)}>Settings</button>
     </div>
 
@@ -101,16 +111,16 @@
     display: flex;
     height: 100vh;
     overflow: hidden;
-    background: #1a1a2e;
-    color: #e0e0e0;
+    background: var(--bg-primary);
+    color: var(--text-primary);
   }
 
   .sidebar {
     width: 260px;
     min-width: 200px;
-    border-right: 1px solid #2e303a;
+    border-right: 1px solid var(--border-primary);
     overflow-y: auto;
-    background: #16171d;
+    background: var(--bg-secondary);
     flex-shrink: 0;
   }
 
@@ -125,16 +135,16 @@
     display: flex;
     gap: 4px;
     padding: 4px 8px;
-    background: #16171d;
-    border-bottom: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
     flex-shrink: 0;
     align-items: center;
   }
 
   .toolbar-btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     padding: 4px 10px;
     border-radius: 4px;
     cursor: pointer;
@@ -144,20 +154,25 @@
   }
 
   .toolbar-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .toolbar-btn.active {
-    background: #4a90d922;
-    border-color: #4a90d9;
-    color: #4a90d9;
+    background: var(--accent-bg);
+    border-color: var(--accent);
+    color: var(--accent-text);
+  }
+
+  .theme-toggle {
+    font-size: 14px;
+    padding: 4px 8px;
   }
 
   .toolbar-separator {
     width: 1px;
     height: 20px;
-    background: #2e303a;
+    background: var(--border-primary);
     margin: 0 4px;
   }
 
@@ -192,7 +207,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #9ca3af;
+    color: var(--text-secondary);
     gap: 8px;
   }
 
@@ -203,6 +218,6 @@
 
   .hint {
     font-size: 12px !important;
-    color: #6b7280;
+    color: var(--text-tertiary);
   }
 </style>

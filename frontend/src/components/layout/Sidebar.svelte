@@ -145,15 +145,15 @@
   .header h2 {
     margin: 0;
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 1px;
   }
 
   .add-btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     width: 24px;
     height: 24px;
     border-radius: 4px;
@@ -166,8 +166,8 @@
   }
 
   .add-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .session-item {
@@ -180,7 +180,7 @@
   }
 
   .session-item:hover {
-    background: #2a2a3e;
+    background: var(--bg-hover);
   }
 
   .session-info {
@@ -193,25 +193,25 @@
   }
 
   .session-name {
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 13px;
     font-weight: 500;
   }
 
   .session-host {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 11px;
   }
 
   .connecting {
-    color: #4a90d9;
+    color: var(--accent-text);
     font-size: 11px;
   }
 
   .delete-btn {
     background: none;
     border: none;
-    color: #6b7280;
+    color: var(--text-tertiary);
     cursor: pointer;
     font-size: 11px;
     padding: 4px 8px;
@@ -225,8 +225,8 @@
   }
 
   .delete-btn:hover {
-    color: #e06c75;
-    background: #e06c7522;
+    color: var(--error);
+    background: var(--error-bg);
   }
 
   .folder {
@@ -237,12 +237,12 @@
   }
 
   .folder-icon {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 12px;
   }
 
   .folder-name {
-    color: #9ca3af;
+    color: var(--text-secondary);
     font-size: 12px;
     font-weight: 600;
   }
@@ -250,7 +250,7 @@
   .empty {
     text-align: center;
     padding: 24px 16px;
-    color: #6b7280;
+    color: var(--text-tertiary);
   }
 
   .empty p {
@@ -259,9 +259,9 @@
   }
 
   .empty-add {
-    background: #4a90d9;
+    background: var(--accent);
     border: none;
-    color: #fff;
+    color: var(--text-inverse);
     padding: 6px 16px;
     border-radius: 6px;
     cursor: pointer;
@@ -270,15 +270,15 @@
   }
 
   .loading {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 13px;
     padding: 12px;
     text-align: center;
   }
 
   .error {
-    background: #e06c7522;
-    color: #e06c75;
+    background: var(--error-bg);
+    color: var(--error);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 12px;
@@ -288,13 +288,13 @@
   .password-section {
     margin-top: auto;
     padding-top: 12px;
-    border-top: 1px solid #2e303a;
+    border-top: 1px solid var(--border-primary);
   }
 
   .password-section label {
     display: block;
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 4px;
@@ -303,11 +303,11 @@
   .password-section input {
     width: 100%;
     box-sizing: border-box;
-    background: #1a1a2e;
-    border: 1px solid #2e303a;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
     border-radius: 6px;
     padding: 6px 10px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 13px;
     font-family: inherit;
     outline: none;
@@ -315,6 +315,6 @@
   }
 
   .password-section input:focus {
-    border-color: #4a90d9;
+    border-color: var(--border-active);
   }
 </style>

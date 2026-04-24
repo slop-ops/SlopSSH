@@ -120,8 +120,8 @@
 
 <style>
   .transfer-queue {
-    border-top: 1px solid #2e303a;
-    background: #16171d;
+    border-top: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
     max-height: 200px;
     display: flex;
     flex-direction: column;
@@ -137,13 +137,13 @@
     align-items: center;
     padding: 6px 12px;
     cursor: pointer;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
     flex-shrink: 0;
   }
 
   .title {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     display: flex;
@@ -152,8 +152,8 @@
   }
 
   .badge {
-    background: #4a90d9;
-    color: #fff;
+    background: var(--accent);
+    color: var(--text-inverse);
     font-size: 10px;
     padding: 1px 6px;
     border-radius: 8px;
@@ -170,18 +170,18 @@
   .clear-btn {
     background: none;
     border: none;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 11px;
     cursor: pointer;
     padding: 2px 4px;
   }
 
   .clear-btn:hover {
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .expand-icon {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 10px;
   }
 
@@ -200,7 +200,7 @@
   }
 
   .transfer-item.active {
-    background: #2a2a3e;
+    background: var(--bg-hover);
   }
 
   .transfer-info {
@@ -211,33 +211,33 @@
 
   .transfer-id {
     font-size: 11px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-family: 'JetBrains Mono', monospace;
   }
 
   .transfer-status {
     font-size: 10px;
-    color: #6b7280;
+    color: var(--text-tertiary);
   }
 
   .transfer-status.success {
-    color: #98c379;
+    color: var(--success);
   }
 
   .transfer-status.failed {
-    color: #e06c75;
+    color: var(--error);
   }
 
   .progress-bar-container {
     height: 3px;
-    background: #2e303a;
+    background: var(--border-primary);
     border-radius: 2px;
     overflow: hidden;
   }
 
   .progress-bar {
     height: 100%;
-    background: #4a90d9;
+    background: var(--accent);
     border-radius: 2px;
     transition: width 0.3s ease;
   }
@@ -246,11 +246,11 @@
     display: flex;
     justify-content: space-between;
     font-size: 10px;
-    color: #6b7280;
+    color: var(--text-tertiary);
   }
 
   .speed {
-    color: #98c379;
+    color: var(--success);
   }
 
   .cancel-btn {
@@ -259,7 +259,7 @@
     top: 4px;
     background: none;
     border: none;
-    color: #6b7280;
+    color: var(--text-tertiary);
     cursor: pointer;
     font-size: 10px;
     padding: 2px 4px;
@@ -272,12 +272,12 @@
   }
 
   .cancel-btn:hover {
-    color: #e06c75;
+    color: var(--error);
   }
 
   .transfer-error {
     font-size: 10px;
-    color: #e06c75;
+    color: var(--error);
     padding: 2px 0;
   }
 </style>

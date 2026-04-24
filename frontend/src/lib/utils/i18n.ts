@@ -1,0 +1,70 @@
+type TranslationMap = Record<string, Record<string, string>>
+
+const translations: Record<string, TranslationMap> = {}
+
+let currentLocale = 'en'
+
+const loadedLocales = new Set<string>()
+
+export function setLocale(locale: string) {
+  currentLocale = locale
+}
+
+export function getLocale(): string {
+  return currentLocale
+}
+
+export async function loadLocale(locale: string) {
+  if (loadedLocales.has(locale)) {
+    currentLocale = locale
+    return
+  }
+
+  try {
+    const mod = await import(`../../i18n/${locale}.json`)
+    translations[locale] = mod.default as TranslationMap
+    loadedLocales.add(locale)
+    currentLocale = locale
+  } catch {
+    console.warn(`Locale ${locale} not found, falling back to English`)
+    currentLocale = 'en'
+  }
+}
+
+export function t(path: string, params?: Record<string, string>): string {
+  const parts = path.split('.')
+  let value: unknown = translations[currentLocale] ?? translations['en']
+
+  for (const part of parts) {
+    if (value && typeof value === 'object' && part in value) {
+      value = (value as Record<string, unknown>)[part]
+    } else {
+      value = translations['en']
+      for (const p of parts) {
+        if (value && typeof value === 'object' && p in value) {
+          value = (value as Record<string, unknown>)[p]
+        } else {
+          return path
+        }
+      }
+      break
+    }
+  }
+
+  if (typeof value !== 'string') return path
+
+  if (params) {
+    return value.replace(/\{(\w+)\}/g, (_, key) => params[key] ?? `{${key}}`)
+  }
+
+  return value
+}
+
+export function useTranslations() {
+  function tFn(path: string, params?: Record<string, string>): string {
+    return t(path, params)
+  }
+  return { t: tFn, locale: currentLocale }
+}
+
+loadLocale('en')

@@ -14,11 +14,13 @@
     onNavigate,
     onDelete,
     onRename,
+    onDragStart,
   }: {
     entries: FileEntry[]
     onNavigate: (entry: FileEntry) => void
     onDelete: (entry: FileEntry) => void
     onRename: (entry: FileEntry) => void
+    onDragStart?: (entry: FileEntry, e: DragEvent) => void
   } = $props()
 
   let selectedPath = $state<string | null>(null)
@@ -58,9 +60,8 @@
     }
   }
 
-  function handleContextAction(action: string, entry: FileEntry) {
-    if (action === 'delete') onDelete(entry)
-    else if (action === 'rename') onRename(entry)
+  function handleDragStart(entry: FileEntry, e: DragEvent) {
+    onDragStart?.(entry, e)
   }
 </script>
 
@@ -79,8 +80,10 @@
       <tr
         class="file-row"
         class:selected={selectedPath === entry.path}
+        draggable="true"
         onclick={() => (selectedPath = entry.path)}
         ondblclick={() => handleDoubleClick(entry)}
+        ondragstart={(e) => handleDragStart(entry, e)}
       >
         <td class="col-icon">
           <span class="icon" class:dir={entry.isDir} class:file={entry.isFile}>
@@ -115,13 +118,13 @@
   th {
     text-align: left;
     padding: 6px 8px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-weight: 600;
     font-size: 11px;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    border-bottom: 1px solid #2e303a;
-    background: #16171d;
+    border-bottom: 1px solid var(--border-primary);
+    background: var(--bg-secondary);
     position: sticky;
     top: 0;
     z-index: 1;
@@ -156,16 +159,16 @@
   }
 
   .file-row:hover {
-    background: #2a2a3e;
+    background: var(--bg-hover);
   }
 
   .file-row.selected {
-    background: #4a90d922;
+    background: var(--accent-bg);
   }
 
   td {
     padding: 4px 8px;
-    border-bottom: 1px solid #2e303a22;
+    border-bottom: 1px solid var(--border-subtle);
     white-space: nowrap;
   }
 
@@ -181,37 +184,37 @@
   }
 
   .icon.dir {
-    background: #4a90d922;
-    color: #4a90d9;
+    background: var(--accent-bg);
+    color: var(--accent-text);
   }
 
   .icon.file {
-    background: #9ca3af22;
-    color: #9ca3af;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
   }
 
   .name {
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .dir-name {
-    color: #4a90d9;
+    color: var(--accent-text);
     font-weight: 500;
   }
 
   .col-size {
-    color: #9ca3af;
+    color: var(--text-secondary);
     text-align: right;
   }
 
   .col-modified {
-    color: #6b7280;
+    color: var(--text-tertiary);
   }
 
   .action-btn {
     background: none;
     border: none;
-    color: #6b7280;
+    color: var(--text-tertiary);
     cursor: pointer;
     font-size: 10px;
     padding: 2px 6px;
@@ -225,12 +228,12 @@
   }
 
   .action-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .action-btn.delete:hover {
-    color: #e06c75;
-    background: #e06c7522;
+    color: var(--error);
+    background: var(--error-bg);
   }
 </style>

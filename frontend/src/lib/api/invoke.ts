@@ -155,3 +155,30 @@ export async function remoteExec(
 ): Promise<{ stdout: string; exitCode: number }> {
   return invoke('remote_exec', { sessionId, command, timeoutSecs: timeoutSecs ?? null })
 }
+
+export async function listLocalKeys(): Promise<any[]> {
+  return invoke('list_local_keys')
+}
+
+export async function listRemoteKeys(sessionId: string): Promise<any[]> {
+  return invoke('list_remote_keys', { sessionId })
+}
+
+export async function generateKeyPair(
+  algorithm: string,
+  path: string,
+  passphrase?: string,
+): Promise<any> {
+  return invoke('generate_key_pair', { algorithm, path, passphrase: passphrase ?? null })
+}
+
+export async function deployPublicKey(
+  sessionId: string,
+  publicKey: string,
+): Promise<void> {
+  return invoke('deploy_public_key', { sessionId, publicKey })
+}
+
+export async function readPublicKey(path: string): Promise<string> {
+  return invoke<string>('read_public_key', { path })
+}

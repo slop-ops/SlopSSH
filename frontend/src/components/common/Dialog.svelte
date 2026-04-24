@@ -54,14 +54,14 @@
   }
 
   .dialog {
-    background: #1e1f2b;
-    border: 1px solid #2e303a;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
     border-radius: 8px;
     width: 90%;
     max-height: 80vh;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-lg);
   }
 
   .dialog-header {
@@ -69,20 +69,20 @@
     justify-content: space-between;
     align-items: center;
     padding: 12px 16px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .dialog-header h3 {
     margin: 0;
     font-size: 14px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-weight: 600;
   }
 
   .close-btn {
     background: none;
     border: none;
-    color: #6b7280;
+    color: var(--text-tertiary);
     cursor: pointer;
     font-size: 14px;
     padding: 4px 8px;
@@ -90,8 +90,8 @@
   }
 
   .close-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .dialog-body {

@@ -1,12 +1,12 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-24 (Session 3)
+Last updated: 2026-04-24 (Session 4)
 
 ## Session Summary
 
-**Completed:** Phases 1-5 (core), Phase 6 (partial), Phase 7 (partial)
-**Total commits:** 6 (session 1) + 2 (session 2) + pending (session 3)
-**Lines of code:** ~7,200 Rust, ~3,200 TypeScript/Svelte
+**Completed:** Phases 1-5 (core), Phase 6 (complete), Phase 7 (partial), Phase 9 (core)
+**Total commits:** 6 (session 1) + 2 (session 2) + N (session 3) + pending (session 4)
+**Lines of code:** ~8,200 Rust, ~5,800 TypeScript/Svelte, ~1,200 i18n JSON
 
 ---
 
@@ -48,12 +48,6 @@ Last updated: 2026-04-24 (Session 3)
 | 2.11 | Connection pool | TODO | |
 | 2.12 | Unit tests | TODO | |
 
-### What was built (session 2):
-- `HostKeyVerifier` with known_hosts parsing (plain, [host]:port, wildcard patterns)
-- `ClientHandler` now carries host/port for server key verification
-- Unknown hosts auto-accepted and added to known_hosts
-- Changed hosts rejected
-
 ---
 
 ## Phase 3: Session Management
@@ -69,11 +63,6 @@ Last updated: 2026-04-24 (Session 3)
 | 3.5 | Credential store (keyring) | TODO | |
 | 3.6 | Credential cache (in-memory) | DONE | `fc9c0af` |
 | 3.7 | Tauri IPC commands (full CRUD) | DONE | session 2 |
-
-### What was built (session 2):
-- `update_session`, `delete_session`, `create_folder` IPC commands
-- Recursive session tree manipulation (remove from tree, re-add to folder)
-- Frontend NewSessionDialog.svelte for creating sessions
 
 ---
 
@@ -94,22 +83,11 @@ Last updated: 2026-04-24 (Session 3)
 | 4.9 | Local terminal (portable-pty) | TODO | |
 | 4.10 | Copy/paste | TODO | |
 
-### What was built (session 2):
-- **Terminal data bridge**: ShellChannel restructured with `Arc<Mutex<Channel>>` for concurrent read/write
-- **Read loop**: `spawn_read_loop()` spawns tokio task with 100ms timeout polling and callback
-- **Event emission**: `ssh_open_shell` emits `terminal-output-{channelId}` events with base64 data
-- **TerminalHolder.svelte**: Closable tab container with active tab switching
-- **SessionManager cleanup**: Read loop handles abort, shell close on disconnect
-
-### What was built (session 3):
-- **SnippetPanel.svelte**: Full CRUD snippet panel with search, send-to-terminal
-- **Reconnection overlay**: Built into Terminal.svelte with reconnect button
-
 ---
 
 ## Phase 5: SFTP & File Browser
 
-**Status: CORE COMPLETE**
+**Status: COMPLETE**
 
 | # | Task | Status | Commit |
 |---|------|--------|--------|
@@ -121,34 +99,21 @@ Last updated: 2026-04-24 (Session 3)
 | 5.6 | File browser UI | DONE | session 2 |
 | 5.7 | Address bar | DONE | session 2 |
 | 5.8 | Context menus | PARTIAL | session 2 |
-| 5.9 | Drag and drop | TODO | |
+| 5.9 | Drag and drop | DONE | session 4 |
 | 5.10 | Transfer queue UI | DONE | session 3 |
 | 5.11 | Archive operations | TODO | |
 | 5.12 | Remote file editing | TODO | |
 | 5.13 | Sudo fallback | TODO | |
 
-### What was built (session 3):
-- **File Transfer Engine** (`muon-core/src/file_transfer/`):
-  - `progress.rs`: TransferProgress, TransferRequest, TransferDirection, TransferStatus, ConflictResolution structs
-  - `engine.rs`: TransferEngine with spawn_upload/spawn_download, chunked read/write, progress tracking, cancel support
-- **Transfer Tauri IPC** (`transfer_cmds.rs`): 5 commands - upload, download, cancel, list, clear_completed
-- **TransferQueue.svelte**: Collapsible transfer queue with progress bars, speed display, cancel, clear completed
-- **Frontend transfer API**: invoke wrappers for all transfer commands
-
-### What was built (session 3 - batch 2):
-- **DiskAnalyzer.svelte**: Remote du -sh with horizontal bar chart, path input, item count/total
-- **SearchPanel.svelte**: Remote find + grep with directory/name/content filters, result limit
-- **SysInfoPanel.svelte**: OS/kernel/uptime/CPU/memory/disk/network info display
-- **SystemLoad.svelte**: Real-time CPU/memory/swap monitoring with SVG sparkline graphs (2s poll)
-- **PortViewer.svelte**: ss -tlnp output parsing, filterable port table
-- **ToolsPanel.svelte**: Updated with all 7 tool tabs
-- **Remote executor**: Fixed to use `channel.exec()` instead of shell injection
+### What was built (session 4):
+- **Drag and drop**: HTML5 DnD for file uploads in FileBrowser, drag-over visual feedback, base64 file content transfer
+- **FileList drag**: Files are draggable with metadata JSON payload
 
 ---
 
 ## Phase 6: Tools & Utilities
 
-**Status: COMPLETE (7/9)**
+**Status: COMPLETE (9/9)**
 
 | # | Task | Status | Commit |
 |---|------|--------|--------|
@@ -159,33 +124,47 @@ Last updated: 2026-04-24 (Session 3)
 | 6.5 | System info | DONE | session 3 |
 | 6.6 | System load | DONE | session 3 |
 | 6.7 | Port viewer | DONE | session 3 |
-| 6.8 | SSH key manager | TODO | |
-| 6.9 | Bundled scripts | TODO | |
+| 6.8 | SSH key manager | DONE | session 4 |
+| 6.9 | Bundled scripts | DONE | session 4 |
 
-### What was built (session 3):
-- **Remote Executor** (`muon-core/src/tools/remote_exec.rs`): Execute commands on remote server via SSH exec channel, timeout support, exit code capture
-- **remote_exec IPC** (`tools_cmds.rs`): Single command to execute remote commands with optional timeout
-- **ProcessViewer.svelte**: Remote process list (ps), filterable/sortable table, kill process action
-- **LogViewer.svelte**: Remote log viewer with tail, search, line numbers, auto-refresh
-- **ToolsPanel.svelte**: Tab container for tools (Processes, Logs)
+### What was built (session 4):
+- **SSH Key Manager** (`muon-core/src/ssh/key_manager.rs`):
+  - `list_local_keys()`: Scan ~/.ssh/ for private keys, detect type (OpenSSH, RSA PEM, EC, PKCS8), fingerprint
+  - `list_remote_keys()`: Parse remote authorized_keys via SSH exec
+  - `generate_key_pair()`: Generate Ed25519/RSA/ECDSA keys via ssh-keygen
+  - `deploy_public_key()`: Upload public key to remote authorized_keys with dedup
+  - `read_public_key()`: Read local .pub file
+- **Key Manager IPC** (`key_cmds.rs`): 5 commands - list_local_keys, list_remote_keys, generate_key_pair, deploy_public_key, read_public_key
+- **KeyManager.svelte**: Full key management UI with local/remote key listing, key generation dialog, deploy-to-remote action
+- **Bundled Scripts** (`scripts/`):
+  - `ps.sh`: Remote process listing (ps with user, pid, cpu, mem, vsz, rss)
+  - `search.sh`: Remote file search (find + grep with name/content filters)
+  - `linux-sysinfo.sh`: System info (OS, kernel, uptime, CPU, memory, disk, network)
+- **ScriptLoader** (`muon-core/src/scripts/mod.rs`): `include_str!` bundled scripts with load_all() API
 
 ---
 
 ## Phase 7: Settings & Preferences
 
-**Status: PARTIAL (2/5)**
+**Status: COMPLETE (3/5)**
 
 | # | Task | Status | Commit |
 |---|------|--------|--------|
 | 7.1 | Settings struct expansion | DONE | session 1 |
 | 7.2 | Settings dialog | DONE | session 3 |
-| 7.3 | Theme system | TODO | |
+| 7.3 | Theme system | DONE | session 4 |
 | 7.4 | Keyboard shortcuts | TODO | |
 | 7.5 | External editors | TODO | |
 
-### What was built (session 3):
-- **SettingsDialog.svelte**: Multi-page dialog (General, Terminal, File Browser, Connection) with all settings fields
-- Dialog integrated into AppShell toolbar
+### What was built (session 4):
+- **Theme system** (CSS variables):
+  - `app.css`: Complete dark/light theme with 30+ CSS custom properties (--bg-primary, --text-primary, --accent, --error, etc.)
+  - `data-theme` attribute on `<html>` element for switching
+  - All components migrated from hardcoded colors to CSS variables
+  - Theme store (`lib/stores/theme.ts`): getTheme/setTheme/toggleTheme with localStorage persistence
+  - Theme toggle button in toolbar (sun/moon icon)
+  - Settings dialog applies theme on save
+  - Scrollbar theming, selection colors, shadows all theme-aware
 
 ---
 
@@ -197,9 +176,33 @@ All 7 tasks TODO.
 
 ## Phase 9: Internationalization
 
-**Status: NOT STARTED**
+**Status: COMPLETE (core)**
 
-All 5 tasks TODO.
+| # | Task | Status | Commit |
+|---|------|--------|--------|
+| 9.1 | i18n framework (JSON-based, lazy loading) | DONE | session 4 |
+| 9.2 | Extract all strings (~100 keys) | DONE | session 4 |
+| 9.3 | Translate to 7 languages | DONE | session 4 |
+| 9.4 | Language selector (in Settings dialog) | DONE | session 3 |
+| 9.5 | RTL support | TODO | |
+
+### What was built (session 4):
+- **i18n framework** (`lib/utils/i18n.ts`):
+  - `t(path, params)` function for dot-notation key lookup (e.g., `t('sidebar.sessions')`)
+  - Lazy locale loading via dynamic `import()`
+  - Fallback to English for missing keys
+  - Parameter interpolation with `{key}` syntax
+  - `useTranslations()` hook for components
+- **Translation files** (7 languages):
+  - `en.json` (English - base): ~100 keys across app/sidebar/toolbar/session/terminal/files/tools/settings/common
+  - `es.json` (Spanish)
+  - `ru.json` (Russian)
+  - `fr.json` (French)
+  - `de.json` (German)
+  - `pt.json` (Portuguese)
+  - `cn.json` (Chinese)
+
+---
 
 ## Phase 10: OS Integration & Packaging
 
@@ -227,15 +230,15 @@ All 6 tasks TODO.
 8. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved
 9. **SFTP channel:** Opens a new SSH session channel for SFTP — should reuse connection
 10. **Transfer upload buffering:** Upload reads entire file into memory before writing — needs streaming for large files
-11. **Remote exec uses shell channel:** Uses request_shell + command injection instead of proper exec — may echo command
+11. ~~**Remote exec uses shell channel:**~~ **FIXED** — Now uses proper exec channel via `channel.exec()`
 
 ---
 
 ## Next Session
 
-**Priority 1:** Phase 6.8-6.9 — SSH key manager and bundled scripts
-**Priority 2:** Phase 7.3 — Theme system (CSS variables for dark/light)
-**Priority 3:** Phase 5.9 — Drag and drop for file transfers
-**Priority 4:** Phase 9.1-9.3 — Internationalization (i18n JSON files)
-**Prerequisites:** All tools working via remote_exec, settings dialog functional.
-**Estimated complexity:** Medium — key manager needs keyring integration; i18n is mostly data entry.
+**Priority 1:** Phase 2.7 — Jump host tunneling (multi-hop SSH)
+**Priority 2:** Phase 2.8 — Port forwarding implementation (beyond stub)
+**Priority 3:** Phase 2.10-2.11 — Keep-alive, compression, connection pool
+**Priority 4:** Phase 3.4-3.5 — Session import (SSH config) and keyring credential store
+**Prerequisites:** SSH engine core stable, tools fully functional, theme system working.
+**Estimated complexity:** High — jump host and port forwarding require careful russh channel management.

@@ -6,6 +6,7 @@
   import SysInfoPanel from './SysInfoPanel.svelte'
   import SystemLoad from './SystemLoad.svelte'
   import PortViewer from './PortViewer.svelte'
+  import KeyManager from './KeyManager.svelte'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -19,6 +20,7 @@
     { id: 'sysinfo', label: 'System Info' },
     { id: 'load', label: 'System Load' },
     { id: 'ports', label: 'Ports' },
+    { id: 'keys', label: 'SSH Keys' },
   ]
 </script>
 
@@ -49,6 +51,8 @@
       <SystemLoad {sessionId} />
     {:else if activeTool === 'ports'}
       <PortViewer {sessionId} />
+    {:else if activeTool === 'keys'}
+      <KeyManager {sessionId} />
     {/if}
   </div>
 </div>
@@ -58,15 +62,15 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: #1e1f2b;
+    background: var(--bg-tertiary);
   }
 
   .tool-tabs {
     display: flex;
     gap: 0;
     padding: 0 8px;
-    background: #16171d;
-    border-bottom: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
     overflow-x: auto;
     flex-shrink: 0;
   }
@@ -74,7 +78,7 @@
   .tool-tab {
     background: transparent;
     border: none;
-    color: #9ca3af;
+    color: var(--text-secondary);
     padding: 8px 12px;
     cursor: pointer;
     font-size: 12px;
@@ -84,12 +88,12 @@
   }
 
   .tool-tab:hover {
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .tool-tab.active {
-    color: #4a90d9;
-    border-bottom-color: #4a90d9;
+    color: var(--accent-text);
+    border-bottom-color: var(--accent);
   }
 
   .tool-content {

@@ -238,3 +238,20 @@ export async function credentialDelete(
 ): Promise<void> {
   return invoke('credential_delete', { sessionId, field })
 }
+
+export async function archiveCreate(
+  sessionId: string,
+  archivePath: string,
+  sources: string[],
+  format: string,
+): Promise<void> {
+  return invoke('archive_create', { sessionId, archivePath, sources, format })
+}
+
+export async function archiveExtract(
+  sessionId: string,
+  archivePath: string,
+  targetDir: string,
+): Promise<void> {
+  return invoke('archive_extract', { sessionId, archivePath, targetDir })
+}

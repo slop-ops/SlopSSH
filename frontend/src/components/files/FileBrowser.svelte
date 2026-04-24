@@ -209,7 +209,40 @@
       case 'refresh':
         loadDir(currentPath)
         break
+      case 'extract':
+        extractArchive(entry)
+        break
+      case 'archive':
+        archiveEntry(entry)
+        break
     }
+  }
+
+  async function extractArchive(entry: any) {
+    const dirName = entry.name.replace(/\.(tar\.gz|tar\.bz2|tgz|tar|zip)$/, '')
+    const targetPath = currentPath === '/' ? `/${dirName}` : `${currentPath}/${dirName}`
+    try {
+      await api.archiveExtract(sessionId, entry.path, targetPath)
+      await loadDir(currentPath)
+    } catch (e) {
+      error = String(e)
+    }
+  }
+
+  async function archiveEntry(entry: any) {
+    const format = entry.isDir ? 'tar.gz' : 'tar.gz'
+    const archiveName = `${entry.name}.tar.gz`
+    const archivePath = currentPath === '/' ? `/${archiveName}` : `${currentPath}/${archiveName}`
+    try {
+      await api.archiveCreate(sessionId, archivePath, [entry.path], format)
+      await loadDir(currentPath)
+    } catch (e) {
+      error = String(e)
+    }
+  }
+
+  function isArchive(name: string): boolean {
+    return /\.(tar\.gz|tar\.bz2|tgz|tar|zip)$/i.test(name)
   }
 
   function getContextMenuItems() {
@@ -225,6 +258,9 @@
       ...(entry.isDir ? [{ label: 'Open', action: 'open' }] : []),
       { label: 'Rename', action: 'rename' },
       { label: 'Delete', action: 'delete' },
+      { label: '', separator: true },
+      ...(isArchive(entry.name) ? [{ label: 'Extract Here', action: 'extract' }] : []),
+      ...(entry.isDir ? [{ label: 'Archive (tar.gz)', action: 'archive' }] : []),
       { label: '', separator: true },
       { label: 'New Folder', action: 'mkdir' },
     ]

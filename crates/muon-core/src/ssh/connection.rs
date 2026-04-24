@@ -282,3 +282,50 @@ fn load_key_pair(path: &std::path::Path) -> Result<PrivateKey, SshError> {
     load_secret_key(&path_str, None)
         .map_err(|e| SshError::AuthFailed(format!("Failed to load key: {}", e)))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_connection_options_default() {
+        let opts = ConnectionOptions::default();
+        assert_eq!(opts.keep_alive_interval_secs, Some(60));
+        assert_eq!(opts.keep_alive_max_count, 3);
+        assert!(!opts.enable_compression);
+        assert_eq!(opts.connection_timeout_secs, 30);
+    }
+
+    #[test]
+    fn test_connection_options_clone() {
+        let opts = ConnectionOptions {
+            keep_alive_interval_secs: Some(120),
+            keep_alive_max_count: 5,
+            enable_compression: true,
+            connection_timeout_secs: 60,
+        };
+        let cloned = opts.clone();
+        assert_eq!(cloned.keep_alive_interval_secs, Some(120));
+        assert!(cloned.enable_compression);
+    }
+
+    #[test]
+    fn test_ssh_error_display() {
+        let err = SshError::ConnectionFailed("timeout".to_string());
+        assert!(err.to_string().contains("timeout"));
+
+        let err = SshError::AuthFailed("bad password".to_string());
+        assert!(err.to_string().contains("bad password"));
+
+        let err = SshError::NotConnected;
+        assert!(err.to_string().contains("Not connected"));
+    }
+
+    #[test]
+    fn test_client_handler_new() {
+        let handler = ClientHandler::new("example.com".to_string(), 22);
+        assert_eq!(handler.host, "example.com");
+        assert_eq!(handler.port, 22);
+        assert_eq!(handler.host_key_status, HostKeyStatus::Unknown);
+    }
+}

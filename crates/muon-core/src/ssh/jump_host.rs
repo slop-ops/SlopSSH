@@ -232,6 +232,11 @@ impl JumpHostTunnel {
                     .await
                     .map_err(|e| SshError::AuthFailed(e.to_string()))?
             }
+            AuthMethod::KeyboardInteractive { .. } => {
+                return Err(SshError::AuthFailed(
+                    "Keyboard-interactive auth not supported via jump hosts".to_string(),
+                ));
+            }
             AuthMethod::None => session
                 .authenticate_none(&target.username)
                 .await

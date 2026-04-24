@@ -240,13 +240,21 @@ impl SshConnection {
         .await
         .map_err(|e| SshError::ConnectionFailed(e.to_string()))?;
 
-        let auth_result = match auth_method {
+        let auth_ok = match &auth_method {
             AuthMethod::Password { password } => session
-                .authenticate_password(&session_info.username, &password)
+                .authenticate_password(&session_info.username, password)
                 .await
-                .map_err(|e| SshError::AuthFailed(e.to_string()))?,
-            AuthMethod::PublicKey { key_path, .. } => {
-                let key_pair = load_key_pair(&key_path)?;
+                .map_err(|e| SshError::AuthFailed(e.to_string()))?
+                .success(),
+            AuthMethod::PublicKey {
+                key_path,
+                passphrase,
+            } => {
+                let key_pair = if let Some(pp) = passphrase {
+                    load_key_pair_with_passphrase(key_path, Some(pp.as_str()))?
+                } else {
+                    load_key_pair(key_path)?
+                };
                 let hash_alg = session
                     .best_supported_rsa_hash()
                     .await
@@ -259,14 +267,39 @@ impl SshConnection {
                     )
                     .await
                     .map_err(|e| SshError::AuthFailed(e.to_string()))?
+                    .success()
+            }
+            AuthMethod::KeyboardInteractive { responses } => {
+                let result = session
+                    .authenticate_keyboard_interactive_start(&session_info.username, None::<String>)
+                    .await
+                    .map_err(|e| SshError::AuthFailed(e.to_string()))?;
+
+                match result {
+                    client::KeyboardInteractiveAuthResponse::Success => true,
+                    client::KeyboardInteractiveAuthResponse::Failure { .. } => false,
+                    client::KeyboardInteractiveAuthResponse::InfoRequest { prompts, .. } => {
+                        let answers: Vec<String> = prompts
+                            .iter()
+                            .enumerate()
+                            .map(|(i, _)| responses.get(i).cloned().unwrap_or_default())
+                            .collect();
+                        let result = session
+                            .authenticate_keyboard_interactive_respond(answers)
+                            .await
+                            .map_err(|e| SshError::AuthFailed(e.to_string()))?;
+                        matches!(result, client::KeyboardInteractiveAuthResponse::Success)
+                    }
+                }
             }
             AuthMethod::None => session
                 .authenticate_none(&session_info.username)
                 .await
-                .map_err(|e| SshError::AuthFailed(e.to_string()))?,
+                .map_err(|e| SshError::AuthFailed(e.to_string()))?
+                .success(),
         };
 
-        if !auth_result.success() {
+        if !auth_ok {
             return Err(SshError::AuthFailed("Authentication rejected".to_string()));
         }
 
@@ -322,13 +355,21 @@ impl SshConnection {
             .await
             .map_err(|e| SshError::ConnectionFailed(e.to_string()))?;
 
-        let auth_result = match auth_method {
+        let auth_ok = match &auth_method {
             AuthMethod::Password { password } => session
-                .authenticate_password(&session_info.username, &password)
+                .authenticate_password(&session_info.username, password)
                 .await
-                .map_err(|e| SshError::AuthFailed(e.to_string()))?,
-            AuthMethod::PublicKey { key_path, .. } => {
-                let key_pair = load_key_pair(&key_path)?;
+                .map_err(|e| SshError::AuthFailed(e.to_string()))?
+                .success(),
+            AuthMethod::PublicKey {
+                key_path,
+                passphrase,
+            } => {
+                let key_pair = if let Some(pp) = passphrase {
+                    load_key_pair_with_passphrase(key_path, Some(pp.as_str()))?
+                } else {
+                    load_key_pair(key_path)?
+                };
                 let hash_alg = session
                     .best_supported_rsa_hash()
                     .await
@@ -341,14 +382,39 @@ impl SshConnection {
                     )
                     .await
                     .map_err(|e| SshError::AuthFailed(e.to_string()))?
+                    .success()
+            }
+            AuthMethod::KeyboardInteractive { responses } => {
+                let result = session
+                    .authenticate_keyboard_interactive_start(&session_info.username, None::<String>)
+                    .await
+                    .map_err(|e| SshError::AuthFailed(e.to_string()))?;
+
+                match result {
+                    client::KeyboardInteractiveAuthResponse::Success => true,
+                    client::KeyboardInteractiveAuthResponse::Failure { .. } => false,
+                    client::KeyboardInteractiveAuthResponse::InfoRequest { prompts, .. } => {
+                        let answers: Vec<String> = prompts
+                            .iter()
+                            .enumerate()
+                            .map(|(i, _)| responses.get(i).cloned().unwrap_or_default())
+                            .collect();
+                        let result = session
+                            .authenticate_keyboard_interactive_respond(answers)
+                            .await
+                            .map_err(|e| SshError::AuthFailed(e.to_string()))?;
+                        matches!(result, client::KeyboardInteractiveAuthResponse::Success)
+                    }
+                }
             }
             AuthMethod::None => session
                 .authenticate_none(&session_info.username)
                 .await
-                .map_err(|e| SshError::AuthFailed(e.to_string()))?,
+                .map_err(|e| SshError::AuthFailed(e.to_string()))?
+                .success(),
         };
 
-        if !auth_result.success() {
+        if !auth_ok {
             return Err(SshError::AuthFailed("Authentication rejected".to_string()));
         }
 
@@ -387,7 +453,16 @@ impl SshConnection {
 fn load_key_pair(path: &std::path::Path) -> Result<PrivateKey, SshError> {
     let path_str = path.to_string_lossy().to_string();
     load_secret_key(&path_str, None)
-        .map_err(|e| SshError::AuthFailed(format!("Failed to load key: {}", e)))
+        .map_err(|e| SshError::AuthFailed(format!("Failed to load key '{}': {}", path_str, e)))
+}
+
+fn load_key_pair_with_passphrase(
+    path: &std::path::Path,
+    passphrase: Option<&str>,
+) -> Result<PrivateKey, SshError> {
+    let path_str = path.to_string_lossy().to_string();
+    load_secret_key(&path_str, passphrase)
+        .map_err(|e| SshError::AuthFailed(format!("Failed to load key '{}': {}", path_str, e)))
 }
 
 #[cfg(test)]

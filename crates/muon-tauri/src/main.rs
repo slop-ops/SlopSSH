@@ -1,7 +1,9 @@
 use muon_core::config::settings::SettingsManager;
 use muon_core::session::store::SessionStore;
+use tauri::{Emitter, Manager};
 
 mod commands;
+mod menu;
 mod state;
 
 use commands::{
@@ -19,6 +21,50 @@ use commands::{
 };
 use state::AppState;
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, Default)]
+struct WindowBounds {
+    x: Option<i32>,
+    y: Option<i32>,
+    width: f64,
+    height: f64,
+}
+
+fn bounds_file_path() -> Option<std::path::PathBuf> {
+    muon_core::config::paths::config_dir()
+        .ok()
+        .map(|dir| dir.join("window_bounds.json"))
+}
+
+fn load_window_bounds() -> Option<WindowBounds> {
+    let path = bounds_file_path()?;
+    if !path.exists() {
+        return None;
+    }
+    let content = std::fs::read_to_string(&path).ok()?;
+    serde_json::from_str(&content).ok()
+}
+
+fn save_window_bounds_on_close(window: &tauri::WebviewWindow) {
+    let path = match bounds_file_path() {
+        Some(p) => p,
+        None => return,
+    };
+
+    let size = window.inner_size().ok();
+    let pos = window.outer_position().ok();
+
+    let bounds = WindowBounds {
+        x: pos.map(|p| p.x),
+        y: pos.map(|p| p.y),
+        width: size.map(|s| s.width as f64).unwrap_or(1280.0),
+        height: size.map(|s| s.height as f64).unwrap_or(800.0),
+    };
+
+    if let Ok(content) = serde_json::to_string_pretty(&bounds) {
+        let _ = std::fs::write(&path, content);
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let settings = SettingsManager::load().unwrap_or_default();
@@ -28,6 +74,8 @@ pub fn run() {
         let root = muon_core::session::folder::SessionFolder::new("Root");
         SessionStore::from(root)
     });
+
+    let saved_bounds = load_window_bounds();
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -95,6 +143,38 @@ pub fn run() {
             detect_editors,
             open_in_editor,
         ])
+        .setup(move |app| {
+            let app_menu = menu::create_menu(app.handle())?;
+            app.set_menu(app_menu)?;
+
+            menu::create_tray(app.handle())?;
+
+            if let Some(saved) = saved_bounds
+                && let Some(window) = app.get_webview_window("main")
+            {
+                let _ = window.set_size(tauri::LogicalSize::new(saved.width, saved.height));
+                if let (Some(x), Some(y)) = (saved.x, saved.y) {
+                    let _ = window.set_position(tauri::LogicalPosition::new(x, y));
+                }
+            }
+
+            if let Some(window) = app.get_webview_window("main") {
+                let window_clone = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        save_window_bounds_on_close(&window_clone);
+                        api.prevent_close();
+                        let _ = window_clone.hide();
+                    }
+                });
+            }
+
+            Ok(())
+        })
+        .on_menu_event(|app, event| {
+            let event_id = event.id.as_ref().to_string();
+            let _ = app.emit("menu-event", &event_id);
+        })
         .run(tauri::generate_context!())
         .expect("error while running Muon SSH");
 }

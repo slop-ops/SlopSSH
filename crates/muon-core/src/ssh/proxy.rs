@@ -139,3 +139,73 @@ async fn connect_socks5_proxy(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_proxy_type_equality() {
+        assert_eq!(ProxyType::None, ProxyType::None);
+        assert_eq!(ProxyType::Http, ProxyType::Http);
+        assert_eq!(ProxyType::Socks5, ProxyType::Socks5);
+        assert_ne!(ProxyType::None, ProxyType::Http);
+        assert_ne!(ProxyType::Http, ProxyType::Socks5);
+    }
+
+    #[test]
+    fn test_proxy_type_debug() {
+        assert_eq!(format!("{:?}", ProxyType::None), "None");
+        assert_eq!(format!("{:?}", ProxyType::Http), "Http");
+        assert_eq!(format!("{:?}", ProxyType::Socks5), "Socks5");
+    }
+
+    #[test]
+    fn test_proxy_config_fields() {
+        let config = ProxyConfig {
+            proxy_type: ProxyType::Http,
+            host: "proxy.example.com".to_string(),
+            port: 3128,
+            username: Some("user".to_string()),
+            password: Some("pass".to_string()),
+        };
+        assert_eq!(config.proxy_type, ProxyType::Http);
+        assert_eq!(config.host, "proxy.example.com");
+        assert_eq!(config.port, 3128);
+        assert_eq!(config.username.as_deref(), Some("user"));
+        assert_eq!(config.password.as_deref(), Some("pass"));
+    }
+
+    #[test]
+    fn test_proxy_config_no_auth() {
+        let config = ProxyConfig {
+            proxy_type: ProxyType::Socks5,
+            host: "socks.example.com".to_string(),
+            port: 1080,
+            username: None,
+            password: None,
+        };
+        assert!(config.username.is_none());
+        assert!(config.password.is_none());
+    }
+
+    #[test]
+    fn test_proxy_config_fields_match() {
+        let config = ProxyConfig {
+            proxy_type: ProxyType::Http,
+            host: "proxy.example.com".to_string(),
+            port: 3128,
+            username: Some("user".to_string()),
+            password: Some("pass".to_string()),
+        };
+        let config2 = ProxyConfig {
+            proxy_type: ProxyType::Http,
+            host: "proxy.example.com".to_string(),
+            port: 3128,
+            username: Some("user".to_string()),
+            password: Some("pass".to_string()),
+        };
+        assert_eq!(config.host, config2.host);
+        assert_eq!(config.port, config2.port);
+    }
+}

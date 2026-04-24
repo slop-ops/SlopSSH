@@ -18,18 +18,26 @@ pub async fn ssh_connect(
             .ok_or_else(|| "Session not found".to_string())?
     };
 
-    let auth = match password {
-        Some(p) => muon_core::ssh::auth::AuthMethod::Password { password: p },
-        None => {
-            if let Some(ref key_path) = session_info.private_key_path {
-                muon_core::ssh::auth::AuthMethod::PublicKey {
-                    key_path: key_path.clone(),
-                    passphrase: session_info.passphrase_key.clone(),
-                }
-            } else {
-                return Err("No authentication method provided".to_string());
+    let auth = match session_info.auth_type {
+        muon_core::session::AuthType::Password => {
+            let p = password.ok_or_else(|| "Password required".to_string())?;
+            muon_core::ssh::auth::AuthMethod::Password { password: p }
+        }
+        muon_core::session::AuthType::PublicKey => {
+            let key_path = session_info
+                .private_key_path
+                .clone()
+                .ok_or_else(|| "No private key path configured".to_string())?;
+            muon_core::ssh::auth::AuthMethod::PublicKey {
+                key_path,
+                passphrase: session_info.passphrase_key.clone(),
             }
         }
+        muon_core::session::AuthType::KeyboardInteractive => {
+            let responses = password.map(|p| vec![p]).unwrap_or_default();
+            muon_core::ssh::auth::AuthMethod::KeyboardInteractive { responses }
+        }
+        muon_core::session::AuthType::None => muon_core::ssh::auth::AuthMethod::None,
     };
 
     let enable_compression = state.settings.enable_compression;

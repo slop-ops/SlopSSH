@@ -9,6 +9,9 @@ pub enum AuthMethod {
         key_path: PathBuf,
         passphrase: Option<String>,
     },
+    KeyboardInteractive {
+        responses: Vec<String>,
+    },
     None,
 }
 
@@ -49,5 +52,19 @@ mod tests {
     fn test_none_auth() {
         let auth = AuthMethod::None;
         assert!(matches!(auth, AuthMethod::None));
+    }
+
+    #[test]
+    fn test_keyboard_interactive_auth() {
+        let auth = AuthMethod::KeyboardInteractive {
+            responses: vec!["password123".to_string()],
+        };
+        match auth {
+            AuthMethod::KeyboardInteractive { responses } => {
+                assert_eq!(responses.len(), 1);
+                assert_eq!(responses[0], "password123");
+            }
+            _ => panic!("Expected KeyboardInteractive variant"),
+        }
     }
 }

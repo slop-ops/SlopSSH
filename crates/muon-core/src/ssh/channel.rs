@@ -81,3 +81,48 @@ impl ShellChannel {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ssh_error_variants() {
+        let err = SshError::ChannelError("test".to_string());
+        assert!(err.to_string().contains("test"));
+
+        let err = SshError::ConnectionFailed("conn failed".to_string());
+        assert!(err.to_string().contains("conn failed"));
+
+        let err = SshError::AuthFailed("auth failed".to_string());
+        assert!(err.to_string().contains("auth failed"));
+
+        let err = SshError::HostKeyError("bad key".to_string());
+        assert!(err.to_string().contains("bad key"));
+
+        let err = SshError::ProxyError("proxy fail".to_string());
+        assert!(err.to_string().contains("proxy fail"));
+
+        let err = SshError::Timeout;
+        assert!(err.to_string().contains("Timeout"));
+
+        let err = SshError::NotConnected;
+        assert!(err.to_string().contains("Not connected"));
+
+        let err = SshError::Other("misc".to_string());
+        assert!(err.to_string().contains("misc"));
+    }
+
+    #[test]
+    fn test_ssh_error_is_send_sync() {
+        fn assert_send_sync<T: Send + Sync>() {}
+        assert_send_sync::<SshError>();
+    }
+
+    #[test]
+    fn test_ssh_error_debug_format() {
+        let err = SshError::ChannelError("test".to_string());
+        let debug = format!("{:?}", err);
+        assert!(debug.contains("ChannelError"));
+    }
+}

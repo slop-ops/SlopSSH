@@ -251,3 +251,96 @@ async fn forward_local_connection(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_forward_direction_equality() {
+        assert_eq!(ForwardDirection::Local, ForwardDirection::Local);
+        assert_eq!(ForwardDirection::Remote, ForwardDirection::Remote);
+        assert_ne!(ForwardDirection::Local, ForwardDirection::Remote);
+    }
+
+    #[test]
+    fn test_forward_direction_serialize() {
+        let json = serde_json::to_string(&ForwardDirection::Local).unwrap();
+        assert!(json.contains("local"));
+        let json = serde_json::to_string(&ForwardDirection::Remote).unwrap();
+        assert!(json.contains("remote"));
+    }
+
+    #[test]
+    fn test_port_forward_rule_new_local() {
+        let rule = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        assert!(!rule.id.is_empty());
+        assert_eq!(rule.bind_host, "127.0.0.1");
+        assert_eq!(rule.bind_port, 8080);
+        assert_eq!(rule.target_host, "10.0.0.1");
+        assert_eq!(rule.target_port, 80);
+        assert_eq!(rule.direction, ForwardDirection::Local);
+    }
+
+    #[test]
+    fn test_port_forward_rule_new_remote() {
+        let rule = PortForwardRule::new_remote("0.0.0.0", 9090, "localhost", 3000);
+        assert!(!rule.id.is_empty());
+        assert_eq!(rule.bind_host, "0.0.0.0");
+        assert_eq!(rule.bind_port, 9090);
+        assert_eq!(rule.target_host, "localhost");
+        assert_eq!(rule.target_port, 3000);
+        assert_eq!(rule.direction, ForwardDirection::Remote);
+    }
+
+    #[test]
+    fn test_port_forward_rule_unique_ids() {
+        let r1 = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        let r2 = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        assert_ne!(r1.id, r2.id);
+    }
+
+    #[test]
+    fn test_port_forward_rule_serialize_deserialize() {
+        let rule = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        let json = serde_json::to_string(&rule).unwrap();
+        let parsed: PortForwardRule = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.id, rule.id);
+        assert_eq!(parsed.bind_host, "127.0.0.1");
+        assert_eq!(parsed.bind_port, 8080);
+        assert_eq!(parsed.target_host, "10.0.0.1");
+        assert_eq!(parsed.target_port, 80);
+        assert_eq!(parsed.direction, ForwardDirection::Local);
+    }
+
+    #[test]
+    fn test_port_forward_manager_new() {
+        let mgr = PortForwardManager::new();
+        assert!(mgr.list_active().is_empty());
+    }
+
+    #[test]
+    fn test_port_forward_manager_default() {
+        let mgr = PortForwardManager::default();
+        assert!(mgr.list_active().is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_port_forward_manager_stop_nonexistent() {
+        let mut mgr = PortForwardManager::new();
+        let result = mgr.stop("nonexistent").await;
+        assert!(result.is_err());
+        if let Err(SshError::ChannelError(msg)) = result {
+            assert!(msg.contains("nonexistent"));
+        } else {
+            panic!("Expected ChannelError");
+        }
+    }
+
+    #[tokio::test]
+    async fn test_port_forward_manager_stop_all_empty() {
+        let mut mgr = PortForwardManager::new();
+        mgr.stop_all().await;
+        assert!(mgr.list_active().is_empty());
+    }
+}

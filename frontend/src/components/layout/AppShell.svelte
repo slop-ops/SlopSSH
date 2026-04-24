@@ -8,6 +8,7 @@
   import SettingsDialog from '../settings/SettingsDialog.svelte'
   import { getTheme, toggleTheme } from '$lib/stores/theme'
   import { registerHandler, setEnabled as setShortcutsEnabled } from '$lib/utils/shortcuts'
+  import { listen } from '@tauri-apps/api/event'
 
   interface Tab {
     id: string
@@ -125,6 +126,83 @@
 
   $effect(() => {
     setShortcutsEnabled(!showNewSession && !showSettings)
+  })
+
+  $effect(() => {
+    const unlisten = listen<string>('menu-event', (event) => {
+      switch (event.payload) {
+        case 'new_session':
+          showNewSession = true
+          break
+        case 'import_sessions':
+          break
+        case 'close_tab':
+          if (activeTabId) closeTab(activeTabId)
+          break
+        case 'quit':
+          break
+        case 'copy':
+          document.execCommand('copy')
+          break
+        case 'paste':
+          document.execCommand('paste')
+          break
+        case 'select_all':
+          document.execCommand('selectAll')
+          break
+        case 'settings':
+          showSettings = !showSettings
+          break
+        case 'connect':
+          break
+        case 'disconnect':
+          break
+        case 'duplicate':
+          break
+        case 'delete_session':
+          break
+        case 'toggle_sidebar':
+          toggleSidebar()
+          break
+        case 'local_terminal':
+          break
+        case 'zoom_in':
+          document.documentElement.style.fontSize = `${parseFloat(getComputedStyle(document.documentElement).fontSize) + 1}px`
+          break
+        case 'zoom_out':
+          document.documentElement.style.fontSize = `${Math.max(8, parseFloat(getComputedStyle(document.documentElement).fontSize) - 1)}px`
+          break
+        case 'zoom_reset':
+          document.documentElement.style.fontSize = ''
+          break
+        case 'fullscreen':
+          if (document.fullscreenElement) {
+            document.exitFullscreen()
+          } else {
+            document.documentElement.requestFullscreen()
+          }
+          break
+        case 'file_browser':
+          if (activeSessionId) activeView = 'files'
+          break
+        case 'process_viewer':
+        case 'log_viewer':
+        case 'disk_analyzer':
+        case 'search':
+        case 'port_forwarding':
+        case 'port_viewer':
+        case 'key_manager':
+          if (activeSessionId) activeView = 'tools'
+          break
+        case 'about':
+          break
+        case 'check_updates':
+          break
+      }
+    })
+    return () => {
+      unlisten.then((fn) => fn())
+    }
   })
 </script>
 

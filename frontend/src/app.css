@@ -14,6 +14,23 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+:root[dir='rtl'] {
+  direction: rtl;
+}
+
+:root[dir='rtl'] .sidebar {
+  border-right: none;
+  border-left: 1px solid var(--border-primary);
+}
+
+:root[dir='rtl'] .toolbar-btn {
+  direction: ltr;
+}
+
+:root[dir='rtl'] .tab-bar .tab-items {
+  direction: ltr;
+}
+
 :root[data-theme='dark'] {
   --bg-primary: #1a1a2e;
   --bg-secondary: #16171d;

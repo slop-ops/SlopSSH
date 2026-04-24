@@ -1,5 +1,7 @@
 type TranslationMap = Record<string, Record<string, string>>
 
+const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur'])
+
 const translations: Record<string, TranslationMap> = {}
 
 let currentLocale = 'en'
@@ -14,9 +16,18 @@ export function getLocale(): string {
   return currentLocale
 }
 
+export function isRTL(locale?: string): boolean {
+  return RTL_LOCALES.has(locale ?? currentLocale)
+}
+
+export function getTextDirection(locale?: string): 'ltr' | 'rtl' {
+  return isRTL(locale) ? 'rtl' : 'ltr'
+}
+
 export async function loadLocale(locale: string) {
   if (loadedLocales.has(locale)) {
     currentLocale = locale
+    applyDirection()
     return
   }
 
@@ -25,10 +36,17 @@ export async function loadLocale(locale: string) {
     translations[locale] = mod.default as TranslationMap
     loadedLocales.add(locale)
     currentLocale = locale
+    applyDirection()
   } catch {
     console.warn(`Locale ${locale} not found, falling back to English`)
     currentLocale = 'en'
+    applyDirection()
   }
+}
+
+function applyDirection() {
+  const dir = getTextDirection()
+  document.documentElement.setAttribute('dir', dir)
 }
 
 export function t(path: string, params?: Record<string, string>): string {

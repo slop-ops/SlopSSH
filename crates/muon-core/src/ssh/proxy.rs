@@ -51,10 +51,9 @@ async fn connect_http_proxy(
     );
 
     if let (Some(user), Some(pass)) = (&proxy.username, &proxy.password) {
-        use std::fmt::Write;
         let credentials =
             base64::engine::general_purpose::STANDARD.encode(format!("{}:{}", user, pass));
-        write!(request, "Proxy-Authorization: Basic {}\r\n", credentials).unwrap();
+        request.push_str(&format!("Proxy-Authorization: Basic {}\r\n", credentials));
     }
 
     request.push_str("\r\n");

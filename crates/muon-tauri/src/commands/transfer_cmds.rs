@@ -17,7 +17,7 @@ pub async fn transfer_upload(
         state
             .sftp_sessions
             .get(&session_id)
-            .ok_or_else(|| "No SFTP session".to_string())?
+            .ok_or_else(|| format!("No SFTP session established for session '{}'", session_id))?
             .clone()
     };
 
@@ -63,7 +63,7 @@ pub async fn transfer_download(
         state
             .sftp_sessions
             .get(&session_id)
-            .ok_or_else(|| "No SFTP session".to_string())?
+            .ok_or_else(|| format!("No SFTP session established for session '{}'", session_id))?
             .clone()
     };
 
@@ -105,7 +105,7 @@ pub async fn transfer_cancel(
         .cancel(&transfer_id)
         .await
         .then_some(true)
-        .ok_or_else(|| "Transfer not found".to_string())
+        .ok_or_else(|| format!("Transfer '{}' not found or already completed", transfer_id))
 }
 
 #[tauri::command]

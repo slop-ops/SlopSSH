@@ -16,7 +16,7 @@ pub async fn port_forward_start(
     let handle = state
         .ssh_manager
         .get_handle(&session_id)
-        .ok_or_else(|| "Not connected".to_string())?;
+        .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
 
     let rule = match direction.as_str() {
         "local" => muon_core::ssh::port_forward::PortForwardRule::new_local(
@@ -45,7 +45,7 @@ pub async fn port_forward_start(
             let forward_map = state
                 .ssh_manager
                 .get_remote_forward_map(&session_id)
-                .ok_or_else(|| "Not connected".to_string())?;
+                .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
             state
                 .port_forward_manager
                 .start_remote(handle, rule, forward_map)

@@ -13,7 +13,7 @@ pub async fn remote_exec(
     let handle = state
         .ssh_manager
         .get_handle(&session_id)
-        .ok_or_else(|| "Not connected".to_string())?;
+        .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
 
     let result = muon_core::tools::remote_exec::RemoteExecutor::execute(
         &handle,

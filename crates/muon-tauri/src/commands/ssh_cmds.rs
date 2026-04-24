@@ -15,19 +15,26 @@ pub async fn ssh_connect(
         let root = state.session_store.root();
         find_session(root, &session_id)
             .cloned()
-            .ok_or_else(|| "Session not found".to_string())?
+            .ok_or_else(|| format!("Session '{}' not found in session store", session_id))?
     };
 
     let auth = match session_info.auth_type {
         muon_core::session::AuthType::Password => {
-            let p = password.ok_or_else(|| "Password required".to_string())?;
+            let p = password.ok_or_else(|| {
+                format!("Password required for session '{}'", session_id)
+            })?;
             muon_core::ssh::auth::AuthMethod::Password { password: p }
         }
         muon_core::session::AuthType::PublicKey => {
             let key_path = session_info
                 .private_key_path
                 .clone()
-                .ok_or_else(|| "No private key path configured".to_string())?;
+                .ok_or_else(|| {
+                    format!(
+                        "No private key path configured for session '{}'",
+                        session_id
+                    )
+                })?;
             muon_core::ssh::auth::AuthMethod::PublicKey {
                 key_path,
                 passphrase: session_info.passphrase_key.clone(),

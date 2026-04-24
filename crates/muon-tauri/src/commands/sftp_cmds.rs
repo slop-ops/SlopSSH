@@ -16,7 +16,7 @@ async fn get_sftp(
     let entry = state
         .sftp_sessions
         .get(session_id)
-        .ok_or_else(|| "No SFTP session for this connection".to_string())?;
+        .ok_or_else(|| format!("No SFTP session for session '{}'", session_id))?;
     Ok(entry.clone())
 }
 
@@ -70,7 +70,7 @@ pub async fn sftp_list_dir(
     let guard = sftp_arc.lock().await;
     let sftp = guard
         .as_ref()
-        .ok_or_else(|| "SFTP session closed".to_string())?;
+        .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
 
     let read_dir = sftp.read_dir(&path).await.map_err(|e| e.to_string())?;
 
@@ -116,7 +116,7 @@ pub async fn sftp_mkdir(
     let guard = sftp_arc.lock().await;
     let sftp = guard
         .as_ref()
-        .ok_or_else(|| "SFTP session closed".to_string())?;
+        .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
     sftp.create_dir(&path).await.map_err(|e| e.to_string())
 }
 
@@ -130,7 +130,7 @@ pub async fn sftp_remove(
     let guard = sftp_arc.lock().await;
     let sftp = guard
         .as_ref()
-        .ok_or_else(|| "SFTP session closed".to_string())?;
+        .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
 
     let meta = sftp.metadata(&path).await.map_err(|e| e.to_string())?;
     if meta.is_dir() {
@@ -151,7 +151,7 @@ pub async fn sftp_rename(
     let guard = sftp_arc.lock().await;
     let sftp = guard
         .as_ref()
-        .ok_or_else(|| "SFTP session closed".to_string())?;
+        .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
     sftp.rename(&from, &to).await.map_err(|e| e.to_string())
 }
 
@@ -165,7 +165,7 @@ pub async fn sftp_read_file(
     let guard = sftp_arc.lock().await;
     let sftp = guard
         .as_ref()
-        .ok_or_else(|| "SFTP session closed".to_string())?;
+        .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
     let data = sftp.read(&path).await.map_err(|e| e.to_string())?;
     Ok(base64::Engine::encode(
         &base64::engine::general_purpose::STANDARD,
@@ -184,7 +184,7 @@ pub async fn sftp_write_file(
     let guard = sftp_arc.lock().await;
     let sftp = guard
         .as_ref()
-        .ok_or_else(|| "SFTP session closed".to_string())?;
+        .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(&data)
         .map_err(|e| e.to_string())?;
@@ -201,7 +201,7 @@ pub async fn sftp_stat(
     let guard = sftp_arc.lock().await;
     let sftp = guard
         .as_ref()
-        .ok_or_else(|| "SFTP session closed".to_string())?;
+        .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
 
     let meta = sftp.metadata(&path).await.map_err(|e| e.to_string())?;
     let modified = meta.modified().ok().and_then(|t| {
@@ -228,7 +228,7 @@ pub async fn sftp_home(
     let guard = sftp_arc.lock().await;
     let sftp = guard
         .as_ref()
-        .ok_or_else(|| "SFTP session closed".to_string())?;
+        .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
     sftp.canonicalize(".").await.map_err(|e| e.to_string())
 }
 
@@ -254,7 +254,7 @@ pub async fn sftp_upload_sudo(
         let guard = sftp_arc.lock().await;
         let sftp = guard
             .as_ref()
-            .ok_or_else(|| "SFTP session closed".to_string())?;
+            .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
         sftp.write(&tmp_path, &decoded)
             .await
             .map_err(|e| e.to_string())?;
@@ -265,7 +265,7 @@ pub async fn sftp_upload_sudo(
         state
             .ssh_manager
             .get_handle(&session_id)
-            .ok_or_else(|| "Not connected".to_string())?
+            .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?
     };
 
     let escaped_tmp = shell_escape(&tmp_path);
@@ -303,7 +303,7 @@ pub async fn sftp_download_sudo(
         state
             .ssh_manager
             .get_handle(&session_id)
-            .ok_or_else(|| "Not connected".to_string())?
+            .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?
     };
 
     let file_name = std::path::Path::new(&remote_path)
@@ -333,7 +333,7 @@ pub async fn sftp_download_sudo(
         let guard = sftp_arc.lock().await;
         let sftp = guard
             .as_ref()
-            .ok_or_else(|| "SFTP session closed".to_string())?;
+            .ok_or_else(|| format!("SFTP session closed for session '{}'", session_id))?;
         sftp.read(&tmp_path).await.map_err(|e| e.to_string())?
     };
 

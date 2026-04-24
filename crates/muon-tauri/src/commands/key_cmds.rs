@@ -32,7 +32,7 @@ pub async fn list_remote_keys(
     let handle = state
         .ssh_manager
         .get_handle(&session_id)
-        .ok_or_else(|| "Not connected".to_string())?;
+        .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
 
     let keys = muon_core::ssh::key_manager::KeyManager::list_remote_keys(&handle)
         .await
@@ -85,7 +85,7 @@ pub async fn deploy_public_key(
     let handle = state
         .ssh_manager
         .get_handle(&session_id)
-        .ok_or_else(|| "Not connected".to_string())?;
+        .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
 
     muon_core::ssh::key_manager::KeyManager::deploy_public_key(&handle, &public_key)
         .await

@@ -1,12 +1,12 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-24 (Session 2)
+Last updated: 2026-04-24 (Session 3)
 
 ## Session Summary
 
-**Completed:** Phases 1-4 (core), Phase 5 (core), partial Phase 2
-**Total commits:** 6 (session 1) + 1 + pending
-**Lines of code:** ~5,400 Rust, ~1,500 TypeScript/Svelte
+**Completed:** Phases 1-5 (core), Phase 6 (partial), Phase 7 (partial)
+**Total commits:** 6 (session 1) + 2 (session 2) + pending (session 3)
+**Lines of code:** ~7,200 Rust, ~3,200 TypeScript/Svelte
 
 ---
 
@@ -89,8 +89,8 @@ Last updated: 2026-04-24 (Session 2)
 | 4.4 | PTY data bridge (Tauri events) | DONE | session 2 |
 | 4.5 | Terminal session manager (Rust-side) | DONE | session 2 |
 | 4.6 | Terminal tabs UI | DONE | session 2 |
-| 4.7 | Snippet panel | TODO | |
-| 4.8 | Reconnection UI | TODO | |
+| 4.7 | Snippet panel | DONE | session 3 |
+| 4.8 | Reconnection UI | DONE | session 3 |
 | 4.9 | Local terminal (portable-pty) | TODO | |
 | 4.10 | Copy/paste | TODO | |
 
@@ -100,6 +100,10 @@ Last updated: 2026-04-24 (Session 2)
 - **Event emission**: `ssh_open_shell` emits `terminal-output-{channelId}` events with base64 data
 - **TerminalHolder.svelte**: Closable tab container with active tab switching
 - **SessionManager cleanup**: Read loop handles abort, shell close on disconnect
+
+### What was built (session 3):
+- **SnippetPanel.svelte**: Full CRUD snippet panel with search, send-to-terminal
+- **Reconnection overlay**: Built into Terminal.svelte with reconnect button
 
 ---
 
@@ -112,39 +116,69 @@ Last updated: 2026-04-24 (Session 2)
 | 5.1 | SFTP filesystem (russh-sftp) | DONE | session 2 |
 | 5.2 | Local filesystem adapter | DONE | session 2 |
 | 5.3 | FileSystem trait | DONE | session 2 |
-| 5.4 | File transfer engine | TODO | |
-| 5.5 | Background transfers | TODO | |
+| 5.4 | File transfer engine | DONE | session 3 |
+| 5.5 | Background transfers | DONE | session 3 |
 | 5.6 | File browser UI | DONE | session 2 |
 | 5.7 | Address bar | DONE | session 2 |
 | 5.8 | Context menus | PARTIAL | session 2 |
 | 5.9 | Drag and drop | TODO | |
-| 5.10 | Transfer queue UI | TODO | |
+| 5.10 | Transfer queue UI | DONE | session 3 |
 | 5.11 | Archive operations | TODO | |
 | 5.12 | Remote file editing | TODO | |
 | 5.13 | Sudo fallback | TODO | |
 
-### What was built (session 2):
-- **FileSystem trait** (`muon-core/src/filesystem/types.rs`): Common async interface for list_dir, stat, mkdir, remove, rename, read_file, write_file, exists
-- **LocalFileSystem** (`local.rs`): `tokio::fs` wrapper implementing FileSystem trait, sorted directory listing
-- **RemoteFileSystem** (`remote.rs`): russh-sftp wrapper implementing FileSystem trait, with session management
-- **SFTP Tauri IPC** (`sftp_cmds.rs`): 10 commands - connect, disconnect, list_dir, mkdir, remove, rename, read_file, write_file, stat, home
-- **FileBrowser.svelte**: Remote file browser with breadcrumb navigation, path editing, directory operations
-- **FileList.svelte**: Table-based file listing with icon, name, size, modified, rename/delete actions
-- **Frontend SFTP API**: Full set of invoke wrappers for all SFTP commands
+### What was built (session 3):
+- **File Transfer Engine** (`muon-core/src/file_transfer/`):
+  - `progress.rs`: TransferProgress, TransferRequest, TransferDirection, TransferStatus, ConflictResolution structs
+  - `engine.rs`: TransferEngine with spawn_upload/spawn_download, chunked read/write, progress tracking, cancel support
+- **Transfer Tauri IPC** (`transfer_cmds.rs`): 5 commands - upload, download, cancel, list, clear_completed
+- **TransferQueue.svelte**: Collapsible transfer queue with progress bars, speed display, cancel, clear completed
+- **Frontend transfer API**: invoke wrappers for all transfer commands
 
 ---
 
 ## Phase 6: Tools & Utilities
 
-**Status: NOT STARTED**
+**Status: PARTIAL (2/9)**
 
-All 9 tasks TODO.
+| # | Task | Status | Commit |
+|---|------|--------|--------|
+| 6.1 | Process viewer | DONE | session 3 |
+| 6.2 | Log viewer | DONE | session 3 |
+| 6.3 | Disk analyzer | TODO | |
+| 6.4 | Search panel | TODO | |
+| 6.5 | System info | TODO | |
+| 6.6 | System load | TODO | |
+| 6.7 | Port viewer | TODO | |
+| 6.8 | SSH key manager | TODO | |
+| 6.9 | Bundled scripts | TODO | |
+
+### What was built (session 3):
+- **Remote Executor** (`muon-core/src/tools/remote_exec.rs`): Execute commands on remote server via SSH exec channel, timeout support, exit code capture
+- **remote_exec IPC** (`tools_cmds.rs`): Single command to execute remote commands with optional timeout
+- **ProcessViewer.svelte**: Remote process list (ps), filterable/sortable table, kill process action
+- **LogViewer.svelte**: Remote log viewer with tail, search, line numbers, auto-refresh
+- **ToolsPanel.svelte**: Tab container for tools (Processes, Logs)
+
+---
 
 ## Phase 7: Settings & Preferences
 
-**Status: NOT STARTED**
+**Status: PARTIAL (2/5)**
 
-All 5 tasks TODO.
+| # | Task | Status | Commit |
+|---|------|--------|--------|
+| 7.1 | Settings struct expansion | DONE | session 1 |
+| 7.2 | Settings dialog | DONE | session 3 |
+| 7.3 | Theme system | TODO | |
+| 7.4 | Keyboard shortcuts | TODO | |
+| 7.5 | External editors | TODO | |
+
+### What was built (session 3):
+- **SettingsDialog.svelte**: Multi-page dialog (General, Terminal, File Browser, Connection) with all settings fields
+- Dialog integrated into AppShell toolbar
+
+---
 
 ## Phase 8: Plugin System
 
@@ -176,19 +210,23 @@ All 6 tasks TODO.
 
 1. ~~**Terminal read loop:** Not implemented~~ **FIXED** — Event-based terminal output with read loop
 2. ~~**Host key verification:** Always returns `Unknown`~~ **FIXED** — Full known_hosts parsing and verification
-3. **Keyboard-interactive auth:** Not yet implemented
-4. **Passphrase-protected keys:** `load_secret_key` is called with `None` for passphrase — needs UI integration
-5. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved
-6. **SFTP channel:** Opens a new SSH session channel for SFTP — should reuse connection
-7. **No file transfer progress:** SFTP read/write is all-or-nothing — needs streaming with progress events
+3. ~~**Snippet panel:** Not implemented~~ **FIXED** — Full CRUD snippet panel with search
+4. ~~**Reconnection UI:** Not implemented~~ **FIXED** — Disconnect overlay with reconnect button
+5. ~~**File transfer progress:** All-or-nothing~~ **FIXED** — Chunked transfer with progress events
+6. **Keyboard-interactive auth:** Not yet implemented
+7. **Passphrase-protected keys:** `load_secret_key` is called with `None` for passphrase — needs UI integration
+8. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved
+9. **SFTP channel:** Opens a new SSH session channel for SFTP — should reuse connection
+10. **Transfer upload buffering:** Upload reads entire file into memory before writing — needs streaming for large files
+11. **Remote exec uses shell channel:** Uses request_shell + command injection instead of proper exec — may echo command
 
 ---
 
 ## Next Session
 
-**Priority 1:** Phase 4.7 — Snippet panel (send commands to terminal)
-**Priority 2:** Phase 4.8 — Reconnection UI (disconnected overlay)
-**Priority 3:** Phase 5.4-5.5 — File transfer engine with progress tracking
-**Priority 4:** Phase 6.1-6.2 — Process viewer and log viewer tools
-**Prerequisites:** Terminal data bridge, SFTP core, and session CRUD all working.
-**Estimated complexity:** Medium — snippet panel and reconnection UI are straightforward; transfer engine needs design.
+**Priority 1:** Phase 6.3-6.4 — Disk analyzer and search panel tools
+**Priority 2:** Phase 6.5-6.6 — System info and system load with real-time graphs
+**Priority 3:** Phase 5.9 — Drag and drop for file transfers
+**Priority 4:** Phase 7.3 — Theme system (CSS variables for dark/light)
+**Prerequisites:** Remote executor, tools panel, and file browser all working.
+**Estimated complexity:** Medium — disk analyzer and search panel use existing remote_exec; theme system needs CSS refactor.

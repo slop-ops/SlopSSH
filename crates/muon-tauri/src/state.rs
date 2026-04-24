@@ -6,6 +6,7 @@ use tokio::sync::Mutex;
 
 use muon_core::config::settings::Settings;
 use muon_core::credentials::CredentialCache;
+use muon_core::file_transfer::engine::TransferEngine;
 use muon_core::session::folder::SessionFolder;
 use muon_core::session::store::SessionStore;
 use muon_core::ssh::session_manager::SessionManager;
@@ -17,6 +18,7 @@ pub struct AppState {
     pub credential_cache: CredentialCache,
     pub ssh_manager: SessionManager,
     pub sftp_sessions: HashMap<String, Arc<Mutex<Option<SftpSession>>>>,
+    pub transfer_engine: Arc<TransferEngine>,
 }
 
 impl AppState {
@@ -27,6 +29,7 @@ impl AppState {
             credential_cache: CredentialCache::new(),
             ssh_manager: SessionManager::new(),
             sftp_sessions: HashMap::new(),
+            transfer_engine: Arc::new(TransferEngine::new()),
         }
     }
 }
@@ -39,6 +42,7 @@ impl Default for AppState {
             credential_cache: CredentialCache::new(),
             ssh_manager: SessionManager::new(),
             sftp_sessions: HashMap::new(),
+            transfer_engine: Arc::new(TransferEngine::new()),
         }
     }
 }

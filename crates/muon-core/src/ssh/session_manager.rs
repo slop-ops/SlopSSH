@@ -175,6 +175,13 @@ impl SessionManager {
             .get(session_id)
             .is_some_and(|s| s.connection.is_connected())
     }
+
+    pub fn get_handle(
+        &self,
+        session_id: &str,
+    ) -> Option<&russh::client::Handle<super::connection::ClientHandler>> {
+        self.sessions.get(session_id)?.connection.handle()
+    }
 }
 
 impl Default for SessionManager {

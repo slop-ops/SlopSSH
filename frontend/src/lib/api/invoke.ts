@@ -99,3 +99,59 @@ export async function sftpHome(sessionId: string): Promise<string> {
 export async function getAppVersion(): Promise<string> {
   return invoke<string>('get_app_version')
 }
+
+export async function listSnippets(): Promise<any[]> {
+  return invoke('list_snippets')
+}
+
+export async function createSnippet(snippet: any): Promise<string> {
+  return invoke<string>('create_snippet', { snippet })
+}
+
+export async function updateSnippet(snippet: any): Promise<void> {
+  return invoke('update_snippet', { snippet })
+}
+
+export async function deleteSnippet(snippetId: string): Promise<void> {
+  return invoke('delete_snippet', { snippetId })
+}
+
+export async function transferUpload(
+  transferId: string,
+  sessionId: string,
+  localPath: string,
+  remotePath: string,
+  fileSize: number,
+): Promise<void> {
+  return invoke('transfer_upload', { transferId, sessionId, localPath, remotePath, fileSize })
+}
+
+export async function transferDownload(
+  transferId: string,
+  sessionId: string,
+  remotePath: string,
+  localPath: string,
+  fileSize: number,
+): Promise<void> {
+  return invoke('transfer_download', { transferId, sessionId, remotePath, localPath, fileSize })
+}
+
+export async function transferCancel(transferId: string): Promise<boolean> {
+  return invoke<boolean>('transfer_cancel', { transferId })
+}
+
+export async function transferList(): Promise<any[]> {
+  return invoke('transfer_list')
+}
+
+export async function transferClearCompleted(): Promise<void> {
+  return invoke('transfer_clear_completed')
+}
+
+export async function remoteExec(
+  sessionId: string,
+  command: string,
+  timeoutSecs?: number,
+): Promise<{ stdout: string; exitCode: number }> {
+  return invoke('remote_exec', { sessionId, command, timeoutSecs: timeoutSecs ?? null })
+}

@@ -5,11 +5,12 @@ mod commands;
 mod state;
 
 use commands::{
-    create_folder, create_session, delete_session, get_app_version, get_settings, greet,
-    list_sessions, save_settings, sftp_connect, sftp_disconnect, sftp_home, sftp_list_dir,
-    sftp_mkdir, sftp_read_file, sftp_remove, sftp_rename, sftp_stat, sftp_write_file,
-    ssh_close_shell, ssh_connect, ssh_disconnect, ssh_open_shell, ssh_resize_shell,
-    ssh_write_shell, update_session,
+    create_folder, create_session, create_snippet, delete_session, delete_snippet, get_app_version,
+    get_settings, greet, list_sessions, list_snippets, remote_exec, save_settings, sftp_connect,
+    sftp_disconnect, sftp_home, sftp_list_dir, sftp_mkdir, sftp_read_file, sftp_remove,
+    sftp_rename, sftp_stat, sftp_write_file, ssh_close_shell, ssh_connect, ssh_disconnect,
+    ssh_open_shell, ssh_resize_shell, ssh_write_shell, transfer_cancel, transfer_clear_completed,
+    transfer_download, transfer_list, transfer_upload, update_session, update_snippet,
 };
 use state::AppState;
 
@@ -55,6 +56,16 @@ pub fn run() {
             sftp_write_file,
             sftp_stat,
             sftp_home,
+            list_snippets,
+            create_snippet,
+            update_snippet,
+            delete_snippet,
+            transfer_upload,
+            transfer_download,
+            transfer_cancel,
+            transfer_list,
+            transfer_clear_completed,
+            remote_exec,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Muon SSH");

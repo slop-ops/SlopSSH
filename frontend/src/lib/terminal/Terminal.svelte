@@ -8,13 +8,22 @@
   import * as api from '$lib/api/invoke'
   import '@xterm/xterm/css/xterm.css'
 
-  let { sessionId, channelId = crypto.randomUUID() } = $props()
+  let {
+    sessionId,
+    channelId = crypto.randomUUID(),
+    onSendSnippet,
+  }: {
+    sessionId: string
+    channelId?: string
+    onSendSnippet?: (handler: (cmd: string) => void) => void
+  } = $props()
 
   let terminalEl: HTMLDivElement | undefined = $state()
   let terminal: Terminal | undefined = $state()
   let fitAddon: FitAddon | undefined = $state()
   let connected = $state(false)
-
+  let disconnected = $state(false)
+  let error = $state('')
   let unlisten: (() => void) | undefined = $state()
 
   onMount(async () => {
@@ -38,7 +47,6 @@
       })
       terminal.loadAddon(webglAddon)
     } catch {
-      // WebGL not available, fall back to canvas
     }
 
     terminal.open(terminalEl)
@@ -50,7 +58,7 @@
         const encoded = btoa(data)
         await api.sshWriteShell(sessionId, channelId, encoded)
       } catch (e) {
-        console.error('Failed to write to shell:', e)
+        handleDisconnect(String(e))
       }
     })
 
@@ -69,11 +77,43 @@
     try {
       await api.sshOpenShell(sessionId, channelId, cols, rows)
       connected = true
+      disconnected = false
       terminal.focus()
     } catch (e) {
+      error = String(e)
       terminal.writeln(`\r\n\x1b[31mError: ${e}\x1b[0m`)
     }
+
+    onSendSnippet?.(sendCommand)
   })
+
+  function sendCommand(cmd: string) {
+    if (!connected || !terminal) return
+    const encoded = btoa(cmd + '\n')
+    api.sshWriteShell(sessionId, channelId, encoded).catch(console.error)
+  }
+
+  function handleDisconnect(msg: string) {
+    connected = false
+    disconnected = true
+    error = msg
+    terminal?.writeln(`\r\n\x1b[31m--- Disconnected: ${msg}\x1b[0m`)
+  }
+
+  async function reconnect() {
+    if (!terminal) return
+    disconnected = false
+    error = ''
+    terminal.writeln('\r\n\x1b[33m--- Reconnecting...\x1b[0m')
+    const { cols, rows } = terminal
+    try {
+      await api.sshOpenShell(sessionId, channelId, cols, rows)
+      connected = true
+      terminal.focus()
+    } catch (e) {
+      handleDisconnect(String(e))
+    }
+  }
 
   function handleResize() {
     fitAddon?.fit()
@@ -94,12 +134,76 @@
   })
 </script>
 
-<div class="terminal-container" bind:this={terminalEl}></div>
+<div class="terminal-wrapper">
+  <div class="terminal-container" bind:this={terminalEl}></div>
+  {#if disconnected}
+    <div class="disconnect-overlay">
+      <div class="disconnect-content">
+        <p class="disconnect-msg">Connection lost</p>
+        {#if error}
+          <p class="disconnect-error">{error}</p>
+        {/if}
+        <button class="reconnect-btn" onclick={reconnect}>Reconnect</button>
+      </div>
+    </div>
+  {/if}
+</div>
 
 <style>
+  .terminal-wrapper {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+
   .terminal-container {
     width: 100%;
     height: 100%;
     min-height: 200px;
+  }
+
+  .disconnect-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(26, 26, 46, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    backdrop-filter: blur(2px);
+  }
+
+  .disconnect-content {
+    text-align: center;
+  }
+
+  .disconnect-msg {
+    color: #e06c75;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0 0 8px 0;
+  }
+
+  .disconnect-error {
+    color: #9ca3af;
+    font-size: 12px;
+    margin: 0 0 16px 0;
+    max-width: 300px;
+    word-break: break-word;
+  }
+
+  .reconnect-btn {
+    background: #4a90d9;
+    border: none;
+    color: #fff;
+    padding: 8px 24px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+  }
+
+  .reconnect-btn:hover {
+    background: #3a7bc8;
   }
 </style>

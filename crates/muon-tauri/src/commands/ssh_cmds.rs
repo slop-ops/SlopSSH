@@ -32,9 +32,11 @@ pub async fn ssh_connect(
         }
     };
 
+    let enable_compression = state.settings.enable_compression;
+
     state
         .ssh_manager
-        .connect(session_info, auth)
+        .connect(session_info, auth, enable_compression)
         .await
         .map_err(|e| e.to_string())
 }

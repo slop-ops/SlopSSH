@@ -108,11 +108,25 @@ impl SshConnection {
         auth_method: AuthMethod,
         options: ConnectionOptions,
     ) -> Result<Self, SshError> {
+        let preferred = if options.enable_compression {
+            russh::Preferred {
+                compression: std::borrow::Cow::Owned(vec![
+                    russh::compression::ZLIB,
+                    russh::compression::ZLIB_LEGACY,
+                    russh::compression::NONE,
+                ]),
+                ..Default::default()
+            }
+        } else {
+            russh::Preferred::default()
+        };
+
         let config = client::Config {
             keepalive_interval: options
                 .keep_alive_interval_secs
                 .map(std::time::Duration::from_secs),
             keepalive_max: options.keep_alive_max_count as usize,
+            preferred,
             ..Default::default()
         };
 
@@ -169,11 +183,25 @@ impl SshConnection {
         proxy: super::proxy::ProxyConfig,
         options: ConnectionOptions,
     ) -> Result<Self, SshError> {
+        let preferred = if options.enable_compression {
+            russh::Preferred {
+                compression: std::borrow::Cow::Owned(vec![
+                    russh::compression::ZLIB,
+                    russh::compression::ZLIB_LEGACY,
+                    russh::compression::NONE,
+                ]),
+                ..Default::default()
+            }
+        } else {
+            russh::Preferred::default()
+        };
+
         let config = client::Config {
             keepalive_interval: options
                 .keep_alive_interval_secs
                 .map(std::time::Duration::from_secs),
             keepalive_max: options.keep_alive_max_count as usize,
+            preferred,
             ..Default::default()
         };
 

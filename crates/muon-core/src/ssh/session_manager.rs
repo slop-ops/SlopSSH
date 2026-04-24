@@ -27,11 +27,12 @@ impl SessionManager {
         &mut self,
         session_info: SessionInfo,
         auth_method: AuthMethod,
+        enable_compression: bool,
     ) -> Result<String, SshError> {
         let options = ConnectionOptions {
             keep_alive_interval_secs: Some(60),
             keep_alive_max_count: 3,
-            enable_compression: false,
+            enable_compression,
             connection_timeout_secs: 30,
         };
         self.connect_with_options(session_info, auth_method, options)

@@ -5,3 +5,5 @@
 *.swp
 *.swo
 .vite/
+crates/muon-plugins/*/target/
+crates/muon-plugins/*/Cargo.lock

@@ -270,3 +270,30 @@ export async function sftpDownloadSudo(
 ): Promise<string> {
   return invoke<string>('sftp_download_sudo', { sessionId, remotePath })
 }
+
+export async function localTerminalOpen(
+  channelId: string,
+  cols: number,
+  rows: number,
+): Promise<void> {
+  return invoke('local_terminal_open', { channelId, cols, rows })
+}
+
+export async function localTerminalWrite(
+  channelId: string,
+  data: string,
+): Promise<void> {
+  return invoke('local_terminal_write', { channelId, data })
+}
+
+export async function localTerminalResize(
+  channelId: string,
+  cols: number,
+  rows: number,
+): Promise<void> {
+  return invoke('local_terminal_resize', { channelId, cols, rows })
+}
+
+export async function localTerminalClose(channelId: string): Promise<void> {
+  return invoke('local_terminal_close', { channelId })
+}

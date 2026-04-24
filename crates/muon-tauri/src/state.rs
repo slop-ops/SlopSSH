@@ -8,6 +8,7 @@ use muon_core::config::settings::Settings;
 use muon_core::credentials::CredentialCache;
 use muon_core::credentials::store::CredentialStore;
 use muon_core::file_transfer::engine::TransferEngine;
+use muon_core::local_terminal::LocalTerminalManager;
 use muon_core::session::folder::SessionFolder;
 use muon_core::session::pool::ConnectionPool;
 use muon_core::session::store::SessionStore;
@@ -25,6 +26,7 @@ pub struct AppState {
     pub transfer_engine: Arc<TransferEngine>,
     pub port_forward_manager: PortForwardManager,
     pub connection_pool: ConnectionPool,
+    pub local_terminal: std::sync::Mutex<LocalTerminalManager>,
 }
 
 impl AppState {
@@ -39,6 +41,7 @@ impl AppState {
             transfer_engine: Arc::new(TransferEngine::new()),
             port_forward_manager: PortForwardManager::new(),
             connection_pool: ConnectionPool::new(3),
+            local_terminal: std::sync::Mutex::new(LocalTerminalManager::new()),
         }
     }
 }
@@ -55,6 +58,7 @@ impl Default for AppState {
             transfer_engine: Arc::new(TransferEngine::new()),
             port_forward_manager: PortForwardManager::new(),
             connection_pool: ConnectionPool::new(3),
+            local_terminal: std::sync::Mutex::new(LocalTerminalManager::new()),
         }
     }
 }

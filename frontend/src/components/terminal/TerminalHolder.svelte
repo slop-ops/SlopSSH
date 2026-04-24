@@ -1,5 +1,6 @@
 <script lang="ts">
   import Terminal from '$lib/terminal/Terminal.svelte'
+  import LocalTerminal from './LocalTerminal.svelte'
   import SnippetPanel from './SnippetPanel.svelte'
 
   interface Tab {
@@ -7,6 +8,7 @@
     sessionId: string
     channelId: string
     title: string
+    isLocal?: boolean
   }
 
   let { tabs = $bindable(), activeTabId = $bindable() }: { tabs: Tab[]; activeTabId: string } = $props()
@@ -31,6 +33,13 @@
       handler(cmd)
     }
   }
+
+  function openLocalTerminal() {
+    const channelId = crypto.randomUUID()
+    const tabId = crypto.randomUUID()
+    tabs = [...tabs, { id: tabId, sessionId: '', channelId, title: 'Local', isLocal: true }]
+    activeTabId = tabId
+  }
 </script>
 
 <div class="terminal-holder">
@@ -42,6 +51,7 @@
             <div
               class="tab"
               class:active={activeTabId === tab.id}
+              class:local={tab.isLocal}
               role="tab"
               tabindex={0}
               onclick={() => (activeTabId = tab.id)}
@@ -52,6 +62,7 @@
             </div>
           {/each}
         </div>
+        <button class="local-btn" onclick={openLocalTerminal} title="Open local terminal">+$</button>
         <button class="snippet-toggle" class:active={showSnippets} onclick={() => (showSnippets = !showSnippets)} title="Snippets">
           S
         </button>
@@ -59,17 +70,22 @@
       <div class="tab-content">
         {#each tabs as tab (tab.id)}
           <div class="terminal-panel" style:display={activeTabId === tab.id ? 'contents' : 'none'}>
-            <Terminal
-              sessionId={tab.sessionId}
-              channelId={tab.channelId}
-              onSendSnippet={(handler) => registerSnippetHandler(tab.id, handler)}
-            />
+            {#if tab.isLocal}
+              <LocalTerminal channelId={tab.channelId} />
+            {:else}
+              <Terminal
+                sessionId={tab.sessionId}
+                channelId={tab.channelId}
+                onSendSnippet={(handler) => registerSnippetHandler(tab.id, handler)}
+              />
+            {/if}
           </div>
         {/each}
       </div>
     {:else}
       <div class="empty">
         <p>No terminal sessions</p>
+        <button class="local-btn-empty" onclick={openLocalTerminal}>Open Local Terminal</button>
       </div>
     {/if}
   </div>
@@ -132,6 +148,10 @@
     border-bottom: 2px solid #4a90d9;
   }
 
+  .tab.local {
+    border-left: 2px solid #4ade80;
+  }
+
   .tab-title {
     max-width: 150px;
     overflow: hidden;
@@ -152,6 +172,7 @@
     color: #e06c75;
   }
 
+  .local-btn,
   .snippet-toggle {
     background: transparent;
     border: 1px solid #2e303a;
@@ -169,11 +190,17 @@
     padding: 0;
   }
 
+  .local-btn:hover,
   .snippet-toggle:hover,
   .snippet-toggle.active {
     background: #2a2a3e;
     color: #4a90d9;
     border-color: #4a90d9;
+  }
+
+  .local-btn:hover {
+    color: #4ade80;
+    border-color: #4ade80;
   }
 
   .tab-content {
@@ -187,9 +214,30 @@
 
   .empty {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     height: 100%;
     color: #9ca3af;
+    gap: 12px;
+  }
+
+  .empty p {
+    margin: 0;
+  }
+
+  .local-btn-empty {
+    background: #2a2a3e;
+    border: 1px solid #2e303a;
+    color: #4ade80;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+  }
+
+  .local-btn-empty:hover {
+    background: #2e303a;
   }
 </style>

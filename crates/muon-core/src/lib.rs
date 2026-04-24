@@ -4,6 +4,7 @@ pub mod file_transfer;
 pub mod filesystem;
 pub mod local_terminal;
 pub mod logging;
+pub mod plugin;
 pub mod scripts;
 pub mod session;
 pub mod snippets;

@@ -13,12 +13,13 @@ use commands::{
     get_settings, get_version, greet, import_ssh_config, import_ssh_config_to_folder,
     list_local_keys, list_remote_keys, list_sessions, list_snippets, local_terminal_close,
     local_terminal_open, local_terminal_resize, local_terminal_write, open_in_editor,
-    port_forward_list, port_forward_start, port_forward_stop, read_public_key, remote_exec,
-    save_settings, sftp_connect, sftp_disconnect, sftp_download_sudo, sftp_home, sftp_list_dir,
-    sftp_mkdir, sftp_read_file, sftp_remove, sftp_rename, sftp_stat, sftp_upload_sudo,
-    sftp_write_file, ssh_close_shell, ssh_connect, ssh_disconnect, ssh_open_shell,
-    ssh_resize_shell, ssh_write_shell, transfer_cancel, transfer_clear_completed,
-    transfer_download, transfer_list, transfer_upload, update_session, update_snippet,
+    plugin_discover, plugin_list, plugin_remove, plugin_set_enabled, port_forward_list,
+    port_forward_start, port_forward_stop, read_public_key, remote_exec, save_settings,
+    sftp_connect, sftp_disconnect, sftp_download_sudo, sftp_home, sftp_list_dir, sftp_mkdir,
+    sftp_read_file, sftp_remove, sftp_rename, sftp_stat, sftp_upload_sudo, sftp_write_file,
+    ssh_close_shell, ssh_connect, ssh_disconnect, ssh_open_shell, ssh_resize_shell,
+    ssh_write_shell, transfer_cancel, transfer_clear_completed, transfer_download, transfer_list,
+    transfer_upload, update_session, update_snippet,
 };
 use state::AppState;
 
@@ -145,6 +146,10 @@ pub fn run() {
             open_in_editor,
             get_version,
             check_for_updates,
+            plugin_list,
+            plugin_discover,
+            plugin_set_enabled,
+            plugin_remove,
         ])
         .setup(move |app| {
             let app_menu = menu::create_menu(app.handle())?;

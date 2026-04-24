@@ -17,20 +17,79 @@
     { id: 'files', label: 'File Browser' },
     { id: 'connection', label: 'Connection' },
     { id: 'editor', label: 'Editor' },
+    { id: 'plugins', label: 'Plugins' },
   ]
 
   let detectedEditors: any[] = $state([])
+  let plugins: any[] = $state([])
+  let pluginLoading = $state(false)
+  let selectedPluginId = $state<string | null>(null)
+  let pluginSettingsMap = $state<Record<string, Record<string, string>>>({})
+  let newSettingKey = $state('')
+  let newSettingValue = $state('')
 
   $effect(() => {
     if (open) {
       loadSettings()
       loadEditors()
+      loadPlugins()
     }
   })
 
   async function loadEditors() {
     try {
       detectedEditors = await api.detectEditors()
+    } catch {}
+  }
+
+  async function loadPlugins() {
+    pluginLoading = true
+    try {
+      await api.pluginDiscover()
+      plugins = await api.pluginList()
+    } catch {} finally {
+      pluginLoading = false
+    }
+  }
+
+  async function togglePlugin(pluginId: string, enabled: boolean) {
+    try {
+      await api.pluginSetEnabled(pluginId, enabled)
+      plugins = await api.pluginList()
+    } catch {}
+  }
+
+  async function removePlugin(pluginId: string) {
+    try {
+      await api.pluginRemove(pluginId)
+      if (selectedPluginId === pluginId) selectedPluginId = null
+      plugins = await api.pluginList()
+    } catch {}
+  }
+
+  async function selectPlugin(pluginId: string) {
+    selectedPluginId = pluginId
+    try {
+      pluginSettingsMap[pluginId] = await api.pluginGetAllSettings(pluginId)
+      pluginSettingsMap = { ...pluginSettingsMap }
+    } catch {}
+  }
+
+  async function savePluginSetting() {
+    if (!selectedPluginId || !newSettingKey.trim()) return
+    try {
+      await api.pluginSetSetting(selectedPluginId, newSettingKey.trim(), newSettingValue)
+      newSettingKey = ''
+      newSettingValue = ''
+      await selectPlugin(selectedPluginId)
+    } catch {}
+  }
+
+  async function deletePluginSetting(key: string) {
+    if (!selectedPluginId) return
+    try {
+      await api.pluginSetSetting(selectedPluginId, key, '')
+      await selectPlugin(selectedPluginId)
     } catch {}
   }
 
@@ -208,6 +267,100 @@
                 <span class="hint">No editors detected on this system.</span>
               </div>
             {/if}
+          {/if}
+
+          {#if activeTab === 'plugins'}
+            <div class="plugin-container">
+              {#if pluginLoading}
+                <div class="hint">Loading plugins...</div>
+              {:else if plugins.length === 0}
+                <div class="field">
+                  <span class="hint">No plugins found. Place .wasm files in ~/.config/muon-ssh/plugins/</span>
+                </div>
+                <button class="cancel-btn" onclick={loadPlugins}>Rescan</button>
+              {:else}
+                <div class="plugin-layout">
+                  <div class="plugin-sidebar">
+                    {#each plugins as plugin}
+                      <button
+                        class="plugin-item"
+                        class:selected={selectedPluginId === plugin.id}
+                        onclick={() => selectPlugin(plugin.id)}
+                      >
+                        <div class="plugin-item-header">
+                          <span class="plugin-name">{plugin.name}</span>
+                          <label class="toggle-label">
+                            <input
+                              type="checkbox"
+                              checked={plugin.enabled}
+                              onchange={() => togglePlugin(plugin.id, !plugin.enabled)}
+                            />
+                          </label>
+                        </div>
+                        <span class="plugin-version">v{plugin.version}</span>
+                      </button>
+                    {/each}
+                    <button class="cancel-btn" style="margin-top: 8px; width: 100%;" onclick={loadPlugins}>Rescan</button>
+                  </div>
+                  <div class="plugin-detail">
+                    {#if selectedPluginId}
+                      {@const selected = plugins.find((p: any) => p.id === selectedPluginId)}
+                      {#if selected}
+                        <div class="plugin-detail-header">
+                          <div>
+                            <h4 class="plugin-detail-name">{selected.name}</h4>
+                            <span class="hint">by {selected.author || 'Unknown'} &middot; v{selected.version}</span>
+                          </div>
+                          <button class="danger-btn" onclick={() => removePlugin(selected.id)}>Remove</button>
+                        </div>
+                        {#if selected.description}
+                          <p class="plugin-desc">{selected.description}</p>
+                        {/if}
+                        <div class="plugin-capabilities">
+                          <label>Capabilities</label>
+                          <div class="cap-list">
+                            {#each (selected.capabilities || []) as cap}
+                              <span class="cap-badge">{cap}</span>
+                            {/each}
+                          </div>
+                        </div>
+                        <div class="plugin-settings-section">
+                          <label>Plugin Settings</label>
+                          {#if pluginSettingsMap[selectedPluginId]}
+                            {#each Object.entries(pluginSettingsMap[selectedPluginId]) as [key, value]}
+                              {#if value}
+                                <div class="plugin-setting-row">
+                                  <span class="setting-key">{key}</span>
+                                  <span class="setting-value">{value}</span>
+                                  <button class="icon-btn" onclick={() => deletePluginSetting(key)}>x</button>
+                                </div>
+                              {/if}
+                            {/each}
+                          {:else}
+                            <span class="hint">No settings configured.</span>
+                          {/if}
+                          <div class="add-setting-row">
+                            <input
+                              type="text"
+                              placeholder="Key"
+                              bind:value={newSettingKey}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Value"
+                              bind:value={newSettingValue}
+                            />
+                            <button class="save-btn" onclick={savePluginSetting} disabled={!newSettingKey.trim()}>Add</button>
+                          </div>
+                        </div>
+                      {/if}
+                    {:else}
+                      <div class="hint">Select a plugin to view details.</div>
+                    {/if}
+                  </div>
+                </div>
+              {/if}
+            </div>
           {/if}
         </div>
 
@@ -465,5 +618,200 @@
   .editor-path {
     font-size: 10px;
     color: var(--text-tertiary);
+  }
+
+  .plugin-container {
+    min-height: 300px;
+  }
+
+  .plugin-layout {
+    display: flex;
+    gap: 16px;
+  }
+
+  .plugin-sidebar {
+    width: 180px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+
+  .plugin-item {
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 8px;
+    cursor: pointer;
+    color: var(--text-primary);
+    font-family: inherit;
+    text-align: left;
+    transition: border-color 0.15s;
+  }
+
+  .plugin-item:hover {
+    border-color: var(--border-active);
+  }
+
+  .plugin-item.selected {
+    border-color: var(--accent);
+    background: var(--accent-bg);
+  }
+
+  .plugin-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .plugin-name {
+    font-size: 12px;
+    font-weight: 500;
+  }
+
+  .plugin-version {
+    font-size: 10px;
+    color: var(--text-tertiary);
+  }
+
+  .toggle-label {
+    cursor: pointer;
+  }
+
+  .plugin-detail {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .plugin-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .plugin-detail-name {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .plugin-desc {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0;
+  }
+
+  .plugin-capabilities {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .plugin-capabilities label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .cap-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .cap-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
+  }
+
+  .plugin-settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .plugin-settings-section label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .plugin-setting-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 8px;
+    background: var(--bg-input);
+    border-radius: 4px;
+  }
+
+  .setting-key {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 80px;
+  }
+
+  .setting-value {
+    font-size: 12px;
+    color: var(--text-secondary);
+    flex: 1;
+  }
+
+  .icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+
+  .icon-btn:hover {
+    background: var(--bg-hover);
+    color: var(--error);
+  }
+
+  .add-setting-row {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+  }
+
+  .add-setting-row input {
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 4px 8px;
+    color: var(--text-primary);
+    font-size: 12px;
+    outline: none;
+    flex: 1;
+  }
+
+  .add-setting-row input:focus {
+    border-color: var(--border-active);
+  }
+
+  .danger-btn {
+    background: transparent;
+    border: 1px solid var(--error);
+    color: var(--error);
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 11px;
+  }
+
+  .danger-btn:hover {
+    background: var(--error-bg);
   }
 </style>

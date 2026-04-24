@@ -157,7 +157,10 @@ impl JumpHostTunnel {
         Ok(session)
     }
 
-    fn resolve_password(jump: &JumpHost, jump_credentials: &HashMap<String, String>) -> Option<String> {
+    fn resolve_password(
+        jump: &JumpHost,
+        jump_credentials: &HashMap<String, String>,
+    ) -> Option<String> {
         jump.password_key
             .as_ref()
             .and_then(|pk| jump_credentials.get(pk).cloned())
@@ -170,8 +173,7 @@ impl JumpHostTunnel {
     ) -> Result<(), SshError> {
         let auth_result = match jump.auth_type {
             AuthType::Password => {
-                let password =
-                    Self::resolve_password(jump, jump_credentials).unwrap_or_default();
+                let password = Self::resolve_password(jump, jump_credentials).unwrap_or_default();
                 session
                     .authenticate_password(&jump.username, &password)
                     .await

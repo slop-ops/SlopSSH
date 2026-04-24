@@ -20,21 +20,17 @@ pub async fn ssh_connect(
 
     let auth = match session_info.auth_type {
         muon_core::session::AuthType::Password => {
-            let p = password.ok_or_else(|| {
-                format!("Password required for session '{}'", session_id)
-            })?;
+            let p = password
+                .ok_or_else(|| format!("Password required for session '{}'", session_id))?;
             muon_core::ssh::auth::AuthMethod::Password { password: p }
         }
         muon_core::session::AuthType::PublicKey => {
-            let key_path = session_info
-                .private_key_path
-                .clone()
-                .ok_or_else(|| {
-                    format!(
-                        "No private key path configured for session '{}'",
-                        session_id
-                    )
-                })?;
+            let key_path = session_info.private_key_path.clone().ok_or_else(|| {
+                format!(
+                    "No private key path configured for session '{}'",
+                    session_id
+                )
+            })?;
             muon_core::ssh::auth::AuthMethod::PublicKey {
                 key_path,
                 passphrase: session_info.passphrase_key.clone(),
@@ -181,8 +177,7 @@ fn resolve_jump_credentials(
     for jh_str in &session_info.jump_hosts {
         if let Ok(jh) = serde_json::from_str::<muon_core::ssh::jump_host::JumpHost>(jh_str)
             && let Some(ref pk) = jh.password_key
-            && let Ok(Some(password)) =
-                state.credential_store.get_credential(pk, "password")
+            && let Ok(Some(password)) = state.credential_store.get_credential(pk, "password")
         {
             creds.insert(pk.clone(), password);
         }

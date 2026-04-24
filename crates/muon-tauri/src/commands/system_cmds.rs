@@ -43,3 +43,22 @@ pub fn open_in_editor(
     let editor = &state.settings.external_editor;
     muon_core::config::editor::open_in_editor(editor, &file_path).map_err(|e| e.to_string())
 }
+
+#[tauri::command]
+pub fn get_version() -> String {
+    muon_core::version().to_string()
+}
+
+#[tauri::command]
+pub async fn check_for_updates() -> Result<serde_json::Value, String> {
+    let checker = muon_core::updater::github::UpdateChecker::new(
+        "muon-ssh",
+        "muon-ssh-rust",
+        muon_core::version(),
+    );
+    match checker.check_for_update().await {
+        Ok(Some(info)) => serde_json::to_value(&info).map_err(|e| e.to_string()),
+        Ok(None) => Ok(serde_json::json!({"is_newer": false})),
+        Err(e) => Err(format!("Update check failed: {}", e)),
+    }
+}

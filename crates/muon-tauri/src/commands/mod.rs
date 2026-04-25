@@ -25,8 +25,7 @@ pub use sftp_cmds::*;
 pub use snippet_cmds::{create_snippet, delete_snippet, list_snippets, update_snippet};
 pub use ssh_cmds::*;
 pub use system_cmds::{
-    check_for_updates, detect_editors, get_settings, get_version, greet, open_in_editor,
-    save_settings,
+    check_for_updates, detect_editors, get_settings, get_version, open_in_editor, save_settings,
 };
 pub use tools_cmds::*;
 pub use transfer_cmds::*;

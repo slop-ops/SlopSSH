@@ -20,7 +20,6 @@ pub struct AppState {
     pub settings: Settings,
     pub session_store: SessionStore,
     #[allow(dead_code)]
-    #[allow(dead_code)]
     pub credential_cache: muon_core::credentials::CredentialCache,
     pub credential_store: CredentialStore,
     pub ssh_manager: SessionManager,

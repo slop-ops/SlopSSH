@@ -155,31 +155,19 @@ impl PluginManager {
         self.hosts.get(plugin_id).cloned().unwrap()
     }
 
-    pub async fn get_plugin_setting(
-        &mut self,
-        plugin_id: &str,
-        key: &str,
-    ) -> Option<String> {
+    pub async fn get_plugin_setting(&mut self, plugin_id: &str, key: &str) -> Option<String> {
         let host = self.ensure_host(plugin_id);
         let host = host.lock().await;
         host.get_setting(key).map(|s| s.to_string())
     }
 
-    pub async fn set_plugin_setting(
-        &mut self,
-        plugin_id: &str,
-        key: &str,
-        value: &str,
-    ) {
+    pub async fn set_plugin_setting(&mut self, plugin_id: &str, key: &str, value: &str) {
         let host = self.ensure_host(plugin_id);
         let mut host = host.lock().await;
         host.set_setting(key, value);
     }
 
-    pub async fn get_all_plugin_settings(
-        &mut self,
-        plugin_id: &str,
-    ) -> HashMap<String, String> {
+    pub async fn get_all_plugin_settings(&mut self, plugin_id: &str) -> HashMap<String, String> {
         let host = self.ensure_host(plugin_id);
         let host = host.lock().await;
         host.all_settings().clone()
@@ -398,7 +386,10 @@ mod tests {
             enabled: true,
         });
         let host = mgr.ensure_host("test");
-        assert!(host.blocking_lock().is_capability_allowed(&PluginCapability::ExecuteCommand));
+        assert!(
+            host.blocking_lock()
+                .is_capability_allowed(&PluginCapability::ExecuteCommand)
+        );
         let host2 = mgr.ensure_host("test");
         assert!(Arc::ptr_eq(&host, &host2));
     }
@@ -420,7 +411,10 @@ mod tests {
         });
         assert!(mgr.get_plugin_setting("test", "key").await.is_none());
         mgr.set_plugin_setting("test", "key", "value").await;
-        assert_eq!(mgr.get_plugin_setting("test", "key").await, Some("value".to_string()));
+        assert_eq!(
+            mgr.get_plugin_setting("test", "key").await,
+            Some("value".to_string())
+        );
         let all = mgr.get_all_plugin_settings("test").await;
         assert_eq!(all.get("key"), Some(&"value".to_string()));
     }
@@ -431,7 +425,10 @@ mod tests {
         let received = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let received_clone = received.clone();
         mgr.on_event(move |event| {
-            received_clone.lock().unwrap().push(event.event_type.clone());
+            received_clone
+                .lock()
+                .unwrap()
+                .push(event.event_type.clone());
         });
         mgr.fire_event(PluginEvent {
             event_type: "test-event".to_string(),

@@ -1,13 +1,13 @@
 {
-  "$schema": "https://raw.githubusercontent.com/nicepage/nicepage.github.io/main/tauri/tauri.conf.schema.json",
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/refs/heads/dev/packages/cli/config.schema.json",
   "productName": "Muon SSH",
   "version": "0.1.0",
-  "identifier": "com.muon-ssh.app",
+  "identifier": "com.muon-ssh.desktop",
   "build": {
-    "beforeDevCommand": "npm run dev",
+    "beforeDevCommand": "npm --prefix ../../frontend run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
-    "frontendDist": "../dist"
+    "beforeBuildCommand": "npm --prefix ../../frontend run build",
+    "frontendDist": "../../frontend/dist"
   },
   "app": {
     "withGlobalTauri": false,
@@ -21,7 +21,7 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:"
     }
   },
   "bundle": {

@@ -1,9 +1,5 @@
 import { invoke } from '@tauri-apps/api/core'
 
-export async function greet(name: string): Promise<string> {
-  return invoke<string>('greet', { name })
-}
-
 export async function getSettings(): Promise<any> {
   return invoke('get_settings')
 }

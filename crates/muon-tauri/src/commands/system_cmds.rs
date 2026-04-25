@@ -3,11 +3,6 @@ use tauri::State;
 use crate::AppState;
 
 #[tauri::command]
-pub fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to Muon SSH.", name)
-}
-
-#[tauri::command]
 pub fn get_settings(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
 ) -> Result<serde_json::Value, String> {

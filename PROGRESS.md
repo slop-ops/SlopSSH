@@ -1,13 +1,21 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-25 (Session 10)
+Last updated: 2026-04-25 (Session 11)
 
 ## Session Summary
 
-**Completed:** All phases 1-11 complete.
-**Session 10 delivered:** Plugin IPC (8.7), Plugin settings UI (8.6), K8s context + hello plugins (8.5), File type associations (10.3), Frontend E2E tests (11.2), Performance profiling (11.4), Accessibility (11.5), Documentation (11.6)
-**Test count:** 154 Rust + 14 frontend unit tests (168 total)
-**Total IPC commands:** 67 (up from 62)
+**Completed:** All phases 1-11 complete. Phase 12-13 and parts of 14-15 in progress.
+**Session 11 delivered:** Security hardening (CSP, host key verification, shell injection), build system fixes, tracing, error handling improvements
+**Test count:** 169 Rust + 14 frontend unit tests (183 total)
+**Total IPC commands:** 68 (added accept_host_key)
+
+## Session 11 Changes
+
+| Commit | Tasks | Description |
+|--------|-------|-------------|
+| `f42d518` | 12.1, 13.1, 13.6, 13.7, 13.8, 13.9, 13.2 | CSP, build paths, bundle ID, remove template code, cargo fmt |
+| `126d82a` | 12.2, 12.3, 15.5, 14.9 | Host key verification, jump host verification, shared shell_escape |
+| `59532bf` | 14.1, 14.6, 14.7, 14.8, 14.11 | Tracing for SSH ops, fix silent error swallowing |
 
 ---
 
@@ -298,4 +306,60 @@ All 11 phases are **COMPLETE**. The application has:
 - `updater::github::tests` (10)
 - `plugin::host::tests` (14) — expanded session 10
 - `plugin::loader::tests` (4)
+- `utils::tests` (15) — NEW session 11 (shell_escape)
 - Frontend unit tests (14) — NEW session 10
+
+## Phase 12: Critical Security Fixes — IN PROGRESS
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 12.1 | Fix Content Security Policy | DONE | Set proper CSP in tauri.conf.json |
+| 12.2 | Host key verification: prompt user | DONE | Return status to frontend, accept_host_key command |
+| 12.3 | Jump host key verification | DONE | Real verification using HostKeyVerifier |
+| 12.4 | Fix shell command injection in tool panels | DONE | shell_escape extracted to muon-core utils |
+| 12.5 | Encrypt credential store fallback | TODO | |
+| 12.6 | Fix download entire-file-into-RAM | TODO | |
+
+## Phase 13: Build System & CI — IN PROGRESS
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 13.1 | Fix tauri.conf.json paths | DONE | frontendDist, beforeDevCommand, beforeBuildCommand |
+| 13.2 | Run cargo fmt | DONE | Applied + clean |
+| 13.3 | Fix CI build-linux job | TODO | |
+| 13.4 | Add macOS and Windows CI jobs | TODO | |
+| 13.5 | Create release workflow | TODO | |
+| 13.6 | Fix $schema URL | DONE | Updated to tauri repo URL |
+| 13.7 | Change bundle identifier | DONE | com.muon-ssh.desktop |
+| 13.8 | Remove duplicate #[allow(dead_code)] | DONE | |
+| 13.9 | Remove greet command | DONE | |
+| 13.10 | Fix ESLint or remove lint script | TODO | |
+
+## Phase 14: Error Handling & Resilience — IN PROGRESS
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 14.1 | Add tracing to SSH operations | DONE | connect, disconnect, host key, shell ops |
+| 14.2 | Add tracing to file transfers | TODO | |
+| 14.3 | Add tracing to SFTP operations | TODO | |
+| 14.4 | Add tracing to Tauri IPC layer | TODO | |
+| 14.5 | Add file-based log output | TODO | |
+| 14.6 | Fix silently swallowed host key save | DONE | warn log for changed keys |
+| 14.7 | Fix silently swallowed port forward bind | DONE | Log warning on bind failure |
+| 14.8 | Fix jump host empty password fallback | DONE | Return auth error |
+| 14.9 | Fix malformed jump host JSON skipped | DONE | Log warning |
+| 14.10-14.14 | Remaining error handling tasks | TODO | |
+
+## Phase 15: Input Validation & Settings — IN PROGRESS
+
+| # | Task | Status | Notes |
+|---|------|--------|-------|
+| 15.5 | Extract shared shell_escape() utility | DONE | muon-core/src/utils.rs with 15 tests |
+
+## Next Session Priorities
+
+1. **12.5** — Encrypt credential store fallback (CRITICAL)
+2. **12.6** — Stream file downloads instead of reading into RAM (CRITICAL)
+3. **14.2-14.4** — Add tracing to file transfers, SFTP, IPC layer
+4. **15.1-15.4** — Add input validation (Settings, SessionInfo, SFTP paths)
+5. **13.3-13.5** — Fix CI and add release workflow

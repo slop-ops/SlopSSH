@@ -111,7 +111,9 @@ pub async fn ssh_open_shell(
         .ssh_manager
         .spawn_shell_read_loop(&session_id, &channel_id, move |data| {
             let encoded = base64::engine::general_purpose::STANDARD.encode(&data);
-            let _ = app_clone.emit(&format!("terminal-output-{}", cid), encoded);
+            if let Err(e) = app_clone.emit(&format!("terminal-output-{}", cid), encoded) {
+                tracing::error!(channel_id = %cid, error = %e, "Failed to emit terminal output event");
+            }
         })
         .map_err(|e| e.to_string())?;
 

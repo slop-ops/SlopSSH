@@ -157,6 +157,13 @@ impl SessionManager {
             host_key_fingerprint: check_result.fingerprint.clone(),
         };
 
+        tracing::info!(
+            session_id = %id,
+            host = %connection.session_info.host,
+            host_key_status = %check_result.status,
+            "SSH session connected"
+        );
+
         self.sessions.insert(
             id,
             ActiveSession {
@@ -198,6 +205,7 @@ impl SessionManager {
             }
             session.connection.disconnect().await?;
         }
+        tracing::info!(session_id = %session_id, "SSH session disconnected");
         Ok(())
     }
 
@@ -227,6 +235,7 @@ impl SessionManager {
         session
             .shell_channels
             .insert(channel_id.to_string(), channel);
+        tracing::debug!(session_id, channel_id, cols, rows, "Shell channel opened");
         Ok(())
     }
 
@@ -304,6 +313,7 @@ impl SessionManager {
             }
             if let Some(channel) = session.shell_channels.remove(channel_id) {
                 channel.close().await?;
+                tracing::debug!(session_id, channel_id, "Shell channel closed");
             }
         }
         Ok(())

@@ -123,14 +123,17 @@ impl client::Handler for ClientHandler {
         let status = super::host_keys::verify_host_key(&self.host, self.port, server_public_key);
         match status {
             HostKeyStatus::Trusted => {
+                tracing::debug!(host = %self.host, port = self.port, "Host key trusted");
                 self.host_key_status = HostKeyStatus::Trusted;
                 Ok(true)
             }
             HostKeyStatus::Changed => {
+                tracing::warn!(host = %self.host, port = self.port, "Host key changed — possible MITM attack");
                 self.host_key_status = HostKeyStatus::Changed;
                 Ok(false)
             }
             HostKeyStatus::Unknown => {
+                tracing::info!(host = %self.host, port = self.port, "Unknown host key — pending user confirmation");
                 self.host_key_status = HostKeyStatus::Unknown;
                 if let Ok(key_bytes) = server_public_key.to_bytes() {
                     let fingerprint = compute_fingerprint(server_public_key);
@@ -312,13 +315,22 @@ impl SshConnection {
             h
         };
 
+        let host = session_info.host.clone();
+        let port = session_info.port;
+        let username = session_info.username.clone();
+
         let mut session = client::connect(
             Arc::new(config),
             (&*session_info.host, session_info.port),
             handler,
         )
         .await
-        .map_err(|e| SshError::ConnectionFailed(e.to_string()))?;
+        .map_err(|e| {
+            tracing::warn!(host = %host, port, error = %e, "SSH connection failed");
+            SshError::ConnectionFailed(e.to_string())
+        })?;
+
+        tracing::debug!(host = %host, port, "TCP connection established, authenticating");
 
         let auth_ok = match &auth_method {
             AuthMethod::Password { password } => session
@@ -380,8 +392,11 @@ impl SshConnection {
         };
 
         if !auth_ok {
+            tracing::warn!(host = %host, port, username = %username, "Authentication rejected");
             return Err(SshError::AuthFailed("Authentication rejected".to_string()));
         }
+
+        tracing::info!(host = %host, port, username = %username, "SSH connection established");
 
         Ok(Self {
             handle: Some(Arc::new(session)),
@@ -540,11 +555,17 @@ impl SshConnection {
     }
 
     pub async fn disconnect(&mut self) -> Result<(), SshError> {
+        let host = self.session_info.host.clone();
+        let port = self.session_info.port;
         if let Some(handle) = self.handle.take() {
             handle
                 .disconnect(Disconnect::ByApplication, "", "")
                 .await
-                .map_err(|e| SshError::ConnectionFailed(e.to_string()))?;
+                .map_err(|e| {
+                    tracing::warn!(host = %host, port, error = %e, "SSH disconnect failed");
+                    SshError::ConnectionFailed(e.to_string())
+                })?;
+            tracing::info!(host = %host, port, "SSH disconnected");
         }
         self.connected = false;
         Ok(())

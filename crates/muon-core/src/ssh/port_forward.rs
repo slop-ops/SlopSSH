@@ -86,8 +86,13 @@ impl PortForwardManager {
         let task = tokio::spawn(async move {
             let listener = match TcpListener::bind(&bind_addr).await {
                 Ok(l) => l,
-                Err(_) => return,
+                Err(e) => {
+                    tracing::warn!(bind_addr, error = %e, "Failed to bind local port forward");
+                    return;
+                }
             };
+
+            tracing::info!(bind_addr, "Local port forward listening");
 
             while let Ok((tcp_stream, _addr)) = listener.accept().await {
                 let h = handle.clone();

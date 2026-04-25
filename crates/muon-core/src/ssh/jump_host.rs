@@ -202,7 +202,12 @@ impl JumpHostTunnel {
     ) -> Result<(), SshError> {
         let auth_result = match jump.auth_type {
             AuthType::Password => {
-                let password = Self::resolve_password(jump, jump_credentials).unwrap_or_default();
+                let password = Self::resolve_password(jump, jump_credentials).ok_or_else(|| {
+                    SshError::AuthFailed(format!(
+                        "No password configured for jump host '{}'",
+                        jump.host
+                    ))
+                })?;
                 session
                     .authenticate_password(&jump.username, &password)
                     .await

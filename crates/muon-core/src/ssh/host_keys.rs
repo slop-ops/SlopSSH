@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use base64::Engine;
 use russh::keys::ssh_key;
+use sha2::{Digest, Sha256};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum HostKeyStatus {
@@ -100,6 +101,37 @@ impl HostKeyVerifier {
         file.write_all(line.as_bytes())?;
 
         self.entries.push(entry);
+        Ok(())
+    }
+
+    pub fn add_host_key_raw(
+        &mut self,
+        host: &str,
+        port: u16,
+        key_bytes: &[u8],
+        key_type: &str,
+    ) -> anyhow::Result<()> {
+        let host_pattern = if port != 22 {
+            format!("[{}]:{}", host, port)
+        } else {
+            host.to_string()
+        };
+
+        let encoded = base64::engine::general_purpose::STANDARD.encode(key_bytes);
+        let line = format!("{} {} {}\n", host_pattern, key_type, encoded);
+
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.known_hosts_path)?;
+        file.write_all(line.as_bytes())?;
+
+        self.entries.push(KnownHostEntry {
+            host_pattern,
+            key_type: key_type.to_string(),
+            key_data: key_bytes.to_vec(),
+        });
+
         Ok(())
     }
 
@@ -222,6 +254,39 @@ pub fn verify_host_key(host: &str, port: u16, public_key: &ssh_key::PublicKey) -
 pub fn add_host_key(host: &str, port: u16, public_key: &ssh_key::PublicKey) -> anyhow::Result<()> {
     let mut verifier = HostKeyVerifier::load()?;
     verifier.add_host_key(host, port, public_key)
+}
+
+pub fn add_host_key_raw(
+    host: &str,
+    port: u16,
+    key_bytes: &[u8],
+    key_type: &str,
+) -> anyhow::Result<()> {
+    let mut verifier = HostKeyVerifier::load()?;
+    verifier.add_host_key_raw(host, port, key_bytes, key_type)
+}
+
+pub fn compute_fingerprint(public_key: &ssh_key::PublicKey) -> Option<String> {
+    let key_bytes = public_key.to_bytes().ok()?;
+    let hash = Sha256::digest(key_bytes.as_ref() as &[u8]);
+    Some(format!(
+        "SHA256:{}",
+        base64::engine::general_purpose::STANDARD.encode(hash)
+    ))
+}
+
+pub fn key_type_name(public_key: &ssh_key::PublicKey) -> &'static str {
+    match public_key.algorithm() {
+        ssh_key::Algorithm::Rsa { .. } => "ssh-rsa",
+        ssh_key::Algorithm::Ed25519 => "ssh-ed25519",
+        ssh_key::Algorithm::Ecdsa { curve } => match curve {
+            ssh_key::EcdsaCurve::NistP256 => "ecdsa-sha2-nistp256",
+            ssh_key::EcdsaCurve::NistP384 => "ecdsa-sha2-nistp384",
+            ssh_key::EcdsaCurve::NistP521 => "ecdsa-sha2-nistp521",
+        },
+        ssh_key::Algorithm::SkEd25519 => "sk-ssh-ed25519@openssh.com",
+        _ => "ssh-unknown",
+    }
 }
 
 #[cfg(test)]

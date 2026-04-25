@@ -28,8 +28,12 @@ export async function createFolder(name: string, parentId?: string): Promise<str
   return invoke<string>('create_folder', { name, parentId: parentId ?? null })
 }
 
-export async function sshConnect(sessionId: string, password?: string): Promise<string> {
-  return invoke<string>('ssh_connect', { sessionId, password: password ?? null })
+export async function sshConnect(sessionId: string, password?: string): Promise<{ sessionId: string; hostKeyStatus: string; hostKeyFingerprint: string | null }> {
+  return invoke('ssh_connect', { sessionId, password: password ?? null })
+}
+
+export async function acceptHostKey(sessionId: string): Promise<void> {
+  return invoke('accept_host_key', { sessionId })
 }
 
 export async function sshDisconnect(sessionId: string): Promise<void> {

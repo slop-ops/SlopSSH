@@ -11,6 +11,7 @@ pub mod snippets;
 pub mod ssh;
 pub mod tools;
 pub mod updater;
+pub mod utils;
 
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")

@@ -19,16 +19,39 @@ pub struct JumpHost {
     pub private_key_path: Option<std::path::PathBuf>,
 }
 
-struct JumpClientHandler;
+struct JumpClientHandler {
+    host: String,
+    port: u16,
+}
 
 impl client::Handler for JumpClientHandler {
     type Error = russh::Error;
 
     async fn check_server_key(
         &mut self,
-        _server_public_key: &ssh_key::PublicKey,
+        server_public_key: &ssh_key::PublicKey,
     ) -> Result<bool, Self::Error> {
-        Ok(true)
+        let status = super::host_keys::verify_host_key(&self.host, self.port, server_public_key);
+        match status {
+            super::host_keys::HostKeyStatus::Trusted => Ok(true),
+            super::host_keys::HostKeyStatus::Changed => {
+                tracing::warn!(
+                    host = %self.host,
+                    port = self.port,
+                    "Jump host key changed — possible MITM attack"
+                );
+                Ok(false)
+            }
+            super::host_keys::HostKeyStatus::Unknown => {
+                tracing::info!(
+                    host = %self.host,
+                    port = self.port,
+                    "Unknown jump host key — auto-accepting"
+                );
+                let _ = super::host_keys::add_host_key(&self.host, self.port, server_public_key);
+                Ok(true)
+            }
+        }
     }
 }
 
@@ -107,7 +130,10 @@ impl JumpHostTunnel {
         let config = client::Config {
             ..Default::default()
         };
-        let handler = JumpClientHandler;
+        let handler = JumpClientHandler {
+            host: jump.host.clone(),
+            port: jump.port,
+        };
 
         let mut session = client::connect(Arc::new(config), (&*jump.host, jump.port), handler)
             .await
@@ -140,7 +166,10 @@ impl JumpHostTunnel {
         let config = client::Config {
             ..Default::default()
         };
-        let handler = JumpClientHandler;
+        let handler = JumpClientHandler {
+            host: jump.host.clone(),
+            port: jump.port,
+        };
 
         let mut session: client::Handle<JumpClientHandler> =
             client::connect_stream(Arc::new(config), stream, handler)

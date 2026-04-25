@@ -7,10 +7,18 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 
 use super::auth::AuthMethod;
-use super::host_keys::HostKeyStatus;
+use super::host_keys::{HostKeyStatus, compute_fingerprint, key_type_name};
 use crate::session::info::SessionInfo;
 
 pub type RemoteForwardMap = Arc<tokio::sync::Mutex<HashMap<(String, u32), (String, u16)>>>;
+
+#[derive(Debug, Clone, Default, serde::Serialize)]
+pub struct HostKeyCheckResult {
+    pub status: String,
+    pub fingerprint: Option<String>,
+    pub pending_key_bytes: Option<Vec<u8>>,
+    pub pending_key_type: Option<String>,
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum SshError {
@@ -58,6 +66,7 @@ pub struct ClientHandler {
     pub host_key_status: HostKeyStatus,
     pub remote_forwards: RemoteForwardMap,
     pub x11_display: Option<Arc<super::x11::X11Display>>,
+    pub host_key_check: Arc<tokio::sync::Mutex<HostKeyCheckResult>>,
 }
 
 impl ClientHandler {
@@ -68,6 +77,7 @@ impl ClientHandler {
             host_key_status: HostKeyStatus::Unknown,
             remote_forwards: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             x11_display: None,
+            host_key_check: Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default())),
         }
     }
 
@@ -82,6 +92,7 @@ impl ClientHandler {
             host_key_status: HostKeyStatus::Unknown,
             remote_forwards,
             x11_display: None,
+            host_key_check: Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default())),
         }
     }
 
@@ -97,6 +108,7 @@ impl ClientHandler {
             host_key_status: HostKeyStatus::Unknown,
             remote_forwards,
             x11_display: Some(x11_display),
+            host_key_check: Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default())),
         }
     }
 }
@@ -120,7 +132,17 @@ impl client::Handler for ClientHandler {
             }
             HostKeyStatus::Unknown => {
                 self.host_key_status = HostKeyStatus::Unknown;
-                let _ = super::host_keys::add_host_key(&self.host, self.port, server_public_key);
+                if let Ok(key_bytes) = server_public_key.to_bytes() {
+                    let fingerprint = compute_fingerprint(server_public_key);
+                    let key_type = key_type_name(server_public_key).to_string();
+                    let mut check = self.host_key_check.lock().await;
+                    *check = HostKeyCheckResult {
+                        status: "Unknown".to_string(),
+                        fingerprint,
+                        pending_key_bytes: Some(key_bytes.to_vec()),
+                        pending_key_type: Some(key_type),
+                    };
+                }
                 Ok(true)
             }
         }
@@ -218,6 +240,7 @@ pub struct SshConnection {
     pub(crate) remote_forwards: RemoteForwardMap,
     #[allow(dead_code)]
     pub(crate) x11_display: Option<Arc<super::x11::X11Display>>,
+    pub(crate) host_key_check: Arc<tokio::sync::Mutex<HostKeyCheckResult>>,
 }
 
 impl SshConnection {
@@ -268,19 +291,25 @@ impl SshConnection {
             None
         };
 
+        let host_key_check = Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default()));
+
         let handler = if let Some(ref display) = x11_display {
-            ClientHandler::with_x11(
+            let mut h = ClientHandler::with_x11(
                 session_info.host.clone(),
                 session_info.port,
                 remote_forwards.clone(),
                 display.clone(),
-            )
+            );
+            h.host_key_check = host_key_check.clone();
+            h
         } else {
-            ClientHandler::with_remote_forwards(
+            let mut h = ClientHandler::with_remote_forwards(
                 session_info.host.clone(),
                 session_info.port,
                 remote_forwards.clone(),
-            )
+            );
+            h.host_key_check = host_key_check.clone();
+            h
         };
 
         let mut session = client::connect(
@@ -360,6 +389,7 @@ impl SshConnection {
             connected: true,
             remote_forwards,
             x11_display,
+            host_key_check,
         })
     }
 
@@ -398,19 +428,25 @@ impl SshConnection {
             None
         };
 
+        let host_key_check = Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default()));
+
         let handler = if let Some(ref display) = x11_display {
-            ClientHandler::with_x11(
+            let mut h = ClientHandler::with_x11(
                 session_info.host.clone(),
                 session_info.port,
                 remote_forwards.clone(),
                 display.clone(),
-            )
+            );
+            h.host_key_check = host_key_check.clone();
+            h
         } else {
-            ClientHandler::with_remote_forwards(
+            let mut h = ClientHandler::with_remote_forwards(
                 session_info.host.clone(),
                 session_info.port,
                 remote_forwards.clone(),
-            )
+            );
+            h.host_key_check = host_key_check.clone();
+            h
         };
 
         let tcp_stream =
@@ -491,6 +527,7 @@ impl SshConnection {
             connected: true,
             remote_forwards,
             x11_display,
+            host_key_check,
         })
     }
 
@@ -577,6 +614,7 @@ mod tests {
         assert_eq!(handler.host, "example.com");
         assert_eq!(handler.port, 22);
         assert_eq!(handler.host_key_status, HostKeyStatus::Unknown);
+        assert!(handler.host_key_check.try_lock().is_ok());
     }
 
     #[test]

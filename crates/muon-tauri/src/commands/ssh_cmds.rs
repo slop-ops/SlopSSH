@@ -8,7 +8,7 @@ pub async fn ssh_connect(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     session_id: String,
     password: Option<String>,
-) -> Result<String, String> {
+) -> Result<serde_json::Value, String> {
     let mut state = state.lock().await;
 
     let session_info = {
@@ -47,9 +47,24 @@ pub async fn ssh_connect(
 
     let jump_credentials = resolve_jump_credentials(&state, &session_info);
 
-    state
+    let result = state
         .ssh_manager
         .connect(session_info, auth, enable_compression, &jump_credentials)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    serde_json::to_value(&result).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn accept_host_key(
+    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    session_id: String,
+) -> Result<(), String> {
+    let mut state = state.lock().await;
+    state
+        .ssh_manager
+        .accept_host_key(&session_id)
         .await
         .map_err(|e| e.to_string())
 }

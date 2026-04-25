@@ -268,8 +268,8 @@ pub async fn sftp_upload_sudo(
             .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?
     };
 
-    let escaped_tmp = shell_escape(&tmp_path);
-    let escaped_target = shell_escape(&remote_path);
+    let escaped_tmp = muon_core::utils::shell_escape(&tmp_path);
+    let escaped_target = muon_core::utils::shell_escape(&remote_path);
     let cmd = format!(
         "sudo cp {} {} && rm -f {}",
         escaped_tmp, escaped_target, escaped_tmp
@@ -280,7 +280,7 @@ pub async fn sftp_upload_sudo(
         .map_err(|e| e.to_string())?;
 
     if result.exit_code != 0 {
-        let cleanup = format!("rm -f {}", escaped_tmp);
+        let cleanup = format!("rm -f {}", muon_core::utils::shell_escape(&tmp_path));
         let _ = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cleanup, 10).await;
         return Err(format!(
             "sudo cp failed (exit {}): {}",
@@ -312,8 +312,8 @@ pub async fn sftp_download_sudo(
         .unwrap_or_else(|| "muon_tmp".to_string());
     let tmp_path = format!("/tmp/.muon_download_{}", file_name);
 
-    let escaped_src = shell_escape(&remote_path);
-    let escaped_tmp = shell_escape(&tmp_path);
+    let escaped_src = muon_core::utils::shell_escape(&remote_path);
+    let escaped_tmp = muon_core::utils::shell_escape(&tmp_path);
     let cmd = format!("sudo cp {} {}", escaped_src, escaped_tmp);
 
     let result = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cmd, 60)
@@ -344,28 +344,4 @@ pub async fn sftp_download_sudo(
         &base64::engine::general_purpose::STANDARD,
         &data,
     ))
-}
-
-fn shell_escape(s: &str) -> String {
-    if s.contains(' ')
-        || s.contains('"')
-        || s.contains('\'')
-        || s.contains('$')
-        || s.contains('`')
-        || s.contains('\\')
-        || s.contains('(')
-        || s.contains(')')
-        || s.contains('&')
-        || s.contains('|')
-        || s.contains(';')
-        || s.contains('<')
-        || s.contains('>')
-        || s.contains('*')
-        || s.contains('?')
-        || s.contains('~')
-    {
-        format!("'{}'", s.replace('\'', "'\\''"))
-    } else {
-        s.to_string()
-    }
 }

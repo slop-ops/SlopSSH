@@ -47,15 +47,31 @@ pub async fn archive_create(
 
     let sources_str = sources
         .iter()
-        .map(|s| shell_escape(s))
+        .map(|s| muon_core::utils::shell_escape(s))
         .collect::<Vec<_>>()
         .join(" ");
 
     let command = match format.as_str() {
-        "tar.gz" => format!("tar -czf {} {}", shell_escape(&archive_path), sources_str),
-        "tar.bz2" => format!("tar -cjf {} {}", shell_escape(&archive_path), sources_str),
-        "tar" => format!("tar -cf {} {}", shell_escape(&archive_path), sources_str),
-        "zip" => format!("zip -r {} {}", shell_escape(&archive_path), sources_str),
+        "tar.gz" => format!(
+            "tar -czf {} {}",
+            muon_core::utils::shell_escape(&archive_path),
+            sources_str
+        ),
+        "tar.bz2" => format!(
+            "tar -cjf {} {}",
+            muon_core::utils::shell_escape(&archive_path),
+            sources_str
+        ),
+        "tar" => format!(
+            "tar -cf {} {}",
+            muon_core::utils::shell_escape(&archive_path),
+            sources_str
+        ),
+        "zip" => format!(
+            "zip -r {} {}",
+            muon_core::utils::shell_escape(&archive_path),
+            sources_str
+        ),
         _ => return Err(format!("Unsupported archive format: {}", format)),
     };
 
@@ -89,7 +105,7 @@ pub async fn archive_extract(
             .ok_or_else(|| "Not connected".to_string())?
     };
 
-    let mkdir_cmd = format!("mkdir -p {}", shell_escape(&target_dir));
+    let mkdir_cmd = format!("mkdir -p {}", muon_core::utils::shell_escape(&target_dir));
     let _ = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &mkdir_cmd, 10)
         .await
         .map_err(|e| e.to_string())?;
@@ -97,34 +113,34 @@ pub async fn archive_extract(
     let command = if archive_path.ends_with(".tar.gz") || archive_path.ends_with(".tgz") {
         format!(
             "tar -xzf {} -C {}",
-            shell_escape(&archive_path),
-            shell_escape(&target_dir)
+            muon_core::utils::shell_escape(&archive_path),
+            muon_core::utils::shell_escape(&target_dir)
         )
     } else if archive_path.ends_with(".tar.bz2") {
         format!(
             "tar -xjf {} -C {}",
-            shell_escape(&archive_path),
-            shell_escape(&target_dir)
+            muon_core::utils::shell_escape(&archive_path),
+            muon_core::utils::shell_escape(&target_dir)
         )
     } else if archive_path.ends_with(".tar") {
         format!(
             "tar -xf {} -C {}",
-            shell_escape(&archive_path),
-            shell_escape(&target_dir)
+            muon_core::utils::shell_escape(&archive_path),
+            muon_core::utils::shell_escape(&target_dir)
         )
     } else if archive_path.ends_with(".zip") {
         format!(
             "unzip -o {} -d {}",
-            shell_escape(&archive_path),
-            shell_escape(&target_dir)
+            muon_core::utils::shell_escape(&archive_path),
+            muon_core::utils::shell_escape(&target_dir)
         )
     } else {
         format!(
             "tar -xf {} -C {} 2>/dev/null || unzip -o {} -d {}",
-            shell_escape(&archive_path),
-            shell_escape(&target_dir),
-            shell_escape(&archive_path),
-            shell_escape(&target_dir)
+            muon_core::utils::shell_escape(&archive_path),
+            muon_core::utils::shell_escape(&target_dir),
+            muon_core::utils::shell_escape(&archive_path),
+            muon_core::utils::shell_escape(&target_dir)
         )
     };
 
@@ -141,28 +157,4 @@ pub async fn archive_extract(
     }
 
     Ok(())
-}
-
-fn shell_escape(s: &str) -> String {
-    if s.contains(' ')
-        || s.contains('"')
-        || s.contains('\'')
-        || s.contains('$')
-        || s.contains('`')
-        || s.contains('\\')
-        || s.contains('(')
-        || s.contains(')')
-        || s.contains('&')
-        || s.contains('|')
-        || s.contains(';')
-        || s.contains('<')
-        || s.contains('>')
-        || s.contains('*')
-        || s.contains('?')
-        || s.contains('~')
-    {
-        format!("'{}'", s.replace('\'', "'\\''"))
-    } else {
-        s.to_string()
-    }
 }

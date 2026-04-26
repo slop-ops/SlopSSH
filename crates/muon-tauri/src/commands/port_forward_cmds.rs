@@ -12,6 +12,15 @@ pub async fn port_forward_start(
     target_port: u16,
     direction: String,
 ) -> Result<String, String> {
+    tracing::info!(
+        session_id = %session_id,
+        bind_host = %bind_host,
+        bind_port,
+        target_host = %target_host,
+        target_port,
+        direction = %direction,
+        "port_forward_start"
+    );
     let mut state = state.lock().await;
     let handle = state
         .ssh_manager
@@ -62,6 +71,7 @@ pub async fn port_forward_stop(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     forward_id: String,
 ) -> Result<(), String> {
+    tracing::info!(forward_id = %forward_id, "port_forward_stop");
     let mut state = state.lock().await;
     state
         .port_forward_manager
@@ -74,6 +84,7 @@ pub async fn port_forward_stop(
 pub async fn port_forward_list(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
 ) -> Result<Vec<String>, String> {
+    tracing::debug!("port_forward_list");
     let state = state.lock().await;
     Ok(state
         .port_forward_manager

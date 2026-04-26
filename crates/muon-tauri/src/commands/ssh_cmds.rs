@@ -9,6 +9,7 @@ pub async fn ssh_connect(
     session_id: String,
     password: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    tracing::info!(session_id = %session_id, "ssh_connect");
     let mut state = state.lock().await;
 
     let session_info = {
@@ -61,6 +62,7 @@ pub async fn accept_host_key(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     session_id: String,
 ) -> Result<(), String> {
+    tracing::info!(session_id = %session_id, "accept_host_key");
     let mut state = state.lock().await;
     state
         .ssh_manager
@@ -74,6 +76,7 @@ pub async fn ssh_disconnect(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     session_id: String,
 ) -> Result<(), String> {
+    tracing::info!(session_id = %session_id, "ssh_disconnect");
     let mut state = state.lock().await;
     if let Some(sftp_arc) = state.sftp_sessions.remove(&session_id) {
         let mut guard = sftp_arc.lock().await;
@@ -98,6 +101,7 @@ pub async fn ssh_open_shell(
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, channel_id = %channel_id, cols, rows, "ssh_open_shell");
     let mut state = state.lock().await;
     state
         .ssh_manager
@@ -127,6 +131,7 @@ pub async fn ssh_write_shell(
     channel_id: String,
     data: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, channel_id = %channel_id, "ssh_write_shell");
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(&data)
         .map_err(|e| e.to_string())?;
@@ -146,6 +151,7 @@ pub async fn ssh_resize_shell(
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, channel_id = %channel_id, cols, rows, "ssh_resize_shell");
     let state = state.lock().await;
     state
         .ssh_manager
@@ -160,6 +166,7 @@ pub async fn ssh_close_shell(
     session_id: String,
     channel_id: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, channel_id = %channel_id, "ssh_close_shell");
     let mut state = state.lock().await;
     state
         .ssh_manager

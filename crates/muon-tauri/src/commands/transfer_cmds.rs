@@ -12,6 +12,7 @@ pub async fn transfer_upload(
     remote_path: String,
     file_size: u64,
 ) -> Result<(), String> {
+    tracing::debug!(transfer_id = %transfer_id, session_id = %session_id, file_size, "transfer_upload");
     let sftp = {
         let state = state.lock().await;
         state
@@ -58,6 +59,7 @@ pub async fn transfer_download(
     local_path: String,
     file_size: u64,
 ) -> Result<(), String> {
+    tracing::debug!(transfer_id = %transfer_id, session_id = %session_id, file_size, "transfer_download");
     let sftp = {
         let state = state.lock().await;
         state
@@ -99,6 +101,7 @@ pub async fn transfer_cancel(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     transfer_id: String,
 ) -> Result<bool, String> {
+    tracing::debug!(transfer_id = %transfer_id, "transfer_cancel");
     let state = state.lock().await;
     state
         .transfer_engine
@@ -112,6 +115,7 @@ pub async fn transfer_cancel(
 pub async fn transfer_list(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
 ) -> Result<serde_json::Value, String> {
+    tracing::debug!("transfer_list");
     let state = state.lock().await;
     let list = state.transfer_engine.list_progress().await;
     serde_json::to_value(&list).map_err(|e| e.to_string())
@@ -121,6 +125,7 @@ pub async fn transfer_list(
 pub async fn transfer_clear_completed(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
 ) -> Result<(), String> {
+    tracing::debug!("transfer_clear_completed");
     let state = state.lock().await;
     state.transfer_engine.clear_completed().await;
     Ok(())

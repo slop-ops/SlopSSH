@@ -6,6 +6,7 @@ use crate::AppState;
 pub async fn list_local_keys(
     _state: State<'_, tauri::async_runtime::Mutex<AppState>>,
 ) -> Result<Vec<serde_json::Value>, String> {
+    tracing::debug!("list_local_keys");
     let keys =
         muon_core::ssh::key_manager::KeyManager::list_local_keys().map_err(|e| e.to_string())?;
 
@@ -28,6 +29,7 @@ pub async fn list_remote_keys(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     session_id: String,
 ) -> Result<Vec<serde_json::Value>, String> {
+    tracing::debug!(session_id = %session_id, "list_remote_keys");
     let state = state.lock().await;
     let handle = state
         .ssh_manager
@@ -59,6 +61,7 @@ pub async fn generate_key_pair(
     path: String,
     passphrase: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    tracing::debug!(algorithm = %algorithm, "generate_key_pair");
     let key = muon_core::ssh::key_manager::KeyManager::generate_key_pair(
         &algorithm,
         &path,
@@ -81,6 +84,7 @@ pub async fn deploy_public_key(
     session_id: String,
     public_key: String,
 ) -> Result<(), String> {
+    tracing::info!(session_id = %session_id, "deploy_public_key");
     let state = state.lock().await;
     let handle = state
         .ssh_manager
@@ -97,5 +101,6 @@ pub async fn read_public_key(
     _state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     path: String,
 ) -> Result<String, String> {
+    tracing::debug!(path = %path, "read_public_key");
     muon_core::ssh::key_manager::KeyManager::read_public_key(&path).map_err(|e| e.to_string())
 }

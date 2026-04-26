@@ -8,6 +8,7 @@ use crate::AppState;
 pub async fn plugin_list(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
 ) -> Result<serde_json::Value, String> {
+    tracing::debug!("plugin_list");
     let state = state.lock().await;
     let plugins: Vec<serde_json::Value> = state
         .plugin_manager
@@ -32,6 +33,7 @@ pub async fn plugin_list(
 pub async fn plugin_discover(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
 ) -> Result<serde_json::Value, String> {
+    tracing::info!("plugin_discover");
     let mut state = state.lock().await;
     let discovered = state
         .plugin_manager
@@ -46,6 +48,7 @@ pub async fn plugin_set_enabled(
     plugin_id: String,
     enabled: bool,
 ) -> Result<(), String> {
+    tracing::info!(plugin_id = %plugin_id, enabled, "plugin_set_enabled");
     let mut state = state.lock().await;
     if state.plugin_manager.set_enabled(&plugin_id, enabled) {
         Ok(())
@@ -59,6 +62,7 @@ pub async fn plugin_remove(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     plugin_id: String,
 ) -> Result<(), String> {
+    tracing::info!(plugin_id = %plugin_id, "plugin_remove");
     let mut state = state.lock().await;
     if state.plugin_manager.remove_plugin(&plugin_id) {
         Ok(())
@@ -73,6 +77,7 @@ pub async fn plugin_get_setting(
     plugin_id: String,
     key: String,
 ) -> Result<Option<String>, String> {
+    tracing::debug!(plugin_id = %plugin_id, key = %key, "plugin_get_setting");
     let mut state = state.lock().await;
     Ok(state
         .plugin_manager
@@ -87,6 +92,7 @@ pub async fn plugin_set_setting(
     key: String,
     value: String,
 ) -> Result<(), String> {
+    tracing::debug!(plugin_id = %plugin_id, key = %key, "plugin_set_setting");
     let mut state = state.lock().await;
     state
         .plugin_manager
@@ -103,6 +109,7 @@ pub async fn plugin_get_all_settings(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     plugin_id: String,
 ) -> Result<HashMap<String, String>, String> {
+    tracing::debug!(plugin_id = %plugin_id, "plugin_get_all_settings");
     let mut state = state.lock().await;
     Ok(state
         .plugin_manager
@@ -118,6 +125,7 @@ pub async fn plugin_fire_event(
     event_type: String,
     payload: serde_json::Value,
 ) -> Result<(), String> {
+    tracing::debug!(plugin_id = %plugin_id, event_type = %event_type, "plugin_fire_event");
     let state = state.lock().await;
     let event = muon_core::plugin::api::PluginEvent {
         event_type: event_type.clone(),
@@ -142,6 +150,7 @@ pub async fn plugin_show_notification(
     title: String,
     body: String,
 ) -> Result<(), String> {
+    tracing::debug!(plugin_id = %plugin_id, title = %title, "plugin_show_notification");
     let _ = app.emit(
         "plugin-notification",
         serde_json::json!({

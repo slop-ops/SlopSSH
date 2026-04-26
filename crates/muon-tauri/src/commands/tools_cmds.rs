@@ -9,6 +9,7 @@ pub async fn remote_exec(
     command: String,
     timeout_secs: Option<u64>,
 ) -> Result<serde_json::Value, String> {
+    tracing::debug!(session_id = %session_id, "remote_exec");
     let state = state.lock().await;
     let handle = state
         .ssh_manager
@@ -37,6 +38,7 @@ pub async fn archive_create(
     sources: Vec<String>,
     format: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, format = %format, "archive_create");
     let handle = {
         let state = state.lock().await;
         state
@@ -97,6 +99,7 @@ pub async fn archive_extract(
     archive_path: String,
     target_dir: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, "archive_extract");
     let handle = {
         let state = state.lock().await;
         state

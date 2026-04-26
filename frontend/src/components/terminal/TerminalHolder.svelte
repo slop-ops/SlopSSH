@@ -2,6 +2,7 @@
   import Terminal from '$lib/terminal/Terminal.svelte'
   import LocalTerminal from './LocalTerminal.svelte'
   import SnippetPanel from './SnippetPanel.svelte'
+  import { t } from '$lib/utils/i18n'
 
   interface Tab {
     id: string
@@ -62,7 +63,7 @@
             </div>
           {/each}
         </div>
-        <button class="local-btn" onclick={openLocalTerminal} title="Open local terminal">+$</button>
+        <button class="local-btn" onclick={openLocalTerminal} title={t('app.openLocalTerminal')}>+$</button>
         <button class="snippet-toggle" class:active={showSnippets} onclick={() => (showSnippets = !showSnippets)} title="Snippets">
           S
         </button>
@@ -84,8 +85,8 @@
       </div>
     {:else}
       <div class="empty">
-        <p>No terminal sessions</p>
-        <button class="local-btn-empty" onclick={openLocalTerminal}>Open Local Terminal</button>
+        <p>{t('app.noTerminalSessions')}</p>
+        <button class="local-btn-empty" onclick={openLocalTerminal}>{t('app.openLocalTerminal')}</button>
       </div>
     {/if}
   </div>

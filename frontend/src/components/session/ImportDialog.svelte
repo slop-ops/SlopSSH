@@ -1,5 +1,6 @@
 <script lang="ts">
   import { importSshConfig, importSshConfigToFolder, listSessions } from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let preview: any[] = $state([])
   let loading = $state(false)
@@ -37,7 +38,7 @@
 <div class="dialog-overlay" onclick={onClose}>
   <div class="dialog" onclick={(e) => e.stopPropagation()}>
     <div class="dialog-header">
-      <h2>Import SSH Config</h2>
+      <h2>{t('session.importSshConfig')}</h2>
       <button class="close-btn" onclick={onClose}>&times;</button>
     </div>
 
@@ -48,19 +49,18 @@
 
       {#if imported}
         <div class="success">
-          SSH config imported successfully. Check the sidebar for the imported folder.
+          {t('session.importSuccess')}
         </div>
       {:else if preview.length === 0}
         <p class="description">
-          Import sessions from your <code>~/.ssh/config</code> file.
-          Each <code>Host</code> entry will become a saved session.
+          {t('session.importDescription')}
         </p>
         <button class="btn-primary" onclick={previewConfig} disabled={loading}>
-          {loading ? 'Scanning...' : 'Scan SSH Config'}
+          {loading ? t('session.scanning') : t('session.scanConfig')}
         </button>
       {:else}
         <p class="description">
-          Found {preview.length} host(s) in your SSH config:
+          {t('session.foundHosts', { count: String(preview.length) })}
         </p>
         <div class="preview-list">
           {#each preview as item}
@@ -72,9 +72,9 @@
           {/each}
         </div>
         <div class="actions">
-          <button class="btn-secondary" onclick={() => (preview = [])}>Cancel</button>
+          <button class="btn-secondary" onclick={() => (preview = [])}>{t('session.cancel')}</button>
           <button class="btn-primary" onclick={doImport} disabled={loading}>
-            {loading ? 'Importing...' : `Import ${preview.length} Session(s)`}
+            {loading ? t('session.importing') : t('session.importCount', { count: String(preview.length) })}
           </button>
         </div>
       {/if}

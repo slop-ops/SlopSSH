@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -32,7 +33,7 @@
 <div class="sysinfo-panel">
   <div class="toolbar">
     <button class="action-btn" onclick={loadInfo} disabled={loading}>
-      {loading ? 'Loading...' : 'Refresh'}
+      {loading ? t('common.loading') : t('tools.refresh')}
     </button>
   </div>
 
@@ -52,7 +53,7 @@
     {/each}
 
     {#if !sysInfo && !loading && !error}
-      <div class="empty">Click Refresh to load system info</div>
+      <div class="empty">{t('tools.clickRefresh')}</div>
     {/if}
   </div>
 </div>

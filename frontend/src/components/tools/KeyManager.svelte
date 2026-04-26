@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let {
     sessionId,
@@ -81,10 +82,10 @@
 
 <div class="key-manager">
   <div class="section-header">
-    <h3>SSH Key Manager</h3>
+    <h3>{t('tools.keyManager')}</h3>
     <div class="actions">
-      <button class="btn" onclick={loadKeys}>Refresh</button>
-      <button class="btn btn-primary" onclick={() => (showGenerate = true)}>Generate Key</button>
+      <button class="btn" onclick={loadKeys}>{t('tools.refresh')}</button>
+      <button class="btn btn-primary" onclick={() => (showGenerate = true)}>{t('tools.generateKey')}</button>
     </div>
   </div>
 
@@ -97,12 +98,12 @@
   {/if}
 
   {#if loading}
-    <div class="loading">Loading keys...</div>
+    <div class="loading">{t('tools.loadingKeys')}</div>
   {:else}
     <div class="keys-section">
-      <h4>Local Keys</h4>
+      <h4>{t('tools.localKeys')}</h4>
       {#if localKeys.length === 0}
-        <div class="empty">No local SSH keys found</div>
+        <div class="empty">{t('tools.noLocalKeys')}</div>
       {:else}
         <div class="key-list">
           {#each localKeys as key}
@@ -121,7 +122,7 @@
                     disabled={deploying === key.path}
                     onclick={() => deployKey(key.path)}
                   >
-                    {deploying === key.path ? 'Deploying...' : 'Deploy'}
+                    {deploying === key.path ? t('tools.deploying') : t('tools.deploy')}
                   </button>
                 {/if}
               </div>
@@ -133,9 +134,9 @@
 
     {#if sessionId}
       <div class="keys-section">
-        <h4>Remote Keys ({remoteKeys.length})</h4>
+        <h4>{t('tools.remoteKeys', { count: String(remoteKeys.length) })}</h4>
         {#if remoteKeys.length === 0}
-          <div class="empty">No keys found in remote authorized_keys</div>
+          <div class="empty">{t('tools.noRemoteKeys')}</div>
         {:else}
           <div class="key-list">
             {#each remoteKeys as key}
@@ -155,10 +156,10 @@
   {#if showGenerate}
     <div class="dialog-overlay" onclick={() => (showGenerate = false)}>
       <div class="dialog" onclick={(e) => e.stopPropagation()}>
-        <h3>Generate SSH Key Pair</h3>
+        <h3>{t('tools.generateTitle')}</h3>
 
         <div class="form-group">
-          <label for="gen-algorithm">Algorithm</label>
+          <label for="gen-algorithm">{t('tools.algorithm')}</label>
           <select id="gen-algorithm" bind:value={genAlgorithm}>
             <option value="ed25519">Ed25519</option>
             <option value="rsa">RSA 4096</option>
@@ -167,24 +168,24 @@
         </div>
 
         <div class="form-group">
-          <label for="gen-name">Key Name</label>
+          <label for="gen-name">{t('tools.keyName')}</label>
           <input id="gen-name" type="text" bind:value={genName} placeholder="id_muon" />
         </div>
 
         <div class="form-group">
-          <label for="gen-path">Full Path (optional)</label>
+          <label for="gen-path">{t('tools.fullPath')}</label>
           <input id="gen-path" type="text" bind:value={genPath} placeholder="~/.ssh/id_muon" />
         </div>
 
         <div class="form-group">
-          <label for="gen-passphrase">Passphrase (optional)</label>
+          <label for="gen-passphrase">{t('tools.passphrase')}</label>
           <input id="gen-passphrase" type="password" bind:value={genPassphrase} />
         </div>
 
         <div class="dialog-actions">
-          <button class="btn" onclick={() => (showGenerate = false)}>Cancel</button>
+          <button class="btn" onclick={() => (showGenerate = false)}>{t('common.cancel')}</button>
           <button class="btn btn-primary" disabled={generating} onclick={generateKey}>
-            {generating ? 'Generating...' : 'Generate'}
+            {generating ? t('tools.generating') : t('tools.generate')}
           </button>
         </div>
       </div>

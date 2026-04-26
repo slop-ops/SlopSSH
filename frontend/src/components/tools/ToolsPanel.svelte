@@ -8,21 +8,22 @@
   import PortViewer from './PortViewer.svelte'
   import KeyManager from './KeyManager.svelte'
   import PortForwarding from './PortForwarding.svelte'
+  import { t } from '$lib/utils/i18n'
 
   let { sessionId }: { sessionId: string } = $props()
 
   let activeTool = $state('processes')
 
   const tools = [
-    { id: 'processes', label: 'Processes' },
-    { id: 'logs', label: 'Logs' },
-    { id: 'disk', label: 'Disk' },
-    { id: 'search', label: 'Search' },
-    { id: 'sysinfo', label: 'System Info' },
-    { id: 'load', label: 'System Load' },
-    { id: 'ports', label: 'Ports' },
-    { id: 'keys', label: 'SSH Keys' },
-    { id: 'forwarding', label: 'Forwarding' },
+    { id: 'processes', label: () => t('tools.processes') },
+    { id: 'logs', label: () => t('tools.logs') },
+    { id: 'disk', label: () => t('tools.disk') },
+    { id: 'search', label: () => t('tools.search') },
+    { id: 'sysinfo', label: () => t('tools.sysinfo') },
+    { id: 'load', label: () => t('tools.load') },
+    { id: 'ports', label: () => t('tools.ports') },
+    { id: 'keys', label: () => t('tools.keys') },
+    { id: 'forwarding', label: () => t('tools.forwarding') },
   ]
 </script>
 
@@ -34,7 +35,7 @@
         class:active={activeTool === tool.id}
         onclick={() => (activeTool = tool.id)}
       >
-        {tool.label}
+        {tool.label()}
       </button>
     {/each}
   </div>

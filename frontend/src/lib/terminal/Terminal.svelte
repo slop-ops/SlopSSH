@@ -7,6 +7,7 @@
   import { darkTheme, lightTheme } from '$lib/terminal/themes'
   import { getTheme, getTerminalSettings } from '$lib/stores/theme'
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
   import '@xterm/xterm/css/xterm.css'
 
   let {
@@ -165,11 +166,11 @@
   {#if disconnected}
     <div class="disconnect-overlay">
       <div class="disconnect-content">
-        <p class="disconnect-msg">Connection lost</p>
+        <p class="disconnect-msg">{t('terminal.connectionLost')}</p>
         {#if error}
           <p class="disconnect-error">{error}</p>
         {/if}
-        <button class="reconnect-btn" onclick={reconnect}>Reconnect</button>
+        <button class="reconnect-btn" onclick={reconnect}>{t('terminal.reconnect')}</button>
       </div>
     </div>
   {/if}

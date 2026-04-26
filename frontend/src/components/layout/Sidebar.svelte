@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import ImportDialog from '$components/session/ImportDialog.svelte'
+  import { t } from '$lib/utils/i18n'
 
   let {
     onConnect,
@@ -70,9 +71,9 @@
 
 <div class="sidebar-content">
   <div class="header">
-    <h2>Sessions</h2>
+    <h2>{t('sidebar.sessions')}</h2>
     <div class="header-actions">
-      <button class="import-btn" onclick={() => (showImport = true)} title="Import SSH Config">&#8595;</button>
+      <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')}>&#8595;</button>
       <button class="add-btn" onclick={onNewSession}>+</button>
     </div>
   </div>
@@ -85,8 +86,8 @@
     {@const flatItems = flattenSessions(sessions)}
     {#if flatItems.length === 0}
       <div class="empty">
-        <p>No sessions configured</p>
-        <button class="empty-add" onclick={onNewSession}>+ Add Session</button>
+        <p>{t('sidebar.noSessions')}</p>
+        <button class="empty-add" onclick={onNewSession}>{t('sidebar.addSession')}</button>
       </div>
     {:else}
       {#each flatItems as { item, depth }}
@@ -101,7 +102,7 @@
               <span class="session-name">{item.name || item.host}</span>
               <span class="session-host">{item.username}@{item.host}:{item.port}</span>
               {#if connectingId === item.id}
-                <span class="connecting">Connecting...</span>
+                <span class="connecting">{t('sidebar.connecting')}</span>
               {/if}
             </button>
             <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }}>
@@ -112,16 +113,16 @@
       {/each}
     {/if}
   {:else}
-    <div class="loading">Loading...</div>
+    <div class="loading">{t('sidebar.loading')}</div>
   {/if}
 
   <div class="password-section">
-    <label for="password">Password</label>
+    <label for="password">{t('sidebar.password')}</label>
     <input
       id="password"
       type="password"
       bind:value={password}
-      placeholder="Enter password..."
+      placeholder={t('sidebar.enterPassword')}
       onkeydown={(e) => {
         if (e.key === 'Enter') {
           const firstItem = sessions?.items?.[0]

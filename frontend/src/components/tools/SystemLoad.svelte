@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -103,11 +104,11 @@
 <div class="system-load">
   <div class="toolbar">
     {#if running}
-      <button class="action-btn active" onclick={stop}>Stop</button>
+      <button class="action-btn active" onclick={stop}>{t('tools.stop')}</button>
     {:else}
-      <button class="action-btn primary" onclick={start}>Start Monitoring</button>
+      <button class="action-btn primary" onclick={start}>{t('tools.startMonitoring')}</button>
     {/if}
-    <button class="action-btn" onclick={() => { cpuHistory = []; memHistory = []; swapHistory = [] }}>Reset</button>
+    <button class="action-btn" onclick={() => { cpuHistory = []; memHistory = []; swapHistory = [] }}>{t('tools.reset')}</button>
   </div>
 
   {#if error}
@@ -117,7 +118,7 @@
   <div class="gauges">
     <div class="gauge">
       <div class="gauge-header">
-        <span class="gauge-label">CPU</span>
+        <span class="gauge-label">{t('tools.cpu')}</span>
         <span class="gauge-value">{cpu}%</span>
       </div>
       <div class="gauge-bar-container">
@@ -130,7 +131,7 @@
 
     <div class="gauge">
       <div class="gauge-header">
-        <span class="gauge-label">Memory</span>
+        <span class="gauge-label">{t('tools.memory')}</span>
         <span class="gauge-value">{mem}% ({memUsed} / {memTotal})</span>
       </div>
       <div class="gauge-bar-container">
@@ -143,7 +144,7 @@
 
     <div class="gauge">
       <div class="gauge-header">
-        <span class="gauge-label">Swap</span>
+        <span class="gauge-label">{t('tools.swap')}</span>
         <span class="gauge-value">{swap}%</span>
       </div>
       <div class="gauge-bar-container">
@@ -156,7 +157,7 @@
   </div>
 
   {#if !running && cpuHistory.length === 0}
-    <div class="empty">Click "Start Monitoring" to track CPU, memory, and swap usage</div>
+    <div class="empty">{t('tools.clickStart')}</div>
   {/if}
 </div>
 

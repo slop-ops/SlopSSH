@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -105,11 +106,11 @@
     <input
       type="text"
       bind:value={filter}
-      placeholder="Filter processes..."
+      placeholder={t('tools.filterProcesses')}
       class="filter-input"
     />
     <button class="action-btn" onclick={refresh} disabled={loading}>
-      {loading ? '...' : 'Refresh'}
+      {loading ? '...' : t('tools.refresh')}
     </button>
   </div>
 
@@ -140,7 +141,7 @@
             <td><span class="stat-badge">{p.stat}</span></td>
             <td class="cmd" title={p.command}>{p.command}</td>
             <td>
-              <button class="kill-btn" onclick={() => killProcess(p.pid)}>Kill</button>
+              <button class="kill-btn" onclick={() => killProcess(p.pid)}>{t('tools.kill')}</button>
             </td>
           </tr>
         {/each}
@@ -148,7 +149,7 @@
     </table>
 
     {#if filtered.length === 0 && !loading}
-      <div class="empty">{processes.length === 0 ? 'No process data' : 'No matches'}</div>
+      <div class="empty">{processes.length === 0 ? t('tools.noProcessData') : t('tools.noMatches')}</div>
     {/if}
   </div>
 </div>

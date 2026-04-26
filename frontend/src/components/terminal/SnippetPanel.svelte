@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let { onSend }: { onSend: (command: string) => void } = $props()
 
@@ -86,7 +87,7 @@
 
 <div class="snippet-panel">
   <div class="panel-header">
-    <h3>Snippets</h3>
+    <h3>{t('terminal.snippets')}</h3>
     <button class="add-btn" onclick={() => { resetForm(); showForm = true }}>+</button>
   </div>
 
@@ -94,20 +95,20 @@
     <input
       type="text"
       bind:value={search}
-      placeholder="Search snippets..."
+      placeholder={t('terminal.search')}
     />
   </div>
 
   {#if showForm}
     <div class="form">
-      <input type="text" bind:value={formName} placeholder="Name" />
-      <textarea bind:value={formCommand} placeholder="Command" rows="3"></textarea>
-      <input type="text" bind:value={formDescription} placeholder="Description (optional)" />
+      <input type="text" bind:value={formName} placeholder={t('terminal.snippetName')} />
+      <textarea bind:value={formCommand} placeholder={t('terminal.snippetCommand')} rows="3"></textarea>
+      <input type="text" bind:value={formDescription} placeholder={t('terminal.snippetDescription')} />
       <div class="form-actions">
         <button class="btn-save" onclick={saveSnippet}>
-          {editingId ? 'Update' : 'Save'}
+          {editingId ? t('terminal.update') : t('terminal.save')}
         </button>
-        <button class="btn-cancel" onclick={resetForm}>Cancel</button>
+        <button class="btn-cancel" onclick={resetForm}>{t('session.cancel')}</button>
       </div>
     </div>
   {/if}
@@ -128,7 +129,7 @@
 
     {#if filtered.length === 0}
       <div class="empty">
-        {search ? 'No matches' : 'No snippets yet'}
+        {search ? t('terminal.noMatches') : t('terminal.noSnippets')}
       </div>
     {/if}
   </div>

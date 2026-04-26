@@ -1,5 +1,6 @@
 <script lang="ts">
   import { portForwardStart, portForwardStop, portForwardList } from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let forwards: string[] = $state([])
   let bindHost = $state('127.0.0.1')
@@ -59,7 +60,7 @@
 </script>
 
 <div class="port-forward-panel">
-  <h3>Port Forwarding</h3>
+  <h3>{t('tools.portForwarding')}</h3>
 
   {#if error}
     <div class="error">{error}</div>
@@ -71,21 +72,21 @@
   <div class="forward-form">
     <div class="form-row">
       <label>
-        Direction
+        {t('tools.direction')}
         <select bind:value={direction}>
-          <option value="local">Local (-L)</option>
-          <option value="remote">Remote (-R)</option>
+          <option value="local">{t('tools.localForward')}</option>
+          <option value="remote">{t('tools.remoteForward')}</option>
         </select>
       </label>
     </div>
 
     <div class="form-row">
       <label>
-        Bind Host
+        {t('tools.bindHost')}
         <input type="text" bind:value={bindHost} placeholder="127.0.0.1" />
       </label>
       <label>
-        Bind Port
+        {t('tools.bindPort')}
         <input type="number" bind:value={bindPort} />
       </label>
     </div>
@@ -94,27 +95,27 @@
 
     <div class="form-row">
       <label>
-        Target Host
+        {t('tools.targetHost')}
         <input type="text" bind:value={targetHost} placeholder="localhost" />
       </label>
       <label>
-        Target Port
+        {t('tools.targetPort')}
         <input type="number" bind:value={targetPort} />
       </label>
     </div>
 
-    <button class="btn-primary" onclick={startForward}>Start Forward</button>
+    <button class="btn-primary" onclick={startForward}>{t('tools.startForward')}</button>
   </div>
 
   <div class="active-forwards">
-    <h4>Active Forwards ({forwards.length})</h4>
+    <h4>{t('tools.activeForwards', { count: String(forwards.length) })}</h4>
     {#if forwards.length === 0}
-      <p class="empty">No active port forwards</p>
+      <p class="empty">{t('tools.noForwards')}</p>
     {:else}
       {#each forwards as id}
         <div class="forward-item">
           <span class="forward-id">{id}</span>
-          <button class="btn-danger btn-small" onclick={() => stopForward(id)}>Stop</button>
+          <button class="btn-danger btn-small" onclick={() => stopForward(id)}>{t('tools.stop')}</button>
         </div>
       {/each}
     {/if}

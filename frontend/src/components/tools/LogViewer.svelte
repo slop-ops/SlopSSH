@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -67,7 +68,7 @@
     <input
       type="text"
       bind:value={logPath}
-      placeholder="/var/log/syslog"
+      placeholder={t('tools.logPath')}
       class="path-input"
       onkeydown={(e) => { if (e.key === 'Enter') loadLog() }}
     />
@@ -80,10 +81,10 @@
       title="Lines to show"
     />
     <button class="action-btn" onclick={loadLog} disabled={loading}>
-      {loading ? '...' : 'Load'}
+      {loading ? '...' : t('tools.load')}
     </button>
     <button class="action-btn" class:active={autoRefresh} onclick={toggleAutoRefresh}>
-      Auto
+      {t('tools.autoRefresh')}
     </button>
   </div>
 
@@ -91,11 +92,11 @@
     <input
       type="text"
       bind:value={searchQuery}
-      placeholder="Search in log..."
+      placeholder={t('tools.searchInLog')}
       class="search-input"
     />
     {#if searchQuery}
-      <span class="match-count">{matchCount} matches</span>
+      <span class="match-count">{t('tools.matches', { count: String(matchCount) })}</span>
     {/if}
   </div>
 
@@ -113,7 +114,7 @@
 
     {#if lines.length === 0 && !loading}
       <div class="empty">
-        {error ? '' : 'No log data — enter a path and click Load'}
+        {error ? '' : t('tools.noLogData')}
       </div>
     {/if}
   </div>

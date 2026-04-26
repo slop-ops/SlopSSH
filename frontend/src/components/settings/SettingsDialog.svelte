@@ -1,7 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { setTheme, persistTheme, setTerminalSettings } from '$lib/stores/theme'
-  import { loadLocale } from '$lib/utils/i18n'
+  import { loadLocale, t } from '$lib/utils/i18n'
 
   let { open = $bindable() }: { open: boolean } = $props()
 
@@ -13,12 +13,12 @@
   let activeTab = $state('general')
 
   const tabs = [
-    { id: 'general', label: 'General' },
-    { id: 'terminal', label: 'Terminal' },
-    { id: 'files', label: 'File Browser' },
-    { id: 'connection', label: 'Connection' },
-    { id: 'editor', label: 'Editor' },
-    { id: 'plugins', label: 'Plugins' },
+    { id: 'general', get label() { return t('settings.general') } },
+    { id: 'terminal', get label() { return t('settings.terminal') } },
+    { id: 'files', get label() { return t('settings.fileBrowser') } },
+    { id: 'connection', get label() { return t('settings.connection') } },
+    { id: 'editor', get label() { return t('settings.editor') } },
+    { id: 'plugins', get label() { return t('settings.plugins') } },
   ]
 
   let detectedEditors: any[] = $state([])
@@ -139,7 +139,7 @@
         terminal_scrollback: settings.terminal_scrollback,
         terminal_copy_on_select: settings.terminal_copy_on_select,
       })
-      success = 'Settings saved'
+      success = t('settings.saved')
       setTimeout(() => (success = ''), 2000)
     } catch (e) {
       error = String(e)
@@ -150,10 +150,10 @@
 </script>
 
 {#if open && settings}
-  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) open = false }} role="dialog" aria-modal="true" aria-label="Settings">
+  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) open = false }} role="dialog" aria-modal="true" aria-label={t('settings.title')}>
     <div class="dialog" role="document">
       <div class="dialog-header">
-        <h3>Settings</h3>
+        <h3>{t('settings.title')}</h3>
         <button class="close-btn" onclick={() => (open = false)}>x</button>
       </div>
 
@@ -176,7 +176,7 @@
         <div class="content" role="tabpanel" id="tabpanel-{activeTab}">
           {#if activeTab === 'general'}
             <div class="field">
-              <label>Language</label>
+              <label>{t('settings.language')}</label>
               <select bind:value={settings.language}>
                 <option value="en">English</option>
                 <option value="es">Spanish</option>
@@ -188,14 +188,14 @@
               </select>
             </div>
             <div class="field">
-              <label>Theme</label>
+              <label>{t('settings.theme')}</label>
               <select bind:value={settings.theme}>
-                <option value="dark">Dark</option>
-                <option value="light">Light</option>
+                <option value="dark">{t('settings.dark')}</option>
+                <option value="light">{t('settings.light')}</option>
               </select>
             </div>
             <div class="field">
-              <label>Log Level</label>
+              <label>{t('settings.logLevel')}</label>
               <select bind:value={settings.log_level}>
                 <option value="trace">Trace</option>
                 <option value="debug">Debug</option>
@@ -208,21 +208,21 @@
 
           {#if activeTab === 'terminal'}
             <div class="field">
-              <label>Font Family</label>
+              <label>{t('settings.fontFamily')}</label>
               <input type="text" bind:value={settings.font_family} />
             </div>
             <div class="field">
-              <label>Font Size</label>
+              <label>{t('settings.fontSize')}</label>
               <input type="number" bind:value={settings.font_size} min="8" max="32" />
             </div>
             <div class="field">
-              <label>Scrollback Lines</label>
+              <label>{t('settings.scrollback')}</label>
               <input type="number" bind:value={settings.terminal_scrollback} min="100" max="100000" />
             </div>
             <div class="field">
               <label class="checkbox-label">
                 <input type="checkbox" bind:checked={settings.terminal_copy_on_select} />
-                Copy on select
+                {t('settings.copyOnSelect')}
               </label>
             </div>
           {/if}
@@ -231,51 +231,51 @@
             <div class="field">
               <label class="checkbox-label">
                 <input type="checkbox" bind:checked={settings.show_hidden_files} />
-                Show hidden files
+                {t('settings.showHidden')}
               </label>
             </div>
             <div class="field">
               <label class="checkbox-label">
                 <input type="checkbox" bind:checked={settings.confirm_before_delete} />
-                Confirm before delete
+                {t('settings.confirmDelete')}
               </label>
             </div>
             <div class="field">
               <label class="checkbox-label">
                 <input type="checkbox" bind:checked={settings.confirm_before_overwrite} />
-                Confirm before overwrite
+                {t('settings.confirmOverwrite')}
               </label>
             </div>
             <div class="field">
-              <label>Default Editor</label>
+              <label>{t('settings.defaultEditor')}</label>
               <input type="text" bind:value={settings.default_edit_command} />
             </div>
             <div class="field">
-              <label>Parallel Transfers</label>
+              <label>{t('settings.parallelTransfers')}</label>
               <input type="number" bind:value={settings.transfer_parallel_count} min="1" max="16" />
             </div>
           {/if}
 
           {#if activeTab === 'connection'}
             <div class="field">
-              <label>Connection Timeout (seconds)</label>
+              <label>{t('settings.timeout')}</label>
               <input type="number" bind:value={settings.connection_timeout_secs} min="5" max="300" />
             </div>
             <div class="field">
-              <label>Keep-Alive Interval (seconds)</label>
+              <label>{t('settings.keepAlive')}</label>
               <input type="number" bind:value={settings.keep_alive_interval_secs} min="0" max="600" />
             </div>
           {/if}
 
           {#if activeTab === 'editor'}
             <div class="field">
-              <label>External Editor</label>
-              <input type="text" bind:value={settings.external_editor} placeholder="Auto-detected" />
+              <label>{t('settings.externalEditor')}</label>
+              <input type="text" bind:value={settings.external_editor} placeholder={t('settings.autoDetected')} />
               <span class="hint">Leave empty for auto-detection. Enter command name or full path.</span>
             </div>
             {#if detectedEditors.length > 0}
               <div class="field">
-                <label>Detected Editors</label>
+                <label>{t('settings.detectedEditors')}</label>
                 <div class="editor-list">
                   {#each detectedEditors as editor}
                     <button
@@ -291,7 +291,7 @@
               </div>
             {:else}
               <div class="field">
-                <span class="hint">No editors detected on this system.</span>
+                <span class="hint">{t('settings.noEditors')}</span>
               </div>
             {/if}
           {/if}
@@ -299,12 +299,12 @@
           {#if activeTab === 'plugins'}
             <div class="plugin-container">
               {#if pluginLoading}
-                <div class="hint">Loading plugins...</div>
+                <div class="hint">{t('settings.loadingPlugins')}</div>
               {:else if plugins.length === 0}
                 <div class="field">
-                  <span class="hint">No plugins found. Place .wasm files in ~/.config/muon-ssh/plugins/</span>
+                  <span class="hint">{t('settings.noPlugins')}</span>
                 </div>
-                <button class="cancel-btn" onclick={loadPlugins}>Rescan</button>
+                <button class="cancel-btn" onclick={loadPlugins}>{t('settings.rescan')}</button>
               {:else}
                 <div class="plugin-layout">
                   <div class="plugin-sidebar">
@@ -327,7 +327,7 @@
                         <span class="plugin-version">v{plugin.version}</span>
                       </button>
                     {/each}
-                    <button class="cancel-btn" style="margin-top: 8px; width: 100%;" onclick={loadPlugins}>Rescan</button>
+                    <button class="cancel-btn" style="margin-top: 8px; width: 100%;" onclick={loadPlugins}>{t('settings.rescan')}</button>
                   </div>
                   <div class="plugin-detail">
                     {#if selectedPluginId}
@@ -336,15 +336,15 @@
                         <div class="plugin-detail-header">
                           <div>
                             <h4 class="plugin-detail-name">{selected.name}</h4>
-                            <span class="hint">by {selected.author || 'Unknown'} &middot; v{selected.version}</span>
+                            <span class="hint">{t('settings.by', { author: selected.author || 'Unknown' })} &middot; v{selected.version}</span>
                           </div>
-                          <button class="danger-btn" onclick={() => removePlugin(selected.id)}>Remove</button>
+                          <button class="danger-btn" onclick={() => removePlugin(selected.id)}>{t('settings.remove')}</button>
                         </div>
                         {#if selected.description}
                           <p class="plugin-desc">{selected.description}</p>
                         {/if}
                         <div class="plugin-capabilities">
-                          <label>Capabilities</label>
+                          <label>{t('settings.capabilities')}</label>
                           <div class="cap-list">
                             {#each (selected.capabilities || []) as cap}
                               <span class="cap-badge">{cap}</span>
@@ -352,7 +352,7 @@
                           </div>
                         </div>
                         <div class="plugin-settings-section">
-                          <label>Plugin Settings</label>
+                          <label>{t('settings.pluginSettings')}</label>
                           {#if pluginSettingsMap[selectedPluginId]}
                             {#each Object.entries(pluginSettingsMap[selectedPluginId]) as [key, value]}
                               {#if value}
@@ -364,25 +364,25 @@
                               {/if}
                             {/each}
                           {:else}
-                            <span class="hint">No settings configured.</span>
+                            <span class="hint">{t('settings.noSettings')}</span>
                           {/if}
                           <div class="add-setting-row">
                             <input
                               type="text"
-                              placeholder="Key"
+                              placeholder={t('settings.key')}
                               bind:value={newSettingKey}
                             />
                             <input
                               type="text"
-                              placeholder="Value"
+                              placeholder={t('settings.value')}
                               bind:value={newSettingValue}
                             />
-                            <button class="save-btn" onclick={savePluginSetting} disabled={!newSettingKey.trim()}>Add</button>
+                            <button class="save-btn" onclick={savePluginSetting} disabled={!newSettingKey.trim()}>{t('settings.add')}</button>
                           </div>
                         </div>
                       {/if}
                     {:else}
-                      <div class="hint">Select a plugin to view details.</div>
+                      <div class="hint">{t('settings.selectPlugin')}</div>
                     {/if}
                   </div>
                 </div>
@@ -400,9 +400,9 @@
 
         <div class="actions">
           <button class="save-btn" onclick={save} disabled={saving}>
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('settings.saving') : t('settings.save')}
           </button>
-          <button class="cancel-btn" onclick={() => (open = false)}>Close</button>
+          <button class="cancel-btn" onclick={() => (open = false)}>{t('settings.close')}</button>
         </div>
       </div>
     </div>

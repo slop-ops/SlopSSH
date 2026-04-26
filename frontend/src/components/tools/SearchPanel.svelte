@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -45,7 +46,7 @@
   <div class="toolbar">
     <div class="search-fields">
       <div class="field-row">
-        <label>Dir</label>
+        <label>{t('tools.directory')}</label>
         <input
           type="text"
           bind:value={searchDir}
@@ -54,7 +55,7 @@
         />
       </div>
       <div class="field-row">
-        <label>Name</label>
+        <label>{t('tools.namePattern')}</label>
         <input
           type="text"
           bind:value={pattern}
@@ -64,7 +65,7 @@
         />
       </div>
       <div class="field-row">
-        <label>Content</label>
+        <label>{t('tools.contentPattern')}</label>
         <input
           type="text"
           bind:value={contentFilter}
@@ -76,7 +77,7 @@
     </div>
     <div class="search-actions">
       <button class="action-btn primary" onclick={searchFiles} disabled={loading || !pattern.trim()}>
-        {loading ? '...' : 'Search'}
+        {loading ? '...' : t('tools.searchInFiles')}
       </button>
     </div>
   </div>
@@ -86,7 +87,7 @@
   {/if}
 
   <div class="results-header">
-    <span class="results-count">{results.length} results</span>
+    <span class="results-count">{t('tools.resultsCount', { count: String(results.length) })}</span>
     <select bind:value={maxResults} class="limit-select">
       <option value={50}>50</option>
       <option value={100}>100</option>
@@ -104,7 +105,7 @@
     {/each}
 
     {#if results.length === 0 && !loading && !error}
-      <div class="empty">Enter a search pattern to find files</div>
+      <div class="empty">{t('tools.enterPattern')}</div>
     {/if}
   </div>
 </div>

@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { t } from '$lib/utils/i18n'
+
   interface FileEntry {
     name: string
     path: string
@@ -71,9 +73,9 @@
   <thead>
     <tr>
       <th class="col-icon"></th>
-      <th class="col-name">Name</th>
-      <th class="col-size">Size</th>
-      <th class="col-modified">Modified</th>
+      <th class="col-name">{t('files.name')}</th>
+      <th class="col-size">{t('files.size')}</th>
+      <th class="col-modified">{t('files.modified')}</th>
       <th class="col-actions"></th>
     </tr>
   </thead>
@@ -99,10 +101,10 @@
         <td class="col-size">{entry.isDir ? '-' : formatSize(entry.size)}</td>
         <td class="col-modified">{formatDate(entry.modified)}</td>
         <td class="col-actions">
-          <button class="action-btn" onclick={(e: MouseEvent) => { e.preventDefault(); onRename(entry) }} title="Rename">
+          <button class="action-btn" onclick={(e: MouseEvent) => { e.preventDefault(); onRename(entry) }} title={t('files.rename')}>
             R
           </button>
-          <button class="action-btn delete" onclick={(e: MouseEvent) => { e.preventDefault(); onDelete(entry) }} title="Delete">
+          <button class="action-btn delete" onclick={(e: MouseEvent) => { e.preventDefault(); onDelete(entry) }} title={t('files.delete')}>
             x
           </button>
         </td>

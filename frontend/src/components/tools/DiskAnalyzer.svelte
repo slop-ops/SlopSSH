@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -86,7 +87,7 @@
       onkeydown={(e) => { if (e.key === 'Enter') scan() }}
     />
     <button class="action-btn" onclick={scan} disabled={loading}>
-      {loading ? '...' : 'Scan'}
+      {loading ? '...' : t('tools.scan')}
     </button>
   </div>
 
@@ -95,8 +96,8 @@
   {/if}
 
   <div class="summary">
-    <span>{diskUsage.length} items</span>
-    <span>Total: {formatTotal(totalSize)}</span>
+    <span>{t('tools.items', { count: String(diskUsage.length) })}</span>
+    <span>{t('tools.total', { size: formatTotal(totalSize) })}</span>
   </div>
 
   <div class="disk-list">
@@ -114,7 +115,7 @@
 
     {#if diskUsage.length === 0 && !loading}
       <div class="empty">
-        {error ? '' : 'Enter a path and click Scan to analyze disk usage'}
+        {error ? '' : t('tools.enterPath')}
       </div>
     {/if}
   </div>

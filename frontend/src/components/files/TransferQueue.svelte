@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { listen } from '@tauri-apps/api/event'
+  import { t } from '$lib/utils/i18n'
 
   interface TransferProgress {
     id: string
@@ -73,14 +74,14 @@
   <div class="transfer-queue" class:collapsed={!expanded}>
     <div class="header" onclick={() => (expanded = !expanded)}>
       <span class="title">
-        Transfers
+        {t('files.transfers')}
         {#if activeCount > 0}
           <span class="badge">{activeCount}</span>
         {/if}
       </span>
       <div class="header-actions">
         {#if completedCount > 0}
-          <button class="clear-btn" onclick={(e: Event) => { e.stopPropagation(); clearCompleted() }}>Clear</button>
+          <button class="clear-btn" onclick={(e: Event) => { e.stopPropagation(); clearCompleted() }}>{t('files.clear')}</button>
         {/if}
         <span class="expand-icon">{expanded ? 'v' : '^'}</span>
       </div>

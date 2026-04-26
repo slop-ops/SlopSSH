@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let {
     sessionId,
@@ -64,7 +65,7 @@
 
   async function handleClose() {
     if (modified) {
-      const discard = confirm('Unsaved changes. Discard and close?')
+      const discard = confirm(t('files.unsaved'))
       if (!discard) return
     }
     onclose()
@@ -92,7 +93,7 @@
 
     <div class="editor-container">
       {#if loading}
-        <div class="loading">Loading file...</div>
+        <div class="loading">{t('files.loadFile')}</div>
       {:else}
         {#if error}
           <div class="error">{error}</div>
@@ -101,10 +102,10 @@
           <span class="filename">{filePath}</span>
           <div class="toolbar-actions">
             {#if modified}
-              <span class="modified">Modified</span>
+              <span class="modified">{t('files.modified')}</span>
             {/if}
             <button class="save-btn" onclick={saveFile} disabled={!modified || saving}>
-              {saving ? 'Saving...' : 'Save (Ctrl+S)'}
+              {saving ? t('files.saving') : t('files.saveCtrl')}
             </button>
           </div>
         </div>

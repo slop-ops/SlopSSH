@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
   import type { AuthType } from '$lib/types'
 
   let { onclose }: { onclose: () => void } = $props()
@@ -16,7 +17,7 @@
 
   async function save() {
     if (!host.trim() || !username.trim()) {
-      error = 'Host and username are required'
+      error = t('session.hostRequired')
       return
     }
     saving = true
@@ -49,7 +50,7 @@
 <div class="overlay" onclick={onclose} role="presentation">
   <div class="dialog" onclick={(e: Event) => e.stopPropagation()} role="dialog">
     <div class="dialog-header">
-      <h2>New Session</h2>
+      <h2>{t('session.newSession')}</h2>
       <button class="close-btn" onclick={onclose}>x</button>
     </div>
 
@@ -59,51 +60,51 @@
 
     <div class="form">
       <label>
-        <span>Name</span>
-        <input type="text" bind:value={name} placeholder="My Server" />
+        <span>{t('session.name')}</span>
+        <input type="text" bind:value={name} placeholder={t('session.name')} />
       </label>
 
       <div class="row">
         <label class="host">
-          <span>Host</span>
+          <span>{t('session.host')}</span>
           <input type="text" bind:value={host} placeholder="192.168.1.1" />
         </label>
         <label class="port">
-          <span>Port</span>
+          <span>{t('session.port')}</span>
           <input type="number" bind:value={port} min={1} max={65535} />
         </label>
       </div>
 
       <label>
-        <span>Username</span>
-        <input type="text" bind:value={username} placeholder="root" />
+        <span>{t('session.username')}</span>
+        <input type="text" bind:value={username} placeholder={t('session.username')} />
       </label>
 
       <label>
-        <span>Authentication</span>
+        <span>{t('session.authType')}</span>
         <select bind:value={authType}>
-          <option value="password">Password</option>
-          <option value="public_key">Public Key</option>
+          <option value="password">{t('session.password')}</option>
+          <option value="public_key">{t('session.publicKey')}</option>
         </select>
       </label>
 
       {#if authType === 'password'}
         <label>
-          <span>Password</span>
-          <input type="password" bind:value={password} placeholder="Enter password" />
+          <span>{t('session.password')}</span>
+          <input type="password" bind:value={password} placeholder={t('session.enterPassword')} />
         </label>
       {:else}
         <label>
-          <span>Private Key Path</span>
+          <span>{t('session.keyPath')}</span>
           <input type="text" bind:value={keyPath} placeholder="~/.ssh/id_rsa" />
         </label>
       {/if}
     </div>
 
     <div class="dialog-footer">
-      <button class="btn-cancel" onclick={onclose}>Cancel</button>
+      <button class="btn-cancel" onclick={onclose}>{t('session.cancel')}</button>
       <button class="btn-save" onclick={save} disabled={saving}>
-        {saving ? 'Saving...' : 'Create'}
+        {saving ? t('session.saving') : t('session.create')}
       </button>
     </div>
   </div>

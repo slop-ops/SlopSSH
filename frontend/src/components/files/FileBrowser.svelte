@@ -3,6 +3,7 @@
   import ContextMenu from '../common/ContextMenu.svelte'
   import FileEditor from './FileEditor.svelte'
   import * as api from '$lib/api/invoke'
+  import { t } from '$lib/utils/i18n'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -71,7 +72,7 @@
   }
 
   async function createDirectory() {
-    const name = prompt('Directory name:')
+    const name = prompt(t('files.newFolder'))
     if (!name) return
     const path = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`
     try {
@@ -83,7 +84,7 @@
   }
 
   async function deleteEntry(entry: any) {
-    if (!confirm(`Delete ${entry.name}?`)) return
+    if (!confirm(t('files.delete') + ' ' + entry.name + '?')) return
     try {
       await api.sftpRemove(sessionId, entry.path)
       await loadDir(currentPath)
@@ -93,7 +94,7 @@
   }
 
   async function renameEntry(entry: any) {
-    const newName = prompt('New name:', entry.name)
+    const newName = prompt(t('files.rename'), entry.name)
     if (!newName || newName === entry.name) return
     const newPath = currentPath === '/' ? `/${newName}` : `${currentPath}/${newName}`
     try {
@@ -253,21 +254,21 @@
   function getContextMenuItems() {
     if (!contextMenu?.entry) {
       return [
-        { label: 'New Folder', action: 'mkdir' },
+        { label: t('files.newFolder'), action: 'mkdir' },
         { label: '', separator: true },
-        { label: 'Refresh', action: 'refresh' },
+        { label: t('files.refresh'), action: 'refresh' },
       ]
     }
     const entry = contextMenu.entry
     return [
-      ...(entry.isDir ? [{ label: 'Open', action: 'open' }] : [{ label: 'Edit', action: 'edit' }]),
-      { label: 'Rename', action: 'rename' },
-      { label: 'Delete', action: 'delete' },
+      ...(entry.isDir ? [{ label: t('files.open'), action: 'open' }] : [{ label: t('files.edit'), action: 'edit' }]),
+      { label: t('files.rename'), action: 'rename' },
+      { label: t('files.delete'), action: 'delete' },
       { label: '', separator: true },
-      ...(isArchive(entry.name) ? [{ label: 'Extract Here', action: 'extract' }] : []),
-      ...(entry.isDir ? [{ label: 'Archive (tar.gz)', action: 'archive' }] : []),
+      ...(isArchive(entry.name) ? [{ label: t('files.extractHere'), action: 'extract' }] : []),
+      ...(entry.isDir ? [{ label: t('files.archive'), action: 'archive' }] : []),
       { label: '', separator: true },
-      { label: 'New Folder', action: 'mkdir' },
+      { label: t('files.newFolder'), action: 'mkdir' },
     ]
   }
 </script>
@@ -299,15 +300,15 @@
       </div>
     {/if}
     <div class="address-actions">
-      <button class="icon-btn" onclick={goUp} title="Go up">..</button>
-      <button class="icon-btn" onclick={() => loadDir(currentPath)} title="Refresh">R</button>
-      <button class="icon-btn" onclick={createDirectory} title="New folder">+</button>
+      <button class="icon-btn" onclick={goUp} title={t('files.goUp')}>..</button>
+      <button class="icon-btn" onclick={() => loadDir(currentPath)} title={t('files.refresh')}>R</button>
+      <button class="icon-btn" onclick={createDirectory} title={t('files.newFolder')}>+</button>
     </div>
   </div>
 
   {#if dragOverState}
     <div class="drop-overlay">
-      <div class="drop-message">Drop files here to upload</div>
+      <div class="drop-message">{t('files.dropHere')}</div>
     </div>
   {/if}
 
@@ -317,9 +318,9 @@
 
   <div class="file-content">
     {#if loading}
-      <div class="loading">Loading...</div>
+      <div class="loading">{t('files.loading')}</div>
     {:else if entries.length === 0}
-      <div class="empty">Empty directory</div>
+      <div class="empty">{t('files.empty')}</div>
     {:else}
       <FileList
         {entries}

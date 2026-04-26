@@ -4,7 +4,8 @@
   import { FitAddon } from '@xterm/addon-fit'
   import { WebglAddon } from '@xterm/addon-webgl'
   import { listen } from '@tauri-apps/api/event'
-  import { darkTheme } from '$lib/terminal/themes'
+  import { darkTheme, lightTheme } from '$lib/terminal/themes'
+  import { getTheme, getTerminalSettings } from '$lib/stores/theme'
   import * as api from '$lib/api/invoke'
   import '@xterm/xterm/css/xterm.css'
 
@@ -23,12 +24,14 @@
   onMount(async () => {
     if (!terminalEl) return
 
+    const settings = getTerminalSettings()
+    const theme = getTheme() === 'light' ? lightTheme : darkTheme
     terminal = new Terminal({
-      theme: darkTheme,
-      fontFamily: 'JetBrains Mono, monospace',
-      fontSize: 14,
+      theme,
+      fontFamily: settings.font_family || 'JetBrains Mono, monospace',
+      fontSize: settings.font_size || 14,
       cursorBlink: true,
-      scrollback: 10000,
+      scrollback: settings.terminal_scrollback || 10000,
     })
 
     fitAddon = new FitAddon()
@@ -62,7 +65,7 @@
     })
 
     terminal.onSelectionChange(() => {
-      if (terminal?.hasSelection()) {
+      if (terminal?.hasSelection() && getTerminalSettings().terminal_copy_on_select) {
         const selection = terminal.getSelection()
         if (selection) {
           navigator.clipboard.writeText(selection).catch(() => {})

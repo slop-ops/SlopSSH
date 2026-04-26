@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
-  import { setTheme, persistTheme } from '$lib/stores/theme'
+  import { setTheme, persistTheme, setTerminalSettings } from '$lib/stores/theme'
+  import { loadLocale } from '$lib/utils/i18n'
 
   let { open = $bindable() }: { open: boolean } = $props()
 
@@ -129,6 +130,15 @@
         setTheme(settings.theme)
         persistTheme(settings.theme)
       }
+      if (settings.language) {
+        await loadLocale(settings.language)
+      }
+      setTerminalSettings({
+        font_family: settings.font_family,
+        font_size: settings.font_size,
+        terminal_scrollback: settings.terminal_scrollback,
+        terminal_copy_on_select: settings.terminal_copy_on_select,
+      })
       success = 'Settings saved'
       setTimeout(() => (success = ''), 2000)
     } catch (e) {

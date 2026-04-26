@@ -207,5 +207,27 @@ pub fn run() {
 }
 
 fn main() {
+    std::panic::set_hook(Box::new(|panic_info| {
+        let message = panic_info
+            .payload()
+            .downcast_ref::<&str>()
+            .map(|s| s.to_string())
+            .or_else(|| panic_info.payload().downcast_ref::<String>().cloned())
+            .unwrap_or_else(|| "unknown panic".to_string());
+
+        let location = panic_info
+            .location()
+            .map(|loc| format!("{}:{}:{}", loc.file(), loc.line(), loc.column()))
+            .unwrap_or_else(|| "unknown location".to_string());
+
+        tracing::error!(
+            panic_message = %message,
+            panic_location = %location,
+            "Application panic occurred"
+        );
+
+        eprintln!("FATAL: {} at {}", message, location);
+    }));
+
     run();
 }

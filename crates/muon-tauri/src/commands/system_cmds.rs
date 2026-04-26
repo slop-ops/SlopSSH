@@ -16,9 +16,10 @@ pub async fn save_settings(
     settings: serde_json::Value,
 ) -> Result<(), String> {
     let mut state = state.lock().await;
-    let new_settings: muon_core::config::settings::Settings =
+    let mut new_settings: muon_core::config::settings::Settings =
         serde_json::from_value(settings).map_err(|e| e.to_string())?;
-    muon_core::config::settings::SettingsManager::save(&new_settings).map_err(|e| e.to_string())?;
+    muon_core::config::settings::SettingsManager::save(&mut new_settings)
+        .map_err(|e| e.to_string())?;
     state.settings = new_settings;
     Ok(())
 }

@@ -48,22 +48,71 @@ impl Default for Settings {
     }
 }
 
+impl Settings {
+    pub fn validate(&mut self) {
+        if self.font_size == 0 {
+            self.font_size = 14;
+        }
+        self.font_size = self.font_size.clamp(6, 72);
+
+        if self.terminal_scrollback == 0 {
+            self.terminal_scrollback = 10000;
+        }
+        self.terminal_scrollback = self.terminal_scrollback.clamp(100, 1_000_000);
+
+        if self.transfer_parallel_count == 0 {
+            self.transfer_parallel_count = 4;
+        }
+        self.transfer_parallel_count = self.transfer_parallel_count.clamp(1, 16);
+
+        if self.connection_timeout_secs == 0 {
+            self.connection_timeout_secs = 30;
+        }
+        self.connection_timeout_secs = self.connection_timeout_secs.clamp(5, 300);
+
+        if self.keep_alive_interval_secs == 0 {
+            self.keep_alive_interval_secs = 60;
+        }
+        self.keep_alive_interval_secs = self.keep_alive_interval_secs.clamp(10, 3600);
+
+        let valid_log_levels = ["trace", "debug", "info", "warn", "error"];
+        if !valid_log_levels.contains(&self.log_level.as_str()) {
+            self.log_level = "info".to_string();
+        }
+
+        let valid_themes = ["dark", "light"];
+        if !valid_themes.contains(&self.theme.as_str()) {
+            self.theme = "dark".to_string();
+        }
+
+        if self.language.is_empty() {
+            self.language = "en".to_string();
+        }
+
+        if self.font_family.trim().is_empty() {
+            self.font_family = "JetBrains Mono".to_string();
+        }
+    }
+}
+
 pub struct SettingsManager;
 
 impl SettingsManager {
     pub fn load() -> anyhow::Result<Settings> {
         let path = paths::settings_file()?;
         if !path.exists() {
-            let settings = Settings::default();
-            Self::save(&settings)?;
+            let mut settings = Settings::default();
+            Self::save(&mut settings)?;
             return Ok(settings);
         }
         let content = std::fs::read_to_string(&path)?;
-        let settings: Settings = toml::from_str(&content)?;
+        let mut settings: Settings = toml::from_str(&content)?;
+        settings.validate();
         Ok(settings)
     }
 
-    pub fn save(settings: &Settings) -> anyhow::Result<()> {
+    pub fn save(settings: &mut Settings) -> anyhow::Result<()> {
+        settings.validate();
         let path = paths::settings_file()?;
         let content = toml::to_string_pretty(settings)?;
         std::fs::write(&path, content)?;
@@ -115,5 +164,121 @@ theme = "light"
         assert_eq!(parsed.theme, "light");
         assert_eq!(parsed.font_family, "JetBrains Mono");
         assert_eq!(parsed.font_size, 14);
+    }
+
+    #[test]
+    fn test_validate_clamps_font_size() {
+        let mut s = Settings {
+            font_size: 0,
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.font_size, 14);
+
+        s.font_size = 100;
+        s.validate();
+        assert_eq!(s.font_size, 72);
+    }
+
+    #[test]
+    fn test_validate_clamps_scrollback() {
+        let mut s = Settings {
+            terminal_scrollback: 0,
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.terminal_scrollback, 10000);
+
+        s.terminal_scrollback = 50;
+        s.validate();
+        assert_eq!(s.terminal_scrollback, 100);
+    }
+
+    #[test]
+    fn test_validate_clamps_timeout() {
+        let mut s = Settings {
+            connection_timeout_secs: 0,
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.connection_timeout_secs, 30);
+
+        s.connection_timeout_secs = 500;
+        s.validate();
+        assert_eq!(s.connection_timeout_secs, 300);
+    }
+
+    #[test]
+    fn test_validate_clamps_keep_alive() {
+        let mut s = Settings {
+            keep_alive_interval_secs: 0,
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.keep_alive_interval_secs, 60);
+    }
+
+    #[test]
+    fn test_validate_clamps_parallel_count() {
+        let mut s = Settings {
+            transfer_parallel_count: 0,
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.transfer_parallel_count, 4);
+
+        s.transfer_parallel_count = 50;
+        s.validate();
+        assert_eq!(s.transfer_parallel_count, 16);
+    }
+
+    #[test]
+    fn test_validate_fixes_invalid_log_level() {
+        let mut s = Settings {
+            log_level: "verbose".to_string(),
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.log_level, "info");
+    }
+
+    #[test]
+    fn test_validate_fixes_invalid_theme() {
+        let mut s = Settings {
+            theme: "blue".to_string(),
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.theme, "dark");
+    }
+
+    #[test]
+    fn test_validate_fixes_empty_language() {
+        let mut s = Settings {
+            language: "".to_string(),
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.language, "en");
+    }
+
+    #[test]
+    fn test_validate_fixes_empty_font_family() {
+        let mut s = Settings {
+            font_family: "   ".to_string(),
+            ..Default::default()
+        };
+        s.validate();
+        assert_eq!(s.font_family, "JetBrains Mono");
+    }
+
+    #[test]
+    fn test_validate_preserves_valid_settings() {
+        let mut s = Settings::default();
+        s.validate();
+        assert_eq!(s.font_size, 14);
+        assert_eq!(s.language, "en");
+        assert_eq!(s.theme, "dark");
+        assert_eq!(s.log_level, "info");
     }
 }

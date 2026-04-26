@@ -1,3 +1,39 @@
+pub fn validate_sftp_path(path: &str) -> Result<String, String> {
+    if path.trim().is_empty() {
+        return Err("Path cannot be empty".to_string());
+    }
+    if path.contains('\0') {
+        return Err("Path contains null bytes".to_string());
+    }
+    let normalized = if path.starts_with('/') || path.starts_with('~') {
+        normalize_path(path)
+    } else {
+        normalize_path(&format!("./{}", path))
+    };
+    Ok(normalized)
+}
+
+fn normalize_path(path: &str) -> String {
+    let parts: Vec<&str> = path.split('/').collect();
+    let mut result: Vec<&str> = Vec::new();
+    for part in parts {
+        match part {
+            "" | "." => {}
+            ".." => {
+                result.pop();
+            }
+            _ => result.push(part),
+        }
+    }
+    if path.starts_with('/') {
+        format!("/{}", result.join("/"))
+    } else if result.is_empty() {
+        ".".to_string()
+    } else {
+        result.join("/")
+    }
+}
+
 pub fn shell_escape(s: &str) -> String {
     if s.contains(' ')
         || s.contains('"')
@@ -220,5 +256,69 @@ mod tests {
     fn test_derive_machine_key_is_32_bytes() {
         let key = derive_machine_key();
         assert_eq!(key.len(), 32);
+    }
+
+    #[test]
+    fn test_validate_sftp_path_absolute() {
+        assert_eq!(
+            validate_sftp_path("/home/user/file.txt").unwrap(),
+            "/home/user/file.txt"
+        );
+    }
+
+    #[test]
+    fn test_validate_sftp_path_root() {
+        assert_eq!(validate_sftp_path("/").unwrap(), "/");
+    }
+
+    #[test]
+    fn test_validate_sftp_path_empty() {
+        assert!(validate_sftp_path("").is_err());
+    }
+
+    #[test]
+    fn test_validate_sftp_path_whitespace() {
+        assert!(validate_sftp_path("   ").is_err());
+    }
+
+    #[test]
+    fn test_validate_sftp_path_null_bytes() {
+        assert!(validate_sftp_path("/foo\0bar").is_err());
+    }
+
+    #[test]
+    fn test_validate_sftp_path_traversal() {
+        let result = validate_sftp_path("/home/user/../../etc/passwd").unwrap();
+        assert_eq!(result, "/etc/passwd");
+    }
+
+    #[test]
+    fn test_validate_sftp_path_double_dots() {
+        let result = validate_sftp_path("/a/b/../c").unwrap();
+        assert_eq!(result, "/a/c");
+    }
+
+    #[test]
+    fn test_validate_sftp_path_dots() {
+        let result = validate_sftp_path("/a/./b/./c").unwrap();
+        assert_eq!(result, "/a/b/c");
+    }
+
+    #[test]
+    fn test_validate_sftp_path_tilde() {
+        let result = validate_sftp_path("~/documents").unwrap();
+        assert_eq!(result, "~/documents");
+    }
+
+    #[test]
+    fn test_normalize_path_trailing_parent() {
+        let result = validate_sftp_path("/home/user/..").unwrap();
+        assert_eq!(result, "/home");
+    }
+
+    #[test]
+    fn test_normalize_path_complex() {
+        let result = validate_sftp_path("/a/b/../../c").unwrap();
+        assert_eq!(result, "/c");
     }
 }

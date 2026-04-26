@@ -24,6 +24,8 @@ pub async fn create_session(
     if info.id.is_empty() {
         info.id = uuid::Uuid::new_v4().to_string();
     }
+    info.validate()
+        .map_err(|e| format!("Invalid session: {}", e))?;
     let id = info.id.clone();
     let folder_id = info.folder_id.clone();
     state.session_store.add_session(folder_id.as_deref(), info);
@@ -40,6 +42,9 @@ pub async fn update_session(
     tracing::debug!("update_session");
     let mut state = state.lock().await;
     let updated: SessionInfo = serde_json::from_value(session).map_err(|e| e.to_string())?;
+    updated
+        .validate()
+        .map_err(|e| format!("Invalid session: {}", e))?;
     let root = state.session_store.root_mut();
     remove_session_from_tree(root, &updated.id);
     let folder_id = updated.folder_id.clone();

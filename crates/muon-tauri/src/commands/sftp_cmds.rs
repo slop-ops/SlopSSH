@@ -8,6 +8,10 @@ use tokio::sync::Mutex;
 
 use crate::AppState;
 
+fn validate_path(path: &str) -> Result<String, String> {
+    muon_core::utils::validate_sftp_path(path)
+}
+
 async fn get_sftp(
     state: &tauri::async_runtime::Mutex<AppState>,
     session_id: &str,
@@ -75,6 +79,7 @@ pub async fn sftp_list_dir(
     path: String,
 ) -> Result<serde_json::Value, String> {
     tracing::debug!(session_id = %session_id, path = %path, "SFTP list_dir");
+    let path = validate_path(&path)?;
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -122,6 +127,7 @@ pub async fn sftp_mkdir(
     path: String,
 ) -> Result<(), String> {
     tracing::debug!(session_id = %session_id, path = %path, "SFTP mkdir");
+    let path = validate_path(&path)?;
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -137,6 +143,7 @@ pub async fn sftp_remove(
     path: String,
 ) -> Result<(), String> {
     tracing::debug!(session_id = %session_id, path = %path, "SFTP remove");
+    let path = validate_path(&path)?;
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -159,6 +166,8 @@ pub async fn sftp_rename(
     to: String,
 ) -> Result<(), String> {
     tracing::debug!(session_id = %session_id, from = %from, to = %to, "SFTP rename");
+    let from = validate_path(&from)?;
+    let to = validate_path(&to)?;
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -174,6 +183,7 @@ pub async fn sftp_read_file(
     path: String,
 ) -> Result<String, String> {
     tracing::debug!(session_id = %session_id, path = %path, "SFTP read_file");
+    let path = validate_path(&path)?;
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -194,6 +204,7 @@ pub async fn sftp_write_file(
     data: String,
 ) -> Result<(), String> {
     tracing::debug!(session_id = %session_id, path = %path, "SFTP write_file");
+    let path = validate_path(&path)?;
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -212,6 +223,7 @@ pub async fn sftp_stat(
     path: String,
 ) -> Result<serde_json::Value, String> {
     tracing::debug!(session_id = %session_id, path = %path, "SFTP stat");
+    let path = validate_path(&path)?;
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -256,6 +268,7 @@ pub async fn sftp_upload_sudo(
     data: String,
 ) -> Result<(), String> {
     tracing::debug!(session_id = %session_id, path = %remote_path, "SFTP upload_sudo");
+    let remote_path = validate_path(&remote_path)?;
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(&data)
@@ -320,6 +333,7 @@ pub async fn sftp_download_sudo(
     remote_path: String,
 ) -> Result<String, String> {
     tracing::debug!(session_id = %session_id, path = %remote_path, "SFTP download_sudo");
+    let remote_path = validate_path(&remote_path)?;
     let handle = {
         let state = state.lock().await;
         state

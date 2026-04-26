@@ -19,6 +19,10 @@ pub async fn ssh_connect(
             .ok_or_else(|| format!("Session '{}' not found in session store", session_id))?
     };
 
+    session_info
+        .validate()
+        .map_err(|e| format!("Invalid session: {}", e))?;
+
     let auth = match session_info.auth_type {
         muon_core::session::AuthType::Password => {
             let p = password

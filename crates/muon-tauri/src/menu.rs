@@ -135,7 +135,10 @@ pub fn create_tray(app: &AppHandle) -> Result<(), tauri::Error> {
     TrayIconBuilder::new()
         .icon(app.default_window_icon().cloned().unwrap_or_else(|| {
             tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png"))
-                .expect("Failed to load tray icon")
+                .unwrap_or_else(|_| {
+                    let empty: &[u8] = &[0, 0, 0, 0];
+                    tauri::image::Image::new(empty, 1, 1)
+                })
         }))
         .tooltip("Muon SSH")
         .menu(&tray_menu)

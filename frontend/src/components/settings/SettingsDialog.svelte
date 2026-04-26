@@ -39,7 +39,9 @@
   async function loadEditors() {
     try {
       detectedEditors = await api.detectEditors()
-    } catch {}
+    } catch (e) {
+      error = String(e)
+    }
   }
 
   async function loadPlugins() {
@@ -47,7 +49,9 @@
     try {
       await api.pluginDiscover()
       plugins = await api.pluginList()
-    } catch {} finally {
+    } catch (e) {
+      error = String(e)
+    } finally {
       pluginLoading = false
     }
   }
@@ -56,7 +60,9 @@
     try {
       await api.pluginSetEnabled(pluginId, enabled)
       plugins = await api.pluginList()
-    } catch {}
+    } catch (e) {
+      error = String(e)
+    }
   }
 
   async function removePlugin(pluginId: string) {
@@ -64,7 +70,9 @@
       await api.pluginRemove(pluginId)
       if (selectedPluginId === pluginId) selectedPluginId = null
       plugins = await api.pluginList()
-    } catch {}
+    } catch (e) {
+      error = String(e)
+    }
   }
 
   async function selectPlugin(pluginId: string) {
@@ -72,7 +80,9 @@
     try {
       pluginSettingsMap[pluginId] = await api.pluginGetAllSettings(pluginId)
       pluginSettingsMap = { ...pluginSettingsMap }
-    } catch {}
+    } catch (e) {
+      error = String(e)
+    }
   }
 
   async function savePluginSetting() {
@@ -82,7 +92,9 @@
       newSettingKey = ''
       newSettingValue = ''
       await selectPlugin(selectedPluginId)
-    } catch {}
+    } catch (e) {
+      error = String(e)
+    }
   }
 
   async function deletePluginSetting(key: string) {
@@ -90,7 +102,9 @@
     try {
       await api.pluginSetSetting(selectedPluginId, key, '')
       await selectPlugin(selectedPluginId)
-    } catch {}
+    } catch (e) {
+      error = String(e)
+    }
   }
 
   async function loadSettings() {

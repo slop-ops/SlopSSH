@@ -25,6 +25,22 @@ pub struct PortForwardRule {
 }
 
 impl PortForwardRule {
+    pub fn validate(&self) -> Result<(), String> {
+        if self.bind_host.trim().is_empty() {
+            return Err("Bind host cannot be empty".to_string());
+        }
+        if self.bind_port == 0 {
+            return Err("Bind port cannot be 0".to_string());
+        }
+        if self.target_host.trim().is_empty() {
+            return Err("Target host cannot be empty".to_string());
+        }
+        if self.target_port == 0 {
+            return Err("Target port cannot be 0".to_string());
+        }
+        Ok(())
+    }
+
     pub fn new_local(bind_host: &str, bind_port: u16, target_host: &str, target_port: u16) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
@@ -328,6 +344,46 @@ mod tests {
     fn test_port_forward_manager_default() {
         let mgr = PortForwardManager::default();
         assert!(mgr.list_active().is_empty());
+    }
+
+    #[test]
+    fn test_port_forward_rule_validate_valid() {
+        let rule = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        assert!(rule.validate().is_ok());
+    }
+
+    #[test]
+    fn test_port_forward_rule_validate_empty_bind_host() {
+        let mut rule = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        rule.bind_host = String::new();
+        assert!(rule.validate().is_err());
+    }
+
+    #[test]
+    fn test_port_forward_rule_validate_zero_bind_port() {
+        let mut rule = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        rule.bind_port = 0;
+        assert!(rule.validate().is_err());
+    }
+
+    #[test]
+    fn test_port_forward_rule_validate_empty_target_host() {
+        let mut rule = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        rule.target_host = String::new();
+        assert!(rule.validate().is_err());
+    }
+
+    #[test]
+    fn test_port_forward_rule_validate_zero_target_port() {
+        let mut rule = PortForwardRule::new_local("127.0.0.1", 8080, "10.0.0.1", 80);
+        rule.target_port = 0;
+        assert!(rule.validate().is_err());
+    }
+
+    #[test]
+    fn test_port_forward_rule_validate_remote_valid() {
+        let rule = PortForwardRule::new_remote("0.0.0.0", 9090, "localhost", 3000);
+        assert!(rule.validate().is_ok());
     }
 
     #[tokio::test]

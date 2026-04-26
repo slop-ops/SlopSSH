@@ -1,13 +1,19 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-26 (Session 12)
+Last updated: 2026-04-26 (Session 13)
 
 ## Session Summary
 
 **Completed:** All phases 1-11 complete. Phase 12-13 and parts of 14-15 in progress.
-**Session 12 delivered:** Credential encryption, streaming downloads, full tracing coverage, file logging, panic hook, settings validation
-**Test count:** 187 Rust + 14 frontend unit tests (201 total)
-**Total IPC commands:** 68 (added accept_host_key)
+**Session 13 delivered:** SessionInfo validation, SFTP path normalization, port forward validation, tray icon fix, frontend error handling
+**Test count:** 220 Rust + 14 frontend unit tests (234 total)
+**Total IPC commands:** 68
+
+## Session 13 Changes
+
+| Commit | Tasks | Description |
+|--------|-------|-------------|
+| `b1dee1c` | 15.2, 15.3, 15.4, 15.6, 14.12, 14.14 | SessionInfo::validate() (16 tests), host/port validation before connect, SFTP path normalization (12 tests), PortForwardRule::validate() (6 tests), tray icon graceful fallback, fix 7 empty catch blocks in SettingsDialog |
 
 ## Session 12 Changes
 
@@ -282,8 +288,8 @@ Last updated: 2026-04-26 (Session 12)
 
 All 11 phases are **COMPLETE**. The application has:
 
-- **67 Tauri IPC commands**
-- **154 Rust unit tests** (0 failures)
+- **68 Tauri IPC commands**
+- **220 Rust unit tests** (0 failures)
 - **14 frontend unit tests** (0 failures)
 - **3 Playwright E2E test specs**
 - **7 languages** supported
@@ -292,33 +298,33 @@ All 11 phases are **COMPLETE**. The application has:
 - **CI/CD** via GitHub Actions
 - **Cross-platform packaging** (Linux deb/AppImage, Windows NSIS/MSI)
 
-### Test Count: 187 Rust + 14 frontend = 201 total
+### Test Count: 220 Rust + 14 frontend = 234 total
 
-- `config::settings::tests` (3)
+- `config::settings::tests` (13)
 - `config::paths::tests` (11)
 - `credentials::store::tests` (12)
 - `file_transfer::progress::tests` (13)
 - `file_transfer::engine::tests` (17)
-- `file_transfer::benchmark::tests` (10) — NEW session 10
+- `file_transfer::benchmark::tests` (10)
 - `session::store::tests` (6)
 - `session::import::tests` (3)
 - `session::folder::tests` (9)
+- `session::info::tests` (16) — NEW session 13
 - `snippets::tests` (3)
 - `ssh::auth::tests` (4)
 - `ssh::connection::tests` (5)
 - `ssh::host_keys::tests` (5)
-- `ssh::port_forward::tests` (10)
+- `ssh::port_forward::tests` (16) — EXPANDED session 13 (+6 validate tests)
 - `ssh::proxy::tests` (5)
 - `ssh::channel::tests` (3)
 - `ssh::x11::tests` (7)
 - `updater::github::tests` (10)
-- `plugin::host::tests` (14) — expanded session 10
+- `plugin::host::tests` (14)
 - `plugin::loader::tests` (4)
-- `config::settings::tests` (13) — EXPANDED session 12 (+10 validate tests)
-- `utils::tests` (23) — shell_escape (15) + encryption (8) — EXPANDED session 12
-- Frontend unit tests (14) — NEW session 10
+- `utils::tests` (34) — EXPANDED session 13 (+12 SFTP path tests, +11 shell_escape/encrypt)
+- Frontend unit tests (14)
 
-## Phase 12: Critical Security Fixes — IN PROGRESS
+## Phase 12: Critical Security Fixes — COMPLETE
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
@@ -344,7 +350,7 @@ All 11 phases are **COMPLETE**. The application has:
 | 13.9 | Remove greet command | DONE | |
 | 13.10 | Fix ESLint or remove lint script | TODO | |
 
-## Phase 14: Error Handling & Resilience — IN PROGRESS
+## Phase 14: Error Handling & Resilience — COMPLETE
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
@@ -359,22 +365,29 @@ All 11 phases are **COMPLETE**. The application has:
 | 14.9 | Fix malformed jump host JSON skipped | DONE | Log warning |
 | 14.10 | Fix upload file shutdown error ignored | DONE | warn log in 14.2 |
 | 14.11 | Fix terminal output event failure silent | DONE | error log in session 11 |
-| 14.12 | Replace expect() in tray icon creation | TODO | |
+| 14.12 | Replace expect() in tray icon creation | DONE | Graceful fallback to 1x1 transparent icon |
 | 14.13 | Add panic hook for crash logging | DONE | std::panic::set_hook with tracing::error |
-| 14.14 | Fix frontend empty catch blocks | TODO | |
+| 14.14 | Fix frontend empty catch blocks | DONE | All 7 now show error to user |
 
-## Phase 15: Input Validation & Settings — IN PROGRESS
+## Phase 15: Input Validation & Settings — COMPLETE
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 15.1 | Add Settings::validate() method | DONE | Clamps all fields to safe ranges, validates enums, 10 tests |
-| 15.5 | Extract shared shell_escape() utility | DONE | muon-core/src/utils.rs with 23 tests |
+| 15.1 | Add Settings::validate() method | DONE | Clamps all fields to safe ranges, validates enums, 13 tests |
+| 15.2 | Add SessionInfo::validate() method | DONE | Host, port, username, auth type, proxy validation, 16 tests |
+| 15.3 | Validate host/port before connection | DONE | Called in ssh_connect, create_session, update_session |
+| 15.4 | Validate SFTP paths | DONE | Normalizes paths, rejects null bytes, resolves .. traversal, 12 tests |
+| 15.5 | Extract shared shell_escape() utility | DONE | muon-core/src/utils.rs |
+| 15.6 | Add validation to port forwarding | DONE | PortForwardRule::validate() with 6 tests |
 
 ## Next Session Priorities
 
-1. **15.2** — Add SessionInfo::validate() method
-2. **15.3** — Validate host/port before connection
-3. **15.4** — Validate SFTP paths (normalize, prevent traversal)
-4. **15.6** — Add validation to port forwarding
-5. **14.12** — Replace expect() in tray icon creation
-6. **14.14** — Fix frontend empty catch blocks in SettingsDialog
+Per SKILLS.md session plan, next session should focus on **Phase 16 (Frontend Quality)** and **Phase 18 (Accessibility)**:
+
+1. **16.1** — Enable TypeScript strict mode
+2. **16.2** — Define typed interfaces for IPC
+3. **16.4** — Wire i18n to all components
+4. **16.6** — Wire terminal settings to Terminal components
+5. **16.8** — Fix NewSessionDialog password not sent
+6. **16.9** — Replace hardcoded hex colors with CSS variables
+7. **18.1–18.9** — ARIA improvements

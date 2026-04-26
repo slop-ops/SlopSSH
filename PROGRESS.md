@@ -1,13 +1,19 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-25 (Session 11)
+Last updated: 2026-04-26 (Session 12)
 
 ## Session Summary
 
 **Completed:** All phases 1-11 complete. Phase 12-13 and parts of 14-15 in progress.
-**Session 11 delivered:** Security hardening (CSP, host key verification, shell injection), build system fixes, tracing, error handling improvements
-**Test count:** 169 Rust + 14 frontend unit tests (183 total)
+**Session 12 delivered:** Credential encryption, streaming downloads, file transfer & SFTP tracing
+**Test count:** 177 Rust + 14 frontend unit tests (191 total)
 **Total IPC commands:** 68 (added accept_host_key)
+
+## Session 12 Changes
+
+| Commit | Tasks | Description |
+|--------|-------|-------------|
+| `596f5f4` | 12.5, 12.6, 14.2, 14.3 | Encrypt credential store (AES-256-GCM), stream file downloads, add tracing to file transfers & SFTP ops |
 
 ## Session 11 Changes
 
@@ -284,7 +290,7 @@ All 11 phases are **COMPLETE**. The application has:
 - **CI/CD** via GitHub Actions
 - **Cross-platform packaging** (Linux deb/AppImage, Windows NSIS/MSI)
 
-### Test Count: 154 Rust + 14 frontend = 168 total
+### Test Count: 177 Rust + 14 frontend = 191 total
 
 - `config::settings::tests` (3)
 - `config::paths::tests` (11)
@@ -306,7 +312,7 @@ All 11 phases are **COMPLETE**. The application has:
 - `updater::github::tests` (10)
 - `plugin::host::tests` (14) — expanded session 10
 - `plugin::loader::tests` (4)
-- `utils::tests` (15) — NEW session 11 (shell_escape)
+- `utils::tests` (23) — shell_escape (15) + encryption (8) — EXPANDED session 12
 - Frontend unit tests (14) — NEW session 10
 
 ## Phase 12: Critical Security Fixes — IN PROGRESS
@@ -317,8 +323,8 @@ All 11 phases are **COMPLETE**. The application has:
 | 12.2 | Host key verification: prompt user | DONE | Return status to frontend, accept_host_key command |
 | 12.3 | Jump host key verification | DONE | Real verification using HostKeyVerifier |
 | 12.4 | Fix shell command injection in tool panels | DONE | shell_escape extracted to muon-core utils |
-| 12.5 | Encrypt credential store fallback | TODO | |
-| 12.6 | Fix download entire-file-into-RAM | TODO | |
+| 12.5 | Encrypt credential store fallback | DONE | AES-256-GCM with machine-derived key, backward compat |
+| 12.6 | Fix download entire-file-into-RAM | DONE | Streaming SFTP reads with 32KB chunks |
 
 ## Phase 13: Build System & CI — IN PROGRESS
 
@@ -340,8 +346,8 @@ All 11 phases are **COMPLETE**. The application has:
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 14.1 | Add tracing to SSH operations | DONE | connect, disconnect, host key, shell ops |
-| 14.2 | Add tracing to file transfers | TODO | |
-| 14.3 | Add tracing to SFTP operations | TODO | |
+| 14.2 | Add tracing to file transfers | DONE | info/debug/warn/error for upload & download lifecycle |
+| 14.3 | Add tracing to SFTP operations | DONE | All 12 SFTP commands traced |
 | 14.4 | Add tracing to Tauri IPC layer | TODO | |
 | 14.5 | Add file-based log output | TODO | |
 | 14.6 | Fix silently swallowed host key save | DONE | warn log for changed keys |
@@ -358,8 +364,9 @@ All 11 phases are **COMPLETE**. The application has:
 
 ## Next Session Priorities
 
-1. **12.5** — Encrypt credential store fallback (CRITICAL)
-2. **12.6** — Stream file downloads instead of reading into RAM (CRITICAL)
-3. **14.2-14.4** — Add tracing to file transfers, SFTP, IPC layer
-4. **15.1-15.4** — Add input validation (Settings, SessionInfo, SFTP paths)
-5. **13.3-13.5** — Fix CI and add release workflow
+1. **14.4** — Add tracing to Tauri IPC layer (all 68 commands)
+2. **14.5** — Add file-based log output (tracing-appender)
+3. **14.10** — Fix upload file shutdown error ignored → log warning (DONE in 14.2)
+4. **14.13** — Add panic hook for crash logging
+5. **15.1-15.4** — Add input validation (Settings, SessionInfo, SFTP paths, port forwarding)
+6. **13.3-13.5** — Fix CI and add release workflow

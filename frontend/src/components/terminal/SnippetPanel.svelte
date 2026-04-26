@@ -139,8 +139,8 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: #1e1f2b;
-    border-left: 1px solid #2e303a;
+    background: var(--bg-tertiary);
+    border-left: 1px solid var(--border-primary);
     width: 240px;
   }
 
@@ -149,21 +149,21 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .panel-header h3 {
     margin: 0;
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 1px;
   }
 
   .add-btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     width: 22px;
     height: 22px;
     border-radius: 4px;
@@ -176,8 +176,8 @@
   }
 
   .add-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .search-bar {
@@ -186,11 +186,11 @@
 
   .search-bar input {
     width: 100%;
-    background: #16171d;
-    border: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 5px 8px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     font-family: inherit;
     outline: none;
@@ -198,7 +198,7 @@
   }
 
   .search-bar input:focus {
-    border-color: #4a90d9;
+    border-color: var(--border-active);
   }
 
   .form {
@@ -206,16 +206,16 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .form input,
   .form textarea {
-    background: #16171d;
-    border: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 5px 8px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
     outline: none;
@@ -224,7 +224,7 @@
 
   .form input:focus,
   .form textarea:focus {
-    border-color: #4a90d9;
+    border-color: var(--border-active);
   }
 
   .form-actions {
@@ -234,7 +234,7 @@
 
   .btn-save {
     flex: 1;
-    background: #4a90d9;
+    background: var(--accent);
     border: none;
     color: #fff;
     padding: 4px 8px;
@@ -247,8 +247,8 @@
   .btn-cancel {
     flex: 1;
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     padding: 4px 8px;
     border-radius: 4px;
     cursor: pointer;
@@ -272,7 +272,7 @@
   }
 
   .snippet-item:hover {
-    background: #2a2a3e;
+    background: var(--bg-hover);
   }
 
   .snippet-info {
@@ -284,13 +284,13 @@
   }
 
   .snippet-name {
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     font-weight: 500;
   }
 
   .snippet-cmd {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 10px;
     font-family: 'JetBrains Mono', monospace;
     overflow: hidden;
@@ -312,7 +312,7 @@
   .act-btn {
     background: none;
     border: none;
-    color: #6b7280;
+    color: var(--text-tertiary);
     cursor: pointer;
     font-size: 10px;
     padding: 2px 6px;
@@ -320,18 +320,18 @@
   }
 
   .act-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .act-btn.del:hover {
-    color: #e06c75;
-    background: #e06c7522;
+    color: var(--error);
+    background: var(--error-bg);
   }
 
   .empty {
     text-align: center;
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 12px;
     padding: 16px;
   }

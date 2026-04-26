@@ -211,7 +211,7 @@
   .section-header h3 {
     margin: 0;
     font-size: 14px;
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .actions {
@@ -221,8 +221,8 @@
 
   .btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     padding: 4px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -232,8 +232,8 @@
   }
 
   .btn:hover:not(:disabled) {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .btn:disabled {
@@ -242,13 +242,13 @@
   }
 
   .btn-primary {
-    background: #4a90d9;
-    border-color: #4a90d9;
+    background: var(--accent);
+    border-color: var(--accent);
     color: #fff;
   }
 
   .btn-primary:hover:not(:disabled) {
-    background: #3a80c9;
+    background: var(--accent-hover);
   }
 
   .btn-sm {
@@ -259,7 +259,7 @@
   .keys-section h4 {
     margin: 0 0 8px 0;
     font-size: 12px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
   }
@@ -275,9 +275,9 @@
     justify-content: space-between;
     align-items: center;
     padding: 8px 12px;
-    background: #1e1f2e;
+    background: var(--bg-tertiary);
     border-radius: 6px;
-    border: 1px solid #2e303a;
+    border: 1px solid var(--border-primary);
   }
 
   .key-info {
@@ -289,21 +289,21 @@
   }
 
   .key-name {
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 13px;
     font-weight: 500;
   }
 
   .key-type {
-    color: #4a90d9;
+    color: var(--accent);
     font-size: 11px;
-    background: #4a90d922;
+    background: var(--accent-bg);
     padding: 1px 6px;
     border-radius: 3px;
   }
 
   .key-fp {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 11px;
     font-family: monospace;
     overflow: hidden;
@@ -318,29 +318,29 @@
   }
 
   .empty {
-    color: #6b7280;
+    color: var(--text-tertiary);
     font-size: 13px;
     padding: 12px;
     text-align: center;
   }
 
   .loading {
-    color: #6b7280;
+    color: var(--text-tertiary);
     text-align: center;
     padding: 24px;
   }
 
   .error {
-    background: #e06c7522;
-    color: #e06c75;
+    background: var(--error-bg);
+    color: var(--error);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 12px;
   }
 
   .success {
-    background: #4ade8022;
-    color: #4ade80;
+    background: var(--success-bg);
+    color: var(--success);
     padding: 8px 12px;
     border-radius: 6px;
     font-size: 12px;
@@ -357,8 +357,8 @@
   }
 
   .dialog {
-    background: #1e1f2e;
-    border: 1px solid #2e303a;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
     border-radius: 10px;
     padding: 20px;
     min-width: 360px;
@@ -368,7 +368,7 @@
   .dialog h3 {
     margin: 0 0 16px 0;
     font-size: 15px;
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   .form-group {
@@ -378,7 +378,7 @@
   .form-group label {
     display: block;
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 4px;
@@ -388,11 +388,11 @@
   .form-group select {
     width: 100%;
     box-sizing: border-box;
-    background: #1a1a2e;
-    border: 1px solid #2e303a;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
     border-radius: 6px;
     padding: 6px 10px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 13px;
     font-family: inherit;
     outline: none;
@@ -400,7 +400,7 @@
 
   .form-group input:focus,
   .form-group select:focus {
-    border-color: #4a90d9;
+    border-color: var(--border-active);
   }
 
   .dialog-actions {

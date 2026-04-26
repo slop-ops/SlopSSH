@@ -158,36 +158,36 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: #1e1f2b;
+    background: var(--bg-tertiary);
   }
 
   .toolbar {
     display: flex;
     gap: 8px;
     padding: 8px 12px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
     align-items: center;
   }
 
   .filter-input {
     flex: 1;
-    background: #16171d;
-    border: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 5px 10px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     outline: none;
   }
 
   .filter-input:focus {
-    border-color: #4a90d9;
+    border-color: var(--border-active);
   }
 
   .action-btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     padding: 5px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -195,8 +195,8 @@
   }
 
   .action-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .action-btn:disabled {
@@ -205,8 +205,8 @@
   }
 
   .error {
-    background: #e06c7522;
-    color: #e06c75;
+    background: var(--error-bg);
+    color: var(--error);
     padding: 6px 12px;
     font-size: 12px;
   }
@@ -225,8 +225,8 @@
   th {
     text-align: left;
     padding: 6px 10px;
-    background: #16171d;
-    color: #9ca3af;
+    background: var(--bg-secondary);
+    color: var(--text-secondary);
     font-weight: 600;
     font-size: 11px;
     text-transform: uppercase;
@@ -241,17 +241,17 @@
   }
 
   th.sortable:hover {
-    color: #e0e0e0;
+    color: var(--text-primary);
   }
 
   td {
     padding: 4px 10px;
-    color: #e0e0e0;
-    border-bottom: 1px solid #2e303a11;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-primary);
   }
 
   tr:hover td {
-    background: #2a2a3e;
+    background: var(--bg-hover);
   }
 
   .mono {
@@ -263,8 +263,8 @@
     font-size: 10px;
     padding: 1px 4px;
     border-radius: 3px;
-    background: #2e303a;
-    color: #9ca3af;
+    background: var(--bg-hover);
+    color: var(--text-secondary);
   }
 
   .cmd {
@@ -278,8 +278,8 @@
 
   .kill-btn {
     background: none;
-    border: 1px solid #e06c7544;
-    color: #e06c75;
+    border: 1px solid var(--error-bg);
+    color: var(--error);
     padding: 2px 8px;
     border-radius: 3px;
     cursor: pointer;
@@ -293,12 +293,12 @@
   }
 
   .kill-btn:hover {
-    background: #e06c7522;
+    background: var(--error-bg);
   }
 
   .empty {
     text-align: center;
-    color: #6b7280;
+    color: var(--text-tertiary);
     padding: 24px;
     font-size: 13px;
   }

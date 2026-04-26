@@ -204,14 +204,14 @@
   }
 
   .disconnect-msg {
-    color: #e06c75;
+    color: var(--error);
     font-size: 16px;
     font-weight: 600;
     margin: 0 0 8px 0;
   }
 
   .disconnect-error {
-    color: #9ca3af;
+    color: var(--text-secondary);
     font-size: 12px;
     margin: 0 0 16px 0;
     max-width: 300px;
@@ -219,7 +219,7 @@
   }
 
   .reconnect-btn {
-    background: #4a90d9;
+    background: var(--accent);
     border: none;
     color: #fff;
     padding: 8px 24px;
@@ -230,6 +230,6 @@
   }
 
   .reconnect-btn:hover {
-    background: #3a7bc8;
+    background: var(--accent-hover);
   }
 </style>

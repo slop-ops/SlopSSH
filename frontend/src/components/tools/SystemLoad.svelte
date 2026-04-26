@@ -165,20 +165,20 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: #1e1f2b;
+    background: var(--bg-tertiary);
   }
 
   .toolbar {
     display: flex;
     gap: 8px;
     padding: 8px 12px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .action-btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     padding: 5px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -186,29 +186,29 @@
   }
 
   .action-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .action-btn.primary {
-    background: #4a90d922;
-    border-color: #4a90d9;
-    color: #4a90d9;
+    background: var(--accent-bg);
+    border-color: var(--border-active);
+    color: var(--accent);
   }
 
   .action-btn.primary:hover {
-    background: #4a90d944;
+    background: var(--accent-bg);
   }
 
   .action-btn.active {
-    background: #e06c7522;
-    border-color: #e06c75;
-    color: #e06c75;
+    background: var(--error-bg);
+    border-color: var(--error);
+    color: var(--error);
   }
 
   .error {
-    background: #e06c7522;
-    color: #e06c75;
+    background: var(--error-bg);
+    color: var(--error);
     padding: 6px 12px;
     font-size: 12px;
   }
@@ -234,7 +234,7 @@
 
   .gauge-label {
     font-size: 11px;
-    color: #9ca3af;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     font-weight: 600;
@@ -242,13 +242,13 @@
 
   .gauge-value {
     font-size: 12px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-family: 'JetBrains Mono', monospace;
   }
 
   .gauge-bar-container {
     height: 6px;
-    background: #2e303a;
+    background: var(--bg-hover);
     border-radius: 3px;
     overflow: hidden;
   }
@@ -260,28 +260,28 @@
   }
 
   .gauge-bar.cpu {
-    background: linear-gradient(90deg, #61afef, #4a90d9);
+    background: linear-gradient(90deg, var(--info), var(--accent));
   }
 
   .gauge-bar.mem {
-    background: linear-gradient(90deg, #98c379, #50a14f);
+    background: linear-gradient(90deg, var(--success), var(--success));
   }
 
   .gauge-bar.swap {
-    background: linear-gradient(90deg, #e5c07b, #d19a66);
+    background: linear-gradient(90deg, var(--warning), var(--warning));
   }
 
   .sparkline {
     width: 100%;
     height: 40px;
-    background: #16171d;
+    background: var(--bg-secondary);
     border-radius: 4px;
     margin-top: 2px;
   }
 
   .empty {
     text-align: center;
-    color: #6b7280;
+    color: var(--text-tertiary);
     padding: 24px;
     font-size: 13px;
     flex: 1;

@@ -124,40 +124,40 @@
     display: flex;
     flex-direction: column;
     height: 100%;
-    background: #1e1f2b;
+    background: var(--bg-tertiary);
   }
 
   .toolbar {
     display: flex;
     gap: 6px;
     padding: 8px 12px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
     align-items: center;
   }
 
   .path-input {
     flex: 1;
-    background: #16171d;
-    border: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 5px 10px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     font-family: 'JetBrains Mono', monospace;
     outline: none;
   }
 
   .path-input:focus {
-    border-color: #4a90d9;
+    border-color: var(--border-active);
   }
 
   .count-input {
     width: 60px;
-    background: #16171d;
-    border: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 5px 6px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     outline: none;
     text-align: center;
@@ -165,8 +165,8 @@
 
   .action-btn {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     padding: 5px 12px;
     border-radius: 4px;
     cursor: pointer;
@@ -174,8 +174,8 @@
   }
 
   .action-btn:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .action-btn:disabled {
@@ -184,9 +184,9 @@
   }
 
   .action-btn.active {
-    background: #4a90d922;
-    border-color: #4a90d9;
-    color: #4a90d9;
+    background: var(--accent-bg);
+    border-color: var(--border-active);
+    color: var(--accent);
   }
 
   .search-bar {
@@ -194,33 +194,33 @@
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
-    border-bottom: 1px solid #2e303a;
+    border-bottom: 1px solid var(--border-primary);
   }
 
   .search-input {
     flex: 1;
-    background: #16171d;
-    border: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-primary);
     border-radius: 4px;
     padding: 4px 10px;
-    color: #e0e0e0;
+    color: var(--text-primary);
     font-size: 12px;
     outline: none;
   }
 
   .search-input:focus {
-    border-color: #4a90d9;
+    border-color: var(--border-active);
   }
 
   .match-count {
     font-size: 11px;
-    color: #6b7280;
+    color: var(--text-tertiary);
     white-space: nowrap;
   }
 
   .error {
-    background: #e06c7522;
-    color: #e06c75;
+    background: var(--error-bg);
+    color: var(--error);
     padding: 6px 12px;
     font-size: 12px;
   }
@@ -240,15 +240,15 @@
   }
 
   .log-line:hover {
-    background: #2a2a3e;
+    background: var(--bg-hover);
   }
 
   .log-line.highlight {
-    background: #4a90d912;
+    background: var(--accent-bg);
   }
 
   .line-num {
-    color: #4a4a5a;
+    color: var(--text-tertiary);
     user-select: none;
     min-width: 40px;
     text-align: right;
@@ -256,14 +256,14 @@
   }
 
   .line-text {
-    color: #c0c0c0;
+    color: var(--text-primary);
     white-space: pre-wrap;
     word-break: break-all;
   }
 
   .empty {
     text-align: center;
-    color: #6b7280;
+    color: var(--text-tertiary);
     padding: 24px;
     font-size: 13px;
   }

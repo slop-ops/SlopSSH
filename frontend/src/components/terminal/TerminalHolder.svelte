@@ -98,7 +98,7 @@
   .terminal-holder {
     display: flex;
     height: 100%;
-    background: #1a1a2e;
+    background: var(--bg-primary);
   }
 
   .main-area {
@@ -110,8 +110,8 @@
 
   .tab-bar {
     display: flex;
-    background: #16171d;
-    border-bottom: 1px solid #2e303a;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
     min-height: 36px;
     flex-shrink: 0;
     align-items: center;
@@ -129,8 +129,8 @@
     gap: 8px;
     padding: 6px 12px;
     background: transparent;
-    border-right: 1px solid #2e303a;
-    color: #9ca3af;
+    border-right: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     cursor: pointer;
     font-size: 12px;
     white-space: nowrap;
@@ -138,18 +138,18 @@
   }
 
   .tab:hover {
-    background: #2a2a3e;
-    color: #e0e0e0;
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 
   .tab.active {
-    background: #1a1a2e;
-    color: #e0e0e0;
-    border-bottom: 2px solid #4a90d9;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-active);
   }
 
   .tab.local {
-    border-left: 2px solid #4ade80;
+    border-left: 2px solid var(--success);
   }
 
   .tab-title {
@@ -168,15 +168,15 @@
 
   .tab-close:hover {
     opacity: 1;
-    background: #e06c7544;
-    color: #e06c75;
+    background: var(--error-bg);
+    color: var(--error);
   }
 
   .local-btn,
   .snippet-toggle {
     background: transparent;
-    border: 1px solid #2e303a;
-    color: #9ca3af;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
     width: 28px;
     height: 28px;
     border-radius: 4px;
@@ -193,14 +193,14 @@
   .local-btn:hover,
   .snippet-toggle:hover,
   .snippet-toggle.active {
-    background: #2a2a3e;
-    color: #4a90d9;
-    border-color: #4a90d9;
+    background: var(--bg-hover);
+    color: var(--accent);
+    border-color: var(--border-active);
   }
 
   .local-btn:hover {
-    color: #4ade80;
-    border-color: #4ade80;
+    color: var(--success);
+    border-color: var(--success);
   }
 
   .tab-content {
@@ -218,7 +218,7 @@
     align-items: center;
     justify-content: center;
     height: 100%;
-    color: #9ca3af;
+    color: var(--text-secondary);
     gap: 12px;
   }
 
@@ -227,9 +227,9 @@
   }
 
   .local-btn-empty {
-    background: #2a2a3e;
-    border: 1px solid #2e303a;
-    color: #4ade80;
+    background: var(--bg-hover);
+    border: 1px solid var(--border-primary);
+    color: var(--success);
     padding: 8px 16px;
     border-radius: 6px;
     cursor: pointer;
@@ -238,6 +238,6 @@
   }
 
   .local-btn-empty:hover {
-    background: #2e303a;
+    background: var(--bg-hover);
   }
 </style>

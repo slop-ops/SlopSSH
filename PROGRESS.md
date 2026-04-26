@@ -5,8 +5,8 @@ Last updated: 2026-04-26 (Session 12)
 ## Session Summary
 
 **Completed:** All phases 1-11 complete. Phase 12-13 and parts of 14-15 in progress.
-**Session 12 delivered:** Credential encryption, streaming downloads, file transfer & SFTP tracing
-**Test count:** 177 Rust + 14 frontend unit tests (191 total)
+**Session 12 delivered:** Credential encryption, streaming downloads, full tracing coverage, file logging, panic hook, settings validation
+**Test count:** 187 Rust + 14 frontend unit tests (201 total)
 **Total IPC commands:** 68 (added accept_host_key)
 
 ## Session 12 Changes
@@ -14,6 +14,8 @@ Last updated: 2026-04-26 (Session 12)
 | Commit | Tasks | Description |
 |--------|-------|-------------|
 | `596f5f4` | 12.5, 12.6, 14.2, 14.3 | Encrypt credential store (AES-256-GCM), stream file downloads, add tracing to file transfers & SFTP ops |
+| `91a4c35` | 14.5, 14.13, 15.1 | File-based daily rotating logs (tracing-appender), panic hook for crash logging, Settings::validate() with 10 tests |
+| `a3657a9` | 14.4 | Add debug/info tracing to all 68 Tauri IPC commands across 12 command modules |
 
 ## Session 11 Changes
 
@@ -290,7 +292,7 @@ All 11 phases are **COMPLETE**. The application has:
 - **CI/CD** via GitHub Actions
 - **Cross-platform packaging** (Linux deb/AppImage, Windows NSIS/MSI)
 
-### Test Count: 177 Rust + 14 frontend = 191 total
+### Test Count: 187 Rust + 14 frontend = 201 total
 
 - `config::settings::tests` (3)
 - `config::paths::tests` (11)
@@ -312,6 +314,7 @@ All 11 phases are **COMPLETE**. The application has:
 - `updater::github::tests` (10)
 - `plugin::host::tests` (14) — expanded session 10
 - `plugin::loader::tests` (4)
+- `config::settings::tests` (13) — EXPANDED session 12 (+10 validate tests)
 - `utils::tests` (23) — shell_escape (15) + encryption (8) — EXPANDED session 12
 - Frontend unit tests (14) — NEW session 10
 
@@ -348,25 +351,30 @@ All 11 phases are **COMPLETE**. The application has:
 | 14.1 | Add tracing to SSH operations | DONE | connect, disconnect, host key, shell ops |
 | 14.2 | Add tracing to file transfers | DONE | info/debug/warn/error for upload & download lifecycle |
 | 14.3 | Add tracing to SFTP operations | DONE | All 12 SFTP commands traced |
-| 14.4 | Add tracing to Tauri IPC layer | TODO | |
-| 14.5 | Add file-based log output | TODO | |
+| 14.4 | Add tracing to Tauri IPC layer | DONE | All 68 commands across 12 modules |
+| 14.5 | Add file-based log output | DONE | Daily rotating files via tracing-appender |
 | 14.6 | Fix silently swallowed host key save | DONE | warn log for changed keys |
 | 14.7 | Fix silently swallowed port forward bind | DONE | Log warning on bind failure |
 | 14.8 | Fix jump host empty password fallback | DONE | Return auth error |
 | 14.9 | Fix malformed jump host JSON skipped | DONE | Log warning |
-| 14.10-14.14 | Remaining error handling tasks | TODO | |
+| 14.10 | Fix upload file shutdown error ignored | DONE | warn log in 14.2 |
+| 14.11 | Fix terminal output event failure silent | DONE | error log in session 11 |
+| 14.12 | Replace expect() in tray icon creation | TODO | |
+| 14.13 | Add panic hook for crash logging | DONE | std::panic::set_hook with tracing::error |
+| 14.14 | Fix frontend empty catch blocks | TODO | |
 
 ## Phase 15: Input Validation & Settings — IN PROGRESS
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
-| 15.5 | Extract shared shell_escape() utility | DONE | muon-core/src/utils.rs with 15 tests |
+| 15.1 | Add Settings::validate() method | DONE | Clamps all fields to safe ranges, validates enums, 10 tests |
+| 15.5 | Extract shared shell_escape() utility | DONE | muon-core/src/utils.rs with 23 tests |
 
 ## Next Session Priorities
 
-1. **14.4** — Add tracing to Tauri IPC layer (all 68 commands)
-2. **14.5** — Add file-based log output (tracing-appender)
-3. **14.10** — Fix upload file shutdown error ignored → log warning (DONE in 14.2)
-4. **14.13** — Add panic hook for crash logging
-5. **15.1-15.4** — Add input validation (Settings, SessionInfo, SFTP paths, port forwarding)
-6. **13.3-13.5** — Fix CI and add release workflow
+1. **15.2** — Add SessionInfo::validate() method
+2. **15.3** — Validate host/port before connection
+3. **15.4** — Validate SFTP paths (normalize, prevent traversal)
+4. **15.6** — Add validation to port forwarding
+5. **14.12** — Replace expect() in tray icon creation
+6. **14.14** — Fix frontend empty catch blocks in SettingsDialog

@@ -46,12 +46,13 @@ impl CredentialBackend for FileBackend {
     fn save(&self, key: &str, value: &str) -> anyhow::Result<()> {
         let path = credentials_file()?;
         let mut creds = load_all(&path)?;
+        let encrypted = crate::utils::encrypt_value(value)?;
         if let Some(existing) = creds.iter_mut().find(|c| c.key == key) {
-            existing.value = value.to_string();
+            existing.value = encrypted;
         } else {
             creds.push(CredentialEntry {
                 key: key.to_string(),
-                value: value.to_string(),
+                value: encrypted,
             });
         }
         let content = serde_json::to_string_pretty(&creds)?;
@@ -62,7 +63,14 @@ impl CredentialBackend for FileBackend {
     fn get(&self, key: &str) -> anyhow::Result<Option<String>> {
         let path = credentials_file()?;
         let creds = load_all(&path)?;
-        Ok(creds.into_iter().find(|c| c.key == key).map(|c| c.value))
+        if let Some(entry) = creds.into_iter().find(|c| c.key == key) {
+            match crate::utils::decrypt_value(&entry.value) {
+                Ok(plaintext) => Ok(Some(plaintext)),
+                Err(_) => Ok(Some(entry.value)),
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     fn delete(&self, key: &str) -> anyhow::Result<()> {
@@ -116,7 +124,9 @@ impl CredentialStore {
                 Self::new_keyring()
             }
             Err(_) => {
-                tracing::warn!("OS keyring unavailable, falling back to file-based storage");
+                tracing::warn!(
+                    "OS keyring unavailable, falling back to encrypted file-based storage"
+                );
                 Self::new_file()
             }
         }

@@ -22,6 +22,68 @@ pub fn shell_escape(s: &str) -> String {
     }
 }
 
+pub fn encrypt_value(plaintext: &str) -> anyhow::Result<String> {
+    use aes_gcm::Aes256Gcm;
+    use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
+    use base64::Engine;
+
+    let key_bytes = derive_machine_key();
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+        .map_err(|e| anyhow::anyhow!("Cipher init failed: {}", e))?;
+    let nonce = Aes256Gcm::generate_nonce(&mut OsRng);
+    let ciphertext = cipher
+        .encrypt(&nonce, plaintext.as_bytes())
+        .map_err(|e| anyhow::anyhow!("Encryption failed: {}", e))?;
+
+    let mut combined = Vec::with_capacity(12 + ciphertext.len());
+    combined.extend_from_slice(&nonce);
+    combined.extend_from_slice(&ciphertext);
+
+    Ok(base64::engine::general_purpose::STANDARD.encode(&combined))
+}
+
+pub fn decrypt_value(encoded: &str) -> anyhow::Result<String> {
+    use aes_gcm::aead::{Aead, KeyInit};
+    use aes_gcm::{Aes256Gcm, Nonce};
+    use base64::Engine;
+
+    let key_bytes = derive_machine_key();
+    let combined = base64::engine::general_purpose::STANDARD
+        .decode(encoded)
+        .map_err(|e| anyhow::anyhow!("Base64 decode failed: {}", e))?;
+
+    if combined.len() < 12 {
+        return Err(anyhow::anyhow!("Ciphertext too short"));
+    }
+
+    let (nonce_bytes, ciphertext) = combined.split_at(12);
+    let nonce = Nonce::from_slice(nonce_bytes);
+    let cipher = Aes256Gcm::new_from_slice(&key_bytes)
+        .map_err(|e| anyhow::anyhow!("Cipher init failed: {}", e))?;
+
+    let plaintext = cipher
+        .decrypt(nonce, ciphertext)
+        .map_err(|e| anyhow::anyhow!("Decryption failed: {}", e))?;
+
+    String::from_utf8(plaintext).map_err(|e| anyhow::anyhow!("UTF-8 decode failed: {}", e))
+}
+
+fn derive_machine_key() -> [u8; 32] {
+    use sha2::{Digest, Sha256};
+
+    let config_path = crate::config::paths::config_dir()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let user = std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_default();
+    let seed = format!("muon-ssh-credential-key:{}:{}", config_path, user);
+
+    let mut hasher = Sha256::new();
+    hasher.update(seed.as_bytes());
+    hasher.finalize().into()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -102,5 +164,61 @@ mod tests {
             shell_escape("/path/to/my file.txt"),
             "'/path/to/my file.txt'"
         );
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_roundtrip() {
+        let plaintext = "my-secret-password";
+        let encrypted = encrypt_value(plaintext).unwrap();
+        let decrypted = decrypt_value(&encrypted).unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn test_encrypt_produces_different_ciphertexts() {
+        let plaintext = "same-value";
+        let enc1 = encrypt_value(plaintext).unwrap();
+        let enc2 = encrypt_value(plaintext).unwrap();
+        assert_ne!(enc1, enc2);
+    }
+
+    #[test]
+    fn test_decrypt_invalid_base64() {
+        assert!(decrypt_value("not-valid-base64!!!").is_err());
+    }
+
+    #[test]
+    fn test_decrypt_too_short() {
+        use base64::Engine;
+        let short = base64::engine::general_purpose::STANDARD.encode(b"short");
+        assert!(decrypt_value(&short).is_err());
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_empty_string() {
+        let encrypted = encrypt_value("").unwrap();
+        let decrypted = decrypt_value(&encrypted).unwrap();
+        assert_eq!(decrypted, "");
+    }
+
+    #[test]
+    fn test_encrypt_decrypt_unicode() {
+        let plaintext = "パスワード🔐";
+        let encrypted = encrypt_value(plaintext).unwrap();
+        let decrypted = decrypt_value(&encrypted).unwrap();
+        assert_eq!(decrypted, plaintext);
+    }
+
+    #[test]
+    fn test_derive_machine_key_deterministic() {
+        let key1 = derive_machine_key();
+        let key2 = derive_machine_key();
+        assert_eq!(key1, key2);
+    }
+
+    #[test]
+    fn test_derive_machine_key_is_32_bytes() {
+        let key = derive_machine_key();
+        assert_eq!(key.len(), 32);
     }
 }

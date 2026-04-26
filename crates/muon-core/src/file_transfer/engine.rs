@@ -62,6 +62,15 @@ impl TransferEngine {
         on_progress: impl Fn(&TransferProgress) + Send + Sync + 'static,
     ) {
         let transfers = self.active_transfers.clone();
+        let transfer_id = request.id.clone();
+        let source = request.source_path.clone();
+        let dest = request.dest_path.clone();
+        tracing::info!(
+            transfer_id = %transfer_id,
+            source = %source,
+            dest = %dest,
+            "Upload started"
+        );
         tokio::spawn(async move {
             let progress = TransferProgress::new(request.id.clone(), request.file_size);
             {
@@ -77,13 +86,28 @@ impl TransferEngine {
                     Ok(()) => {
                         p.status = TransferStatus::Completed;
                         p.bytes_transferred = p.total_bytes;
+                        tracing::info!(
+                            transfer_id = %p.id,
+                            bytes = p.total_bytes,
+                            "Upload completed"
+                        );
                         on_progress(p);
                     }
                     Err(e) => {
                         if p.status != TransferStatus::Cancelled {
                             p.status = TransferStatus::Failed;
-                            p.error = Some(e);
+                            p.error = Some(e.clone());
+                            tracing::error!(
+                                transfer_id = %p.id,
+                                error = %e,
+                                "Upload failed"
+                            );
                             on_progress(p);
+                        } else {
+                            tracing::warn!(
+                                transfer_id = %p.id,
+                                "Upload cancelled"
+                            );
                         }
                     }
                 }
@@ -98,6 +122,15 @@ impl TransferEngine {
         on_progress: impl Fn(&TransferProgress) + Send + Sync + 'static,
     ) {
         let transfers = self.active_transfers.clone();
+        let transfer_id = request.id.clone();
+        let source = request.source_path.clone();
+        let dest = request.dest_path.clone();
+        tracing::info!(
+            transfer_id = %transfer_id,
+            source = %source,
+            dest = %dest,
+            "Download started"
+        );
         tokio::spawn(async move {
             let progress = TransferProgress::new(request.id.clone(), request.file_size);
             {
@@ -113,13 +146,28 @@ impl TransferEngine {
                     Ok(()) => {
                         p.status = TransferStatus::Completed;
                         p.bytes_transferred = p.total_bytes;
+                        tracing::info!(
+                            transfer_id = %p.id,
+                            bytes = p.total_bytes,
+                            "Download completed"
+                        );
                         on_progress(p);
                     }
                     Err(e) => {
                         if p.status != TransferStatus::Cancelled {
                             p.status = TransferStatus::Failed;
-                            p.error = Some(e);
+                            p.error = Some(e.clone());
+                            tracing::error!(
+                                transfer_id = %p.id,
+                                error = %e,
+                                "Download failed"
+                            );
                             on_progress(p);
+                        } else {
+                            tracing::warn!(
+                                transfer_id = %p.id,
+                                "Download cancelled"
+                            );
                         }
                     }
                 }
@@ -158,6 +206,11 @@ async fn perform_upload(
         let sftp_session = guard
             .as_ref()
             .ok_or_else(|| "SFTP session closed".to_string())?;
+        tracing::debug!(
+            transfer_id = %request.id,
+            path = %request.dest_path,
+            "Creating remote file for upload"
+        );
         sftp_session
             .create(&request.dest_path)
             .await
@@ -215,7 +268,13 @@ async fn perform_upload(
 
     {
         use tokio::io::AsyncWriteExt;
-        let _ = remote_file.shutdown().await;
+        if let Err(e) = remote_file.shutdown().await {
+            tracing::warn!(
+                transfer_id = %request.id,
+                error = %e,
+                "Remote file shutdown error during upload"
+            );
+        }
     }
 
     Ok(())
@@ -241,21 +300,28 @@ async fn perform_download(
         }
     }
 
-    let remote_data = {
+    let mut remote_file = {
         let guard = sftp.lock().await;
         let sftp_session = guard
             .as_ref()
             .ok_or_else(|| "SFTP session closed".to_string())?;
+        tracing::debug!(
+            transfer_id = %request.id,
+            path = %request.source_path,
+            "Opening remote file for streaming download"
+        );
         sftp_session
-            .read(&request.source_path)
+            .open(&request.source_path)
             .await
-            .map_err(|e| format!("SFTP read error: {}", e))?
+            .map_err(|e| format!("SFTP open error: {}", e))?
     };
+
+    let file_size = remote_file.metadata().await.map(|m| m.len()).unwrap_or(0);
 
     {
         let mut t = transfers.lock().await;
         if let Some(p) = t.get_mut(&request.id) {
-            p.total_bytes = remote_data.len() as u64;
+            p.total_bytes = file_size;
         }
     }
 
@@ -263,10 +329,11 @@ async fn perform_download(
         .await
         .map_err(|e| format!("Failed to create local file: {}", e))?;
 
+    let mut buf = vec![0u8; CHUNK_SIZE];
     let mut written: u64 = 0;
     let start = Instant::now();
 
-    for chunk in remote_data.chunks(CHUNK_SIZE) {
+    loop {
         {
             let t = transfers.lock().await;
             if let Some(p) = t.get(&request.id)
@@ -276,11 +343,19 @@ async fn perform_download(
             }
         }
 
+        let n = remote_file
+            .read(&mut buf)
+            .await
+            .map_err(|e| format!("SFTP read error: {}", e))?;
+        if n == 0 {
+            break;
+        }
+
         local_file
-            .write_all(chunk)
+            .write_all(&buf[..n])
             .await
             .map_err(|e| format!("Write error: {}", e))?;
-        written += chunk.len() as u64;
+        written += n as u64;
 
         let elapsed = start.elapsed().as_secs_f64();
         let speed = if elapsed > 0.0 {
@@ -303,6 +378,15 @@ async fn perform_download(
         .flush()
         .await
         .map_err(|e| format!("Flush error: {}", e))?;
+
+    if file_size > 0 && written != file_size {
+        tracing::warn!(
+            transfer_id = %request.id,
+            expected = file_size,
+            actual = written,
+            "Download size mismatch"
+        );
+    }
 
     Ok(())
 }

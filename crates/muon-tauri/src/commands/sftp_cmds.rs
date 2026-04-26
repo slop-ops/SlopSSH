@@ -25,17 +25,22 @@ pub async fn sftp_connect(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     session_id: String,
 ) -> Result<(), String> {
+    tracing::info!(session_id = %session_id, "SFTP connect");
     let sftp_session = {
         let state = state.lock().await;
         let channel = state
             .ssh_manager
             .open_sftp_channel(&session_id)
             .await
-            .map_err(|e| e.to_string())?;
+            .map_err(|e| {
+                tracing::error!(session_id = %session_id, error = %e, "SFTP channel open failed");
+                e.to_string()
+            })?;
         let stream = channel.into_stream();
-        let sftp = SftpSession::new(stream)
-            .await
-            .map_err(|e| format!("SFTP init failed: {}", e))?;
+        let sftp = SftpSession::new(stream).await.map_err(|e| {
+            tracing::error!(session_id = %session_id, error = %e, "SFTP session init failed");
+            format!("SFTP init failed: {}", e)
+        })?;
         Arc::new(Mutex::new(Some(sftp)))
     };
 
@@ -50,11 +55,14 @@ pub async fn sftp_disconnect(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     session_id: String,
 ) -> Result<(), String> {
+    tracing::info!(session_id = %session_id, "SFTP disconnect");
     let mut state = state.lock().await;
     if let Some(sftp_arc) = state.sftp_sessions.remove(&session_id) {
         let mut guard = sftp_arc.lock().await;
-        if let Some(sftp) = guard.take() {
-            let _ = sftp.close().await;
+        if let Some(sftp) = guard.take()
+            && let Err(e) = sftp.close().await
+        {
+            tracing::warn!(session_id = %session_id, error = %e, "SFTP close error");
         }
     }
     Ok(())
@@ -66,6 +74,7 @@ pub async fn sftp_list_dir(
     session_id: String,
     path: String,
 ) -> Result<serde_json::Value, String> {
+    tracing::debug!(session_id = %session_id, path = %path, "SFTP list_dir");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -112,6 +121,7 @@ pub async fn sftp_mkdir(
     session_id: String,
     path: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, path = %path, "SFTP mkdir");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -126,6 +136,7 @@ pub async fn sftp_remove(
     session_id: String,
     path: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, path = %path, "SFTP remove");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -147,6 +158,7 @@ pub async fn sftp_rename(
     from: String,
     to: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, from = %from, to = %to, "SFTP rename");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -161,6 +173,7 @@ pub async fn sftp_read_file(
     session_id: String,
     path: String,
 ) -> Result<String, String> {
+    tracing::debug!(session_id = %session_id, path = %path, "SFTP read_file");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -180,6 +193,7 @@ pub async fn sftp_write_file(
     path: String,
     data: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, path = %path, "SFTP write_file");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -197,6 +211,7 @@ pub async fn sftp_stat(
     session_id: String,
     path: String,
 ) -> Result<serde_json::Value, String> {
+    tracing::debug!(session_id = %session_id, path = %path, "SFTP stat");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -224,6 +239,7 @@ pub async fn sftp_home(
     state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     session_id: String,
 ) -> Result<String, String> {
+    tracing::debug!(session_id = %session_id, "SFTP home");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
     let sftp = guard
@@ -239,6 +255,7 @@ pub async fn sftp_upload_sudo(
     remote_path: String,
     data: String,
 ) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, path = %remote_path, "SFTP upload_sudo");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let decoded = base64::engine::general_purpose::STANDARD
         .decode(&data)
@@ -281,7 +298,11 @@ pub async fn sftp_upload_sudo(
 
     if result.exit_code != 0 {
         let cleanup = format!("rm -f {}", muon_core::utils::shell_escape(&tmp_path));
-        let _ = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cleanup, 10).await;
+        if let Err(e) =
+            muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cleanup, 10).await
+        {
+            tracing::warn!(session_id = %session_id, error = %e, "Sudo upload cleanup failed");
+        }
         return Err(format!(
             "sudo cp failed (exit {}): {}",
             result.exit_code,
@@ -298,6 +319,7 @@ pub async fn sftp_download_sudo(
     session_id: String,
     remote_path: String,
 ) -> Result<String, String> {
+    tracing::debug!(session_id = %session_id, path = %remote_path, "SFTP download_sudo");
     let handle = {
         let state = state.lock().await;
         state
@@ -338,7 +360,11 @@ pub async fn sftp_download_sudo(
     };
 
     let cleanup = format!("rm -f {}", escaped_tmp);
-    let _ = muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cleanup, 10).await;
+    if let Err(e) =
+        muon_core::tools::remote_exec::RemoteExecutor::execute(&handle, &cleanup, 10).await
+    {
+        tracing::warn!(session_id = %session_id, error = %e, "Sudo download cleanup failed");
+    }
 
     Ok(base64::Engine::encode(
         &base64::engine::general_purpose::STANDARD,

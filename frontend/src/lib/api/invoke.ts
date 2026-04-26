@@ -1,22 +1,35 @@
 import { invoke } from '@tauri-apps/api/core'
+import type {
+  Settings,
+  SessionInfo,
+  SessionFolder,
+  DirEntry,
+  Snippet,
+  TransferProgress,
+  SshKeyInfo,
+  EditorInfo,
+  PluginInfo,
+  RemoteExecResult,
+  ConnectResult,
+} from '$lib/types'
 
-export async function getSettings(): Promise<any> {
+export async function getSettings(): Promise<Settings> {
   return invoke('get_settings')
 }
 
-export async function saveSettings(settings: any): Promise<void> {
+export async function saveSettings(settings: Settings): Promise<void> {
   return invoke('save_settings', { settings })
 }
 
-export async function listSessions(): Promise<any> {
+export async function listSessions(): Promise<SessionFolder> {
   return invoke('list_sessions')
 }
 
-export async function createSession(session: any): Promise<string> {
+export async function createSession(session: Partial<SessionInfo>): Promise<string> {
   return invoke<string>('create_session', { session })
 }
 
-export async function updateSession(session: any): Promise<void> {
+export async function updateSession(session: SessionInfo): Promise<void> {
   return invoke('update_session', { session })
 }
 
@@ -28,7 +41,7 @@ export async function createFolder(name: string, parentId?: string): Promise<str
   return invoke<string>('create_folder', { name, parentId: parentId ?? null })
 }
 
-export async function sshConnect(sessionId: string, password?: string): Promise<{ sessionId: string; hostKeyStatus: string; hostKeyFingerprint: string | null }> {
+export async function sshConnect(sessionId: string, password?: string): Promise<ConnectResult> {
   return invoke('ssh_connect', { sessionId, password: password ?? null })
 }
 
@@ -64,7 +77,7 @@ export async function sftpDisconnect(sessionId: string): Promise<void> {
   return invoke('sftp_disconnect', { sessionId })
 }
 
-export async function sftpListDir(sessionId: string, path: string): Promise<any[]> {
+export async function sftpListDir(sessionId: string, path: string): Promise<DirEntry[]> {
   return invoke('sftp_list_dir', { sessionId, path })
 }
 
@@ -88,7 +101,7 @@ export async function sftpWriteFile(sessionId: string, path: string, data: strin
   return invoke('sftp_write_file', { sessionId, path, data })
 }
 
-export async function sftpStat(sessionId: string, path: string): Promise<any> {
+export async function sftpStat(sessionId: string, path: string): Promise<DirEntry['attributes']> {
   return invoke('sftp_stat', { sessionId, path })
 }
 
@@ -100,15 +113,15 @@ export async function getAppVersion(): Promise<string> {
   return invoke<string>('get_app_version')
 }
 
-export async function listSnippets(): Promise<any[]> {
+export async function listSnippets(): Promise<Snippet[]> {
   return invoke('list_snippets')
 }
 
-export async function createSnippet(snippet: any): Promise<string> {
+export async function createSnippet(snippet: Partial<Snippet>): Promise<string> {
   return invoke<string>('create_snippet', { snippet })
 }
 
-export async function updateSnippet(snippet: any): Promise<void> {
+export async function updateSnippet(snippet: Snippet): Promise<void> {
   return invoke('update_snippet', { snippet })
 }
 
@@ -140,7 +153,7 @@ export async function transferCancel(transferId: string): Promise<boolean> {
   return invoke<boolean>('transfer_cancel', { transferId })
 }
 
-export async function transferList(): Promise<any[]> {
+export async function transferList(): Promise<TransferProgress[]> {
   return invoke('transfer_list')
 }
 
@@ -152,15 +165,15 @@ export async function remoteExec(
   sessionId: string,
   command: string,
   timeoutSecs?: number,
-): Promise<{ stdout: string; exitCode: number }> {
+): Promise<RemoteExecResult> {
   return invoke('remote_exec', { sessionId, command, timeoutSecs: timeoutSecs ?? null })
 }
 
-export async function listLocalKeys(): Promise<any[]> {
+export async function listLocalKeys(): Promise<SshKeyInfo[]> {
   return invoke('list_local_keys')
 }
 
-export async function listRemoteKeys(sessionId: string): Promise<any[]> {
+export async function listRemoteKeys(sessionId: string): Promise<SshKeyInfo[]> {
   return invoke('list_remote_keys', { sessionId })
 }
 
@@ -168,7 +181,7 @@ export async function generateKeyPair(
   algorithm: string,
   path: string,
   passphrase?: string,
-): Promise<any> {
+): Promise<SshKeyInfo> {
   return invoke('generate_key_pair', { algorithm, path, passphrase: passphrase ?? null })
 }
 
@@ -209,7 +222,7 @@ export async function portForwardList(): Promise<string[]> {
   return invoke('port_forward_list')
 }
 
-export async function importSshConfig(path?: string): Promise<any[]> {
+export async function importSshConfig(path?: string): Promise<Partial<SessionInfo>[]> {
   return invoke('import_ssh_config', { path: path ?? null })
 }
 
@@ -298,7 +311,7 @@ export async function localTerminalClose(channelId: string): Promise<void> {
   return invoke('local_terminal_close', { channelId })
 }
 
-export async function detectEditors(): Promise<any[]> {
+export async function detectEditors(): Promise<EditorInfo[]> {
   return invoke('detect_editors')
 }
 
@@ -306,11 +319,11 @@ export async function openInEditor(filePath: string): Promise<void> {
   return invoke('open_in_editor', { filePath })
 }
 
-export async function pluginList(): Promise<any[]> {
+export async function pluginList(): Promise<PluginInfo[]> {
   return invoke('plugin_list')
 }
 
-export async function pluginDiscover(): Promise<any[]> {
+export async function pluginDiscover(): Promise<PluginInfo[]> {
   return invoke('plugin_discover')
 }
 
@@ -337,7 +350,7 @@ export async function pluginGetAllSettings(pluginId: string): Promise<Record<str
 export async function pluginFireEvent(
   pluginId: string,
   eventType: string,
-  payload: any,
+  payload: unknown,
 ): Promise<void> {
   return invoke('plugin_fire_event', { pluginId, eventType, payload })
 }

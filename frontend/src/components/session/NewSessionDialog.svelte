@@ -1,5 +1,6 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
+  import type { AuthType } from '$lib/types'
 
   let { onclose }: { onclose: () => void } = $props()
 
@@ -7,7 +8,7 @@
   let host = $state('')
   let port = $state(22)
   let username = $state('')
-  let authType = $state('password')
+  let authType = $state<AuthType>('password')
   let password = $state('')
   let keyPath = $state('')
   let saving = $state(false)
@@ -27,6 +28,8 @@
         port,
         username: username.trim(),
         auth_type: authType,
+        password_key: authType === 'password' && password ? password : undefined,
+        private_key_path: authType === 'public_key' && keyPath ? keyPath : undefined,
       })
       onclose()
     } catch (e) {

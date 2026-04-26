@@ -78,7 +78,7 @@
   }
 </script>
 
-<div class="disk-analyzer">
+<div class="disk-analyzer" role="region" aria-label="Disk analyzer">
   <div class="toolbar">
     <input
       type="text"

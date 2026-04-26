@@ -25,21 +25,40 @@
     { id: 'keys', label: () => t('tools.keys') },
     { id: 'forwarding', label: () => t('tools.forwarding') },
   ]
+
+  function handleTabKeydown(e: KeyboardEvent, index: number) {
+    let newIndex = index
+    if (e.key === 'ArrowRight') newIndex = (index + 1) % tools.length
+    else if (e.key === 'ArrowLeft') newIndex = (index - 1 + tools.length) % tools.length
+    else if (e.key === 'Home') newIndex = 0
+    else if (e.key === 'End') newIndex = tools.length - 1
+    else return
+    e.preventDefault()
+    activeTool = tools[newIndex].id
+    const tabEl = document.querySelector(`[data-tool-tab="${tools[newIndex].id}"]`) as HTMLElement
+    tabEl?.focus()
+  }
 </script>
 
 <div class="tools-panel">
-  <div class="tool-tabs">
-    {#each tools as tool}
+  <div class="tool-tabs" role="tablist">
+    {#each tools as tool, i}
       <button
         class="tool-tab"
         class:active={activeTool === tool.id}
+        role="tab"
+        aria-selected={activeTool === tool.id}
+        aria-controls="tabpanel-{tool.id}"
+        tabindex={activeTool === tool.id ? 0 : -1}
+        data-tool-tab={tool.id}
         onclick={() => (activeTool = tool.id)}
+        onkeydown={(e) => handleTabKeydown(e, i)}
       >
         {tool.label()}
       </button>
     {/each}
   </div>
-  <div class="tool-content">
+  <div class="tool-content" role="tabpanel" id="tabpanel-{activeTool}">
     {#if activeTool === 'processes'}
       <ProcessViewer {sessionId} />
     {:else if activeTool === 'logs'}

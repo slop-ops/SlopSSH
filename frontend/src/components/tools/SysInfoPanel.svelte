@@ -30,7 +30,7 @@
   }
 </script>
 
-<div class="sysinfo-panel">
+<div class="sysinfo-panel" role="region" aria-label="System information">
   <div class="toolbar">
     <button class="action-btn" onclick={loadInfo} disabled={loading}>
       {loading ? t('common.loading') : t('tools.refresh')}

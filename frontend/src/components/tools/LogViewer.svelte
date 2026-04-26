@@ -63,7 +63,7 @@
   )
 </script>
 
-<div class="log-viewer">
+<div class="log-viewer" role="region" aria-label="Log viewer">
   <div class="toolbar">
     <input
       type="text"

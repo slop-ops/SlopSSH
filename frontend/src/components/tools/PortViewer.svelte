@@ -67,7 +67,7 @@
   )
 </script>
 
-<div class="port-viewer">
+<div class="port-viewer" role="region" aria-label="Port viewer">
   <div class="toolbar">
     <input
       type="text"

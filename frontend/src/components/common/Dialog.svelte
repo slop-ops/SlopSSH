@@ -11,6 +11,9 @@
     children?: import('svelte').Snippet
   } = $props()
 
+  let dialogEl: HTMLDivElement | undefined = $state()
+  let previousFocus: HTMLElement | null = null
+
   function close() {
     open = false
   }
@@ -22,17 +25,57 @@
   function handleKeydown(e: KeyboardEvent) {
     if (e.key === 'Escape') close()
   }
+
+  $effect(() => {
+    if (open && dialogEl) {
+      previousFocus = document.activeElement as HTMLElement
+
+      const el = dialogEl
+      const focusable = el.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      )
+      const first = focusable[0]
+      const last = focusable[focusable.length - 1]
+
+      first?.focus()
+
+      function trapFocus(e: KeyboardEvent) {
+        if (e.key !== 'Tab') return
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault()
+            last?.focus()
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault()
+            first?.focus()
+          }
+        }
+      }
+
+      el.addEventListener('keydown', trapFocus)
+      return () => el.removeEventListener('keydown', trapFocus)
+    }
+  })
+
+  $effect(() => {
+    if (!open && previousFocus) {
+      previousFocus.focus()
+      previousFocus = null
+    }
+  })
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
   <div class="backdrop" onclick={handleBackdrop} role="dialog" aria-modal="true">
-    <div class="dialog" style:max-width={width}>
+    <div class="dialog" style:max-width={width} bind:this={dialogEl}>
       {#if title}
         <div class="dialog-header">
           <h3>{title}</h3>
-          <button class="close-btn" onclick={close}>x</button>
+          <button class="close-btn" onclick={close} aria-label="Close dialog">x</button>
         </div>
       {/if}
       <div class="dialog-body">

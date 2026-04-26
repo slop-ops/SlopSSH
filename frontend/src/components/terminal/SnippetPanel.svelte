@@ -88,7 +88,7 @@
 <div class="snippet-panel">
   <div class="panel-header">
     <h3>{t('terminal.snippets')}</h3>
-    <button class="add-btn" onclick={() => { resetForm(); showForm = true }}>+</button>
+    <button class="add-btn" onclick={() => { resetForm(); showForm = true }} aria-label="Add snippet">+</button>
   </div>
 
   <div class="search-bar">
@@ -121,8 +121,8 @@
           <span class="snippet-cmd">{snippet.command}</span>
         </div>
         <div class="snippet-actions">
-          <button class="act-btn" onclick={() => editSnippet(snippet)}>E</button>
-          <button class="act-btn del" onclick={() => deleteSnippet(snippet.id)}>x</button>
+          <button class="act-btn" onclick={() => editSnippet(snippet)} aria-label="Edit snippet">E</button>
+          <button class="act-btn del" onclick={() => deleteSnippet(snippet.id)} aria-label="Delete snippet">x</button>
         </div>
       </div>
     {/each}

@@ -73,8 +73,8 @@
   <div class="header">
     <h2>{t('sidebar.sessions')}</h2>
     <div class="header-actions">
-      <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')}>&#8595;</button>
-      <button class="add-btn" onclick={onNewSession}>+</button>
+      <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')} aria-label="Import SSH config">&#8595;</button>
+      <button class="add-btn" onclick={onNewSession} aria-label="Add session">+</button>
     </div>
   </div>
 
@@ -105,7 +105,7 @@
                 <span class="connecting">{t('sidebar.connecting')}</span>
               {/if}
             </button>
-            <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }}>
+            <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }} aria-label="Delete session">
               x
             </button>
           </div>

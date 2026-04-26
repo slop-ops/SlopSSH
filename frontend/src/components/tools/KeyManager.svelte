@@ -80,7 +80,7 @@
   }
 </script>
 
-<div class="key-manager">
+<div class="key-manager" role="region" aria-label="SSH key manager">
   <div class="section-header">
     <h3>{t('tools.keyManager')}</h3>
     <div class="actions">
@@ -155,7 +155,7 @@
 
   {#if showGenerate}
     <div class="dialog-overlay" onclick={() => (showGenerate = false)}>
-      <div class="dialog" onclick={(e) => e.stopPropagation()}>
+      <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Generate SSH key pair">
         <h3>{t('tools.generateTitle')}</h3>
 
         <div class="form-group">

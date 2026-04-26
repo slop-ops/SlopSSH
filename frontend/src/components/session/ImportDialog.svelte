@@ -36,7 +36,7 @@
 </script>
 
 <div class="dialog-overlay" onclick={onClose}>
-  <div class="dialog" onclick={(e) => e.stopPropagation()}>
+  <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Import SSH config">
     <div class="dialog-header">
       <h2>{t('session.importSshConfig')}</h2>
       <button class="close-btn" onclick={onClose}>&times;</button>

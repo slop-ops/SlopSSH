@@ -101,7 +101,7 @@
   }
 </script>
 
-<div class="system-load">
+<div class="system-load" role="region" aria-label="System load monitoring">
   <div class="toolbar">
     {#if running}
       <button class="action-btn active" onclick={stop}>{t('tools.stop')}</button>

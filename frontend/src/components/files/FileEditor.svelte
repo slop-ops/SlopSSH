@@ -85,7 +85,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) handleClose() }}>
-  <div class="dialog">
+  <div class="dialog" role="dialog" aria-modal="true" aria-label="File editor">
     <div class="dialog-header">
       <h3>Edit: {fileName}</h3>
       <button class="close-btn" onclick={handleClose}>x</button>

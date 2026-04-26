@@ -59,12 +59,12 @@
               onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') activeTabId = tab.id }}
             >
               <span class="tab-title">{tab.title}</span>
-              <span class="tab-close" role="button" tabindex={-1} onclick={(e: Event) => { e.stopPropagation(); closeTab(tab.id) }}>x</span>
+              <span class="tab-close" role="button" tabindex={-1} aria-label="Close tab" onclick={(e: Event) => { e.stopPropagation(); closeTab(tab.id) }}>x</span>
             </div>
           {/each}
         </div>
-        <button class="local-btn" onclick={openLocalTerminal} title={t('app.openLocalTerminal')}>+$</button>
-        <button class="snippet-toggle" class:active={showSnippets} onclick={() => (showSnippets = !showSnippets)} title="Snippets">
+        <button class="local-btn" onclick={openLocalTerminal} title={t('app.openLocalTerminal')} aria-label="Open local terminal">+$</button>
+        <button class="snippet-toggle" class:active={showSnippets} onclick={() => (showSnippets = !showSnippets)} title="Snippets" aria-label="Toggle snippets">
           S
         </button>
       </div>

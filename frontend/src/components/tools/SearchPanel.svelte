@@ -42,7 +42,7 @@
   }
 </script>
 
-<div class="search-panel">
+<div class="search-panel" role="region" aria-label="File search">
   <div class="toolbar">
     <div class="search-fields">
       <div class="field-row">

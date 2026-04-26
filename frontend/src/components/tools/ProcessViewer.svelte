@@ -101,7 +101,7 @@
   }
 </script>
 
-<div class="process-viewer">
+<div class="process-viewer" role="region" aria-label="Process viewer">
   <div class="toolbar">
     <input
       type="text"
@@ -141,7 +141,7 @@
             <td><span class="stat-badge">{p.stat}</span></td>
             <td class="cmd" title={p.command}>{p.command}</td>
             <td>
-              <button class="kill-btn" onclick={() => killProcess(p.pid)}>{t('tools.kill')}</button>
+              <button class="kill-btn" onclick={() => killProcess(p.pid)} aria-label="Kill process">{t('tools.kill')}</button>
             </td>
           </tr>
         {/each}

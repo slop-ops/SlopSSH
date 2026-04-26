@@ -58,15 +58,18 @@
 
 <div
   class="context-menu"
+  role="menu"
+  aria-label="Context menu"
   bind:this={menuEl}
   style="left: {adjustedX}px; top: {adjustedY}px"
 >
   {#each items as item}
     {#if item.separator}
-      <div class="separator"></div>
+      <div class="separator" role="separator"></div>
     {:else}
       <button
         class="menu-item"
+        role="menuitem"
         disabled={item.disabled}
         onclick={() => {
           if (item.action) {

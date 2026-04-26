@@ -72,7 +72,7 @@
 
 {#if transfers.length > 0}
   <div class="transfer-queue" class:collapsed={!expanded}>
-    <div class="header" onclick={() => (expanded = !expanded)}>
+    <div class="header" onclick={() => (expanded = !expanded)} aria-label="Toggle transfers">
       <span class="title">
         {t('files.transfers')}
         {#if activeCount > 0}
@@ -107,7 +107,7 @@
               {/if}
             </div>
             {#if t.status === 'InProgress' || t.status === 'Queued'}
-              <button class="cancel-btn" onclick={() => cancelTransfer(t.id)}>x</button>
+              <button class="cancel-btn" onclick={() => cancelTransfer(t.id)} aria-label="Cancel transfer">x</button>
             {/if}
             {#if t.error}
               <div class="transfer-error">{t.error}</div>

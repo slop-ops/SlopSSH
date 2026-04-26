@@ -29,6 +29,30 @@
 
   let selectedPath = $state<string | null>(null)
 
+  let selectedIndex = $derived(
+    entries.findIndex(e => e.path === selectedPath)
+  )
+
+  function handleListKeydown(e: KeyboardEvent) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      if (selectedIndex < entries.length - 1) {
+        selectedPath = entries[selectedIndex + 1].path
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      if (selectedIndex > 0) {
+        selectedPath = entries[selectedIndex - 1].path
+      }
+    } else if (e.key === 'Enter') {
+      const entry = entries[selectedIndex]
+      if (entry && entry.isDir) onNavigate(entry)
+    } else if (e.key === 'Delete') {
+      const entry = entries[selectedIndex]
+      if (entry) onDelete(entry)
+    }
+  }
+
   function formatSize(bytes: number): string {
     if (bytes === 0) return '-'
     const units = ['B', 'KB', 'MB', 'GB', 'TB']
@@ -69,38 +93,40 @@
   }
 </script>
 
-<table class="file-list">
+<table class="file-list" role="grid" aria-label="File list" tabindex="0" onkeydown={handleListKeydown}>
   <thead>
-    <tr>
-      <th class="col-icon"></th>
-      <th class="col-name">{t('files.name')}</th>
-      <th class="col-size">{t('files.size')}</th>
-      <th class="col-modified">{t('files.modified')}</th>
-      <th class="col-actions"></th>
+    <tr role="row">
+      <th class="col-icon" role="columnheader"></th>
+      <th class="col-name" role="columnheader">{t('files.name')}</th>
+      <th class="col-size" role="columnheader">{t('files.size')}</th>
+      <th class="col-modified" role="columnheader">{t('files.modified')}</th>
+      <th class="col-actions" role="columnheader"></th>
     </tr>
   </thead>
   <tbody>
     {#each entries as entry (entry.path)}
       <tr
+        role="row"
         class="file-row"
         class:selected={selectedPath === entry.path}
+        aria-selected={selectedPath === entry.path}
         draggable="true"
         onclick={() => (selectedPath = entry.path)}
         ondblclick={() => handleDoubleClick(entry)}
         ondragstart={(e) => handleDragStart(entry, e)}
         oncontextmenu={(e) => { e.preventDefault(); onContextMenu?.(entry, e) }}
       >
-        <td class="col-icon">
+        <td class="col-icon" role="gridcell">
           <span class="icon" class:dir={entry.isDir} class:file={entry.isFile}>
             {getIcon(entry)}
           </span>
         </td>
-        <td class="col-name">
+        <td class="col-name" role="gridcell">
           <span class="name" class:dir-name={entry.isDir}>{entry.name}</span>
         </td>
-        <td class="col-size">{entry.isDir ? '-' : formatSize(entry.size)}</td>
-        <td class="col-modified">{formatDate(entry.modified)}</td>
-        <td class="col-actions">
+        <td class="col-size" role="gridcell">{entry.isDir ? '-' : formatSize(entry.size)}</td>
+        <td class="col-modified" role="gridcell">{formatDate(entry.modified)}</td>
+        <td class="col-actions" role="gridcell">
           <button class="action-btn" onclick={(e: MouseEvent) => { e.preventDefault(); onRename(entry) }} title={t('files.rename')}>
             R
           </button>

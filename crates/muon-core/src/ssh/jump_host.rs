@@ -301,3 +301,169 @@ fn load_jump_key(path: &std::path::Path) -> Result<PrivateKey, SshError> {
     load_secret_key(&path_str, None)
         .map_err(|e| SshError::AuthFailed(format!("Failed to load key: {}", e)))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::session::AuthType;
+
+    #[test]
+    fn test_jump_host_serialization() {
+        let jh = JumpHost {
+            host: "jump.example.com".to_string(),
+            port: 22,
+            username: "admin".to_string(),
+            auth_type: AuthType::Password,
+            password_key: Some("jump-password".to_string()),
+            private_key_path: None,
+        };
+        let json = serde_json::to_string(&jh).unwrap();
+        assert!(json.contains("jump.example.com"));
+        assert!(json.contains("admin"));
+        let parsed: JumpHost = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.host, "jump.example.com");
+        assert_eq!(parsed.port, 22);
+        assert_eq!(parsed.username, "admin");
+    }
+
+    #[test]
+    fn test_jump_host_with_public_key() {
+        let jh = JumpHost {
+            host: "bastion.io".to_string(),
+            port: 2222,
+            username: "deploy".to_string(),
+            auth_type: AuthType::PublicKey,
+            password_key: None,
+            private_key_path: Some(std::path::PathBuf::from("/home/user/.ssh/id_rsa")),
+        };
+        let json = serde_json::to_string(&jh).unwrap();
+        let parsed: JumpHost = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.auth_type, AuthType::PublicKey);
+        assert_eq!(
+            parsed.private_key_path,
+            Some(std::path::PathBuf::from("/home/user/.ssh/id_rsa"))
+        );
+    }
+
+    #[test]
+    fn test_jump_host_clone() {
+        let jh = JumpHost {
+            host: "test.com".to_string(),
+            port: 22,
+            username: "user".to_string(),
+            auth_type: AuthType::Password,
+            password_key: Some("key".to_string()),
+            private_key_path: None,
+        };
+        let cloned = jh.clone();
+        assert_eq!(cloned.host, jh.host);
+        assert_eq!(cloned.port, jh.port);
+        assert_eq!(cloned.username, jh.username);
+    }
+
+    #[test]
+    fn test_jump_host_debug() {
+        let jh = JumpHost {
+            host: "debug.com".to_string(),
+            port: 22,
+            username: "user".to_string(),
+            auth_type: AuthType::None,
+            password_key: None,
+            private_key_path: None,
+        };
+        let debug = format!("{:?}", jh);
+        assert!(debug.contains("debug.com"));
+    }
+
+    #[test]
+    fn test_resolve_password_with_key() {
+        let jh = JumpHost {
+            host: "jump.com".to_string(),
+            port: 22,
+            username: "user".to_string(),
+            auth_type: AuthType::Password,
+            password_key: Some("cred-key-1".to_string()),
+            private_key_path: None,
+        };
+        let mut creds = HashMap::new();
+        creds.insert("cred-key-1".to_string(), "secret123".to_string());
+        creds.insert("other-key".to_string(), "other".to_string());
+
+        let result = JumpHostTunnel::resolve_password(&jh, &creds);
+        assert_eq!(result, Some("secret123".to_string()));
+    }
+
+    #[test]
+    fn test_resolve_password_no_key() {
+        let jh = JumpHost {
+            host: "jump.com".to_string(),
+            port: 22,
+            username: "user".to_string(),
+            auth_type: AuthType::Password,
+            password_key: None,
+            private_key_path: None,
+        };
+        let creds = HashMap::new();
+        let result = JumpHostTunnel::resolve_password(&jh, &creds);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_resolve_password_missing_credential() {
+        let jh = JumpHost {
+            host: "jump.com".to_string(),
+            port: 22,
+            username: "user".to_string(),
+            auth_type: AuthType::Password,
+            password_key: Some("nonexistent-key".to_string()),
+            private_key_path: None,
+        };
+        let creds = HashMap::new();
+        let result = JumpHostTunnel::resolve_password(&jh, &creds);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_resolve_password_empty_credentials() {
+        let jh = JumpHost {
+            host: "jump.com".to_string(),
+            port: 22,
+            username: "user".to_string(),
+            auth_type: AuthType::Password,
+            password_key: Some("key".to_string()),
+            private_key_path: None,
+        };
+        let creds = HashMap::new();
+        assert_eq!(JumpHostTunnel::resolve_password(&jh, &creds), None);
+    }
+
+    #[test]
+    fn test_jump_host_auth_type_none() {
+        let jh = JumpHost {
+            host: "jump.com".to_string(),
+            port: 22,
+            username: "user".to_string(),
+            auth_type: AuthType::None,
+            password_key: None,
+            private_key_path: None,
+        };
+        assert_eq!(jh.auth_type, AuthType::None);
+        assert!(jh.password_key.is_none());
+        assert!(jh.private_key_path.is_none());
+    }
+
+    #[test]
+    fn test_jump_host_non_standard_port() {
+        let jh = JumpHost {
+            host: "jump.com".to_string(),
+            port: 2222,
+            username: "user".to_string(),
+            auth_type: AuthType::Password,
+            password_key: Some("pk".to_string()),
+            private_key_path: None,
+        };
+        assert_eq!(jh.port, 2222);
+        let json = serde_json::to_string(&jh).unwrap();
+        assert!(json.contains("2222"));
+    }
+}

@@ -359,3 +359,137 @@ impl Default for SessionManager {
         Self::new()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_session_manager_new() {
+        let mgr = SessionManager::new();
+        assert!(!mgr.is_connected("nonexistent"));
+    }
+
+    #[test]
+    fn test_session_manager_default() {
+        let mgr = SessionManager::default();
+        assert!(!mgr.is_connected("nonexistent"));
+    }
+
+    #[test]
+    fn test_is_connected_empty() {
+        let mgr = SessionManager::new();
+        assert!(!mgr.is_connected("any-id"));
+    }
+
+    #[test]
+    fn test_get_handle_nonexistent() {
+        let mgr = SessionManager::new();
+        assert!(mgr.get_handle("nonexistent").is_none());
+    }
+
+    #[test]
+    fn test_get_remote_forward_map_nonexistent() {
+        let mgr = SessionManager::new();
+        assert!(mgr.get_remote_forward_map("nonexistent").is_none());
+    }
+
+    #[tokio::test]
+    async fn test_disconnect_nonexistent() {
+        let mut mgr = SessionManager::new();
+        let result = mgr.disconnect("nonexistent").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_open_shell_nonexistent() {
+        let mut mgr = SessionManager::new();
+        let result = mgr.open_shell("nonexistent", "ch1", 80, 24).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), SshError::NotConnected));
+    }
+
+    #[tokio::test]
+    async fn test_shell_write_nonexistent() {
+        let mut mgr = SessionManager::new();
+        let result = mgr.shell_write("nonexistent", "ch1", b"test").await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), SshError::NotConnected));
+    }
+
+    #[tokio::test]
+    async fn test_shell_resize_nonexistent() {
+        let mgr = SessionManager::new();
+        let result = mgr.shell_resize("nonexistent", "ch1", 120, 40).await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), SshError::NotConnected));
+    }
+
+    #[tokio::test]
+    async fn test_close_shell_nonexistent() {
+        let mut mgr = SessionManager::new();
+        let result = mgr.close_shell("nonexistent", "ch1").await;
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    async fn test_open_sftp_channel_nonexistent() {
+        let mgr = SessionManager::new();
+        let result = mgr.open_sftp_channel("nonexistent").await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), SshError::NotConnected));
+    }
+
+    #[tokio::test]
+    async fn test_spawn_shell_read_loop_nonexistent() {
+        let mut mgr = SessionManager::new();
+        let result = mgr.spawn_shell_read_loop("nonexistent", "ch1", |_| {});
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), SshError::NotConnected));
+    }
+
+    #[tokio::test]
+    async fn test_accept_host_key_nonexistent() {
+        let mut mgr = SessionManager::new();
+        let result = mgr.accept_host_key("nonexistent").await;
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err(), SshError::NotConnected));
+    }
+
+    #[test]
+    fn test_connect_result_serialization() {
+        let result = ConnectResult {
+            session_id: "test-123".to_string(),
+            host_key_status: "Trusted".to_string(),
+            host_key_fingerprint: Some("SHA256:abc123".to_string()),
+        };
+        let json = serde_json::to_string(&result).unwrap();
+        assert!(json.contains("test-123"));
+        assert!(json.contains("Trusted"));
+        assert!(json.contains("SHA256:abc123"));
+    }
+
+    #[test]
+    fn test_connect_result_debug() {
+        let result = ConnectResult {
+            session_id: "s1".to_string(),
+            host_key_status: "Unknown".to_string(),
+            host_key_fingerprint: None,
+        };
+        let debug = format!("{:?}", result);
+        assert!(debug.contains("s1"));
+    }
+
+    #[test]
+    fn test_connect_result_clone() {
+        let result = ConnectResult {
+            session_id: "s1".to_string(),
+            host_key_status: "Trusted".to_string(),
+            host_key_fingerprint: Some("fp".to_string()),
+        };
+        let cloned = result.clone();
+        assert_eq!(cloned.session_id, "s1");
+        assert_eq!(cloned.host_key_status, "Trusted");
+        assert_eq!(cloned.host_key_fingerprint, Some("fp".to_string()));
+    }
+}

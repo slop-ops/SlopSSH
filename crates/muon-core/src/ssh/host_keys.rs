@@ -372,4 +372,126 @@ mod tests {
             22
         ));
     }
+
+    #[test]
+    fn test_host_matches_bracketed_no_port() {
+        assert!(
+            HostKeyVerifier::host_matches("[example.com]", "example.com", 22),
+            "bracketed host without port should match on port 22"
+        );
+    }
+
+    #[test]
+    fn test_host_matches_bracketed_no_port_wrong_port() {
+        assert!(
+            !HostKeyVerifier::host_matches("[example.com]", "example.com", 2222),
+            "bracketed host without port should not match non-22 port"
+        );
+    }
+
+    #[test]
+    fn test_host_key_status_equality() {
+        assert_eq!(HostKeyStatus::Trusted, HostKeyStatus::Trusted);
+        assert_eq!(HostKeyStatus::Unknown, HostKeyStatus::Unknown);
+        assert_eq!(HostKeyStatus::Changed, HostKeyStatus::Changed);
+        assert_ne!(HostKeyStatus::Trusted, HostKeyStatus::Unknown);
+        assert_ne!(HostKeyStatus::Changed, HostKeyStatus::Trusted);
+    }
+
+    #[test]
+    fn test_host_key_status_debug() {
+        assert!(format!("{:?}", HostKeyStatus::Trusted).contains("Trusted"));
+        assert!(format!("{:?}", HostKeyStatus::Unknown).contains("Unknown"));
+        assert!(format!("{:?}", HostKeyStatus::Changed).contains("Changed"));
+    }
+
+    #[test]
+    fn test_host_matches_empty_pattern() {
+        assert!(!HostKeyVerifier::host_matches("", "example.com", 22));
+    }
+
+    #[test]
+    fn test_host_matches_localhost() {
+        assert!(HostKeyVerifier::host_matches("localhost", "localhost", 22));
+        assert!(!HostKeyVerifier::host_matches("localhost", "127.0.0.1", 22));
+    }
+
+    #[test]
+    fn test_host_matches_ipv4() {
+        assert!(HostKeyVerifier::host_matches("192.168.1.1", "192.168.1.1", 22));
+        assert!(!HostKeyVerifier::host_matches("192.168.1.1", "192.168.1.2", 22));
+    }
+
+    #[test]
+    fn test_host_matches_wildcard_subdomain() {
+        assert!(HostKeyVerifier::host_matches(
+            "*.example.com",
+            "sub.example.com",
+            22
+        ));
+        assert!(HostKeyVerifier::host_matches(
+            "*.example.com",
+            "a.b.example.com",
+            22
+        ));
+    }
+
+    #[test]
+    fn test_host_matches_question_mark() {
+        assert!(HostKeyVerifier::host_matches("host?", "host1", 22));
+        assert!(HostKeyVerifier::host_matches("host?", "hostA", 22));
+        assert!(!HostKeyVerifier::host_matches("host?", "host12", 22));
+        assert!(!HostKeyVerifier::host_matches("host?", "host", 22));
+    }
+
+    #[test]
+    fn test_host_matches_multiple_with_port() {
+        assert!(HostKeyVerifier::host_matches(
+            "server1,server2",
+            "server1",
+            22
+        ));
+        assert!(HostKeyVerifier::host_matches(
+            "[server1]:2222,[server2]:2222",
+            "server1",
+            2222
+        ));
+    }
+
+    #[test]
+    fn test_key_type_name_matches() {
+        let pairs = vec![
+            ("*.example.com", "www.example.com"),
+            ("?", "x"),
+            ("*.*", "a.b"),
+        ];
+        for (pattern, host) in pairs {
+            assert!(HostKeyVerifier::host_matches(pattern, host, 22));
+        }
+    }
+
+    #[test]
+    fn test_parse_line_valid() {
+        let line = "example.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl";
+        let parts: Vec<&str> = line.splitn(3, ' ').collect();
+        assert_eq!(parts.len(), 3);
+        assert_eq!(parts[0], "example.com");
+        assert_eq!(parts[1], "ssh-ed25519");
+    }
+
+    #[test]
+    fn test_parse_line_too_short() {
+        let line = "example.com ssh-ed25519";
+        let parts: Vec<&str> = line.splitn(3, ' ').collect();
+        assert_eq!(parts.len(), 2);
+    }
+
+    #[test]
+    fn test_host_matches_comma_patterns_all_must_fail() {
+        assert!(!HostKeyVerifier::host_matches(
+            "server1,server2,server3",
+            "server4",
+            22
+        ));
+    }
 }

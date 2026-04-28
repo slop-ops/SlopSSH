@@ -144,3 +144,71 @@ impl Default for ConnectionPool {
         Self::new(3)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_connection_pool_new() {
+        let pool = ConnectionPool::new(5);
+        assert_eq!(pool.active_count("nonexistent"), 0);
+        assert_eq!(pool.total_count("nonexistent"), 0);
+    }
+
+    #[test]
+    fn test_connection_pool_default() {
+        let pool = ConnectionPool::default();
+        assert_eq!(pool.active_count("nonexistent"), 0);
+    }
+
+    #[test]
+    fn test_active_count_nonexistent() {
+        let pool = ConnectionPool::new(3);
+        assert_eq!(pool.active_count("no-such-session"), 0);
+    }
+
+    #[test]
+    fn test_total_count_nonexistent() {
+        let pool = ConnectionPool::new(3);
+        assert_eq!(pool.total_count("no-such-session"), 0);
+    }
+
+    #[test]
+    fn test_release_nonexistent() {
+        let mut pool = ConnectionPool::new(3);
+        pool.release("nonexistent");
+    }
+
+    #[tokio::test]
+    async fn test_cleanup_empty() {
+        let mut pool = ConnectionPool::new(3);
+        pool.cleanup().await;
+        assert_eq!(pool.active_count("any"), 0);
+    }
+
+    #[tokio::test]
+    async fn test_close_session_nonexistent() {
+        let mut pool = ConnectionPool::new(3);
+        pool.close_session("nonexistent").await;
+    }
+
+    #[tokio::test]
+    async fn test_close_all_empty() {
+        let mut pool = ConnectionPool::new(3);
+        pool.close_all().await;
+    }
+
+    #[test]
+    fn test_pool_max_per_session_custom() {
+        let pool = ConnectionPool::new(10);
+        assert_eq!(pool.active_count("x"), 0);
+        assert_eq!(pool.total_count("x"), 0);
+    }
+
+    #[test]
+    fn test_pool_max_per_session_one() {
+        let pool = ConnectionPool::new(1);
+        assert_eq!(pool.active_count("x"), 0);
+    }
+}

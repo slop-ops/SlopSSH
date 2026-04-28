@@ -248,3 +248,137 @@ impl KeyManager {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_ssh_key_info_serialization() {
+        let info = SshKeyInfo {
+            path: "/home/user/.ssh/id_rsa".to_string(),
+            name: "id_rsa".to_string(),
+            key_type: "RSA (PEM)".to_string(),
+            fingerprint: Some("SHA256:abc123".to_string()),
+            has_public_key: true,
+        };
+        let json = serde_json::to_string(&info).unwrap();
+        assert!(json.contains("id_rsa"));
+        let parsed: SshKeyInfo = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.path, info.path);
+        assert_eq!(parsed.name, "id_rsa");
+        assert_eq!(parsed.key_type, "RSA (PEM)");
+    }
+
+    #[test]
+    fn test_ssh_key_info_clone() {
+        let info = SshKeyInfo {
+            path: "/home/user/.ssh/id_ed25519".to_string(),
+            name: "id_ed25519".to_string(),
+            key_type: "OpenSSH".to_string(),
+            fingerprint: None,
+            has_public_key: false,
+        };
+        let cloned = info.clone();
+        assert_eq!(cloned.path, info.path);
+        assert_eq!(cloned.name, info.name);
+        assert_eq!(cloned.fingerprint, None);
+    }
+
+    #[test]
+    fn test_ssh_key_info_debug() {
+        let info = SshKeyInfo {
+            path: "/test".to_string(),
+            name: "test_key".to_string(),
+            key_type: "Ed25519".to_string(),
+            fingerprint: Some("fp".to_string()),
+            has_public_key: true,
+        };
+        let debug = format!("{:?}", info);
+        assert!(debug.contains("test_key"));
+    }
+
+    #[test]
+    fn test_truncate_fingerprint_short() {
+        let result = KeyManager::truncate_fingerprint("short");
+        assert_eq!(result, "short");
+    }
+
+    #[test]
+    fn test_truncate_fingerprint_exactly_20() {
+        let hash: String = "a".repeat(20);
+        let result = KeyManager::truncate_fingerprint(&hash);
+        assert_eq!(result, hash);
+        assert_eq!(result.len(), 20);
+    }
+
+    #[test]
+    fn test_truncate_fingerprint_long() {
+        let hash: String = "a".repeat(50);
+        let result = KeyManager::truncate_fingerprint(&hash);
+        assert_eq!(result.len(), 23);
+        assert!(result.ends_with("..."));
+        assert_eq!(&result[..20], &hash[..20]);
+    }
+
+    #[test]
+    fn test_truncate_fingerprint_empty() {
+        let result = KeyManager::truncate_fingerprint("");
+        assert_eq!(result, "");
+    }
+
+    #[test]
+    fn test_read_public_key_nonexistent() {
+        let result = KeyManager::read_public_key("/nonexistent/path/id_rsa");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_ssh_key_info_no_fingerprint() {
+        let info = SshKeyInfo {
+            path: "/test/key".to_string(),
+            name: "test".to_string(),
+            key_type: "Unknown".to_string(),
+            fingerprint: None,
+            has_public_key: false,
+        };
+        assert!(info.fingerprint.is_none());
+        assert!(!info.has_public_key);
+    }
+
+    #[test]
+    fn test_ssh_key_info_key_types() {
+        let types = vec![
+            "OpenSSH",
+            "RSA (PEM)",
+            "EC (PEM)",
+            "PKCS8",
+            "Unknown",
+        ];
+        for kt in types {
+            let info = SshKeyInfo {
+                path: "/test".to_string(),
+                name: "key".to_string(),
+                key_type: kt.to_string(),
+                fingerprint: None,
+                has_public_key: false,
+            };
+            assert_eq!(info.key_type, kt);
+        }
+    }
+
+    #[test]
+    fn test_truncate_fingerprint_realistic() {
+        let fp = "SHA256:uNiVztksCsDhcc0u9e8BgrJXVGDewarHSa0ZnNd7N4k";
+        let result = KeyManager::truncate_fingerprint(fp);
+        assert!(result.ends_with("..."));
+        assert_eq!(&result[..20], &fp[..20]);
+    }
+
+    #[test]
+    fn test_list_local_keys_no_ssh_dir() {
+        if std::env::var("HOME").is_ok() {
+            let _ = KeyManager::list_local_keys();
+        }
+    }
+}

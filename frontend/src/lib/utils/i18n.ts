@@ -45,6 +45,7 @@ export async function loadLocale(locale: string) {
 }
 
 function applyDirection() {
+  if (typeof document === 'undefined') return
   const dir = getTextDirection()
   document.documentElement.setAttribute('dir', dir)
 }

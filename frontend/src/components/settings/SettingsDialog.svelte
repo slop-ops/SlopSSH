@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte'
   import * as api from '$lib/api/invoke'
   import { setTheme, persistTheme, setTerminalSettings } from '$lib/stores/theme'
   import { loadLocale, t } from '$lib/utils/i18n'
@@ -11,6 +12,7 @@
   let error = $state('')
   let success = $state('')
   let activeTab = $state('general')
+  let successTimer: ReturnType<typeof setTimeout> | undefined
 
   const tabs = [
     { id: 'general', get label() { return t('settings.general') } },
@@ -140,13 +142,18 @@
         terminal_copy_on_select: settings.terminal_copy_on_select,
       })
       success = t('settings.saved')
-      setTimeout(() => (success = ''), 2000)
+      if (successTimer) clearTimeout(successTimer)
+      successTimer = setTimeout(() => (success = ''), 2000)
     } catch (e) {
       error = String(e)
     } finally {
       saving = false
     }
   }
+
+  onDestroy(() => {
+    if (successTimer) clearTimeout(successTimer)
+  })
 </script>
 
 {#if open && settings}

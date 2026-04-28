@@ -20,6 +20,7 @@
   let fitAddon: FitAddon | undefined = $state()
   let connected = $state(false)
   let unlisten: (() => void) | undefined = $state()
+  let contextmenuHandler: ((e: MouseEvent) => void) | undefined = $state()
 
   onMount(async () => {
     if (!terminalEl) return
@@ -73,7 +74,7 @@
       }
     })
 
-    terminalEl.addEventListener('contextmenu', (e) => {
+    contextmenuHandler = (e) => {
       e.preventDefault()
       navigator.clipboard.readText().then((text) => {
         if (text && connected) {
@@ -81,7 +82,8 @@
           api.localTerminalWrite(channelId, encoded).catch(console.error)
         }
       }).catch(() => {})
-    })
+    }
+    terminalEl.addEventListener('contextmenu', contextmenuHandler)
 
     unlisten = await listen<string>(`terminal-output-${channelId}`, (event) => {
       const decoded = atob(event.payload)
@@ -105,6 +107,9 @@
   onDestroy(() => {
     connected = false
     unlisten?.()
+    if (contextmenuHandler && terminalEl) {
+      terminalEl.removeEventListener('contextmenu', contextmenuHandler)
+    }
     api.localTerminalClose(channelId).catch(() => {})
     terminal?.dispose()
   })

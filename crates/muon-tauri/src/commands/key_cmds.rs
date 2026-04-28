@@ -67,6 +67,7 @@ pub async fn generate_key_pair(
         &path,
         passphrase.as_deref(),
     )
+    .await
     .map_err(|e| e.to_string())?;
 
     Ok(serde_json::json!({

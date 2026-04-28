@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte'
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
 
@@ -20,6 +21,16 @@
   let generating = $state(false)
   let deploying = $state<string | null>(null)
   let successMsg = $state('')
+  let timers: ReturnType<typeof setTimeout>[] = []
+
+  function scheduleClearMsg() {
+    const id = setTimeout(() => (successMsg = ''), 3000)
+    timers.push(id)
+  }
+
+  onDestroy(() => {
+    for (const id of timers) clearTimeout(id)
+  })
 
   $effect(() => {
     loadKeys()
@@ -54,7 +65,7 @@
       genPassphrase = ''
       genPath = ''
       successMsg = 'Key generated successfully'
-      setTimeout(() => (successMsg = ''), 3000)
+      scheduleClearMsg()
       await loadKeys()
     } catch (e) {
       error = String(e)
@@ -70,7 +81,7 @@
       const pubKey = await api.readPublicKey(keyPath)
       await api.deployPublicKey(sessionId, pubKey)
       successMsg = 'Key deployed to remote server'
-      setTimeout(() => (successMsg = ''), 3000)
+      scheduleClearMsg()
       await loadKeys()
     } catch (e) {
       error = String(e)

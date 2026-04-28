@@ -16,68 +16,7 @@ pub struct KeyManager;
 impl KeyManager {
     pub fn list_local_keys() -> anyhow::Result<Vec<SshKeyInfo>> {
         let ssh_dir = Self::ssh_dir()?;
-        let mut keys = Vec::new();
-
-        let entries = std::fs::read_dir(&ssh_dir)?;
-        for entry in entries {
-            let entry = entry?;
-            let path = entry.path();
-            if !path.is_file() {
-                continue;
-            }
-
-            let name = match path.file_name().and_then(|n| n.to_str()) {
-                Some(n) => n.to_string(),
-                None => continue,
-            };
-
-            if name.ends_with(".pub")
-                || name.starts_with('.')
-                || name == "known_hosts"
-                || name == "authorized_keys"
-                || name == "config"
-                || name == "sshd_config"
-            {
-                continue;
-            }
-
-            let content = match std::fs::read_to_string(&path) {
-                Ok(c) => c,
-                Err(_) => continue,
-            };
-
-            if !content.contains("PRIVATE KEY") && !content.contains("SSH PRIVATE KEY") {
-                continue;
-            }
-
-            let key_type = if content.contains("BEGIN OPENSSH PRIVATE KEY") {
-                "OpenSSH".to_string()
-            } else if content.contains("BEGIN RSA PRIVATE KEY") {
-                "RSA (PEM)".to_string()
-            } else if content.contains("BEGIN EC PRIVATE KEY") {
-                "EC (PEM)".to_string()
-            } else if content.contains("BEGIN PRIVATE KEY") {
-                "PKCS8".to_string()
-            } else {
-                "Unknown".to_string()
-            };
-
-            let pub_path = path.with_extension("pub");
-            let has_public_key = pub_path.exists();
-
-            let fingerprint = Self::read_public_key_fingerprint(&pub_path);
-
-            keys.push(SshKeyInfo {
-                path: path.to_string_lossy().to_string(),
-                name,
-                key_type,
-                fingerprint,
-                has_public_key,
-            });
-        }
-
-        keys.sort_by(|a, b| a.name.cmp(&b.name));
-        Ok(keys)
+        Ok(Self::list_local_keys_sync(&ssh_dir))
     }
 
     pub async fn list_remote_keys(
@@ -123,7 +62,7 @@ impl KeyManager {
         Ok(keys)
     }
 
-    pub fn generate_key_pair(
+    pub async fn generate_key_pair(
         algorithm: &str,
         path: &str,
         passphrase: Option<&str>,
@@ -162,7 +101,10 @@ impl KeyManager {
             cmd.arg(b);
         }
 
-        let output = cmd.output()?;
+        let output = tokio::task::spawn_blocking(move || cmd.output())
+            .await
+            .map_err(|e| anyhow::anyhow!("Key generation failed: {}", e))?
+            .map_err(|e| anyhow::anyhow!("Key generation failed: {}", e))?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(anyhow::anyhow!("ssh-keygen failed: {}", stderr));
@@ -246,6 +188,76 @@ impl KeyManager {
         } else {
             hash.to_string()
         }
+    }
+
+    pub fn list_local_keys_sync(ssh_dir: &std::path::Path) -> Vec<SshKeyInfo> {
+        let mut keys = Vec::new();
+        let entries = match std::fs::read_dir(ssh_dir) {
+            Ok(e) => e,
+            Err(_) => return keys,
+        };
+
+        for entry in entries {
+            let entry = match entry {
+                Ok(e) => e,
+                Err(_) => continue,
+            };
+            let path = entry.path();
+            if !path.is_file() {
+                continue;
+            }
+
+            let name = match path.file_name().and_then(|n| n.to_str()) {
+                Some(n) => n.to_string(),
+                None => continue,
+            };
+
+            if name.ends_with(".pub")
+                || name.starts_with('.')
+                || name == "known_hosts"
+                || name == "authorized_keys"
+                || name == "config"
+                || name == "sshd_config"
+            {
+                continue;
+            }
+
+            let content = match std::fs::read_to_string(&path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+
+            if !content.contains("PRIVATE KEY") && !content.contains("SSH PRIVATE KEY") {
+                continue;
+            }
+
+            let key_type = if content.contains("BEGIN OPENSSH PRIVATE KEY") {
+                "OpenSSH".to_string()
+            } else if content.contains("BEGIN RSA PRIVATE KEY") {
+                "RSA (PEM)".to_string()
+            } else if content.contains("BEGIN EC PRIVATE KEY") {
+                "EC (PEM)".to_string()
+            } else if content.contains("BEGIN PRIVATE KEY") {
+                "PKCS8".to_string()
+            } else {
+                "Unknown".to_string()
+            };
+
+            let pub_path = path.with_extension("pub");
+            let has_public_key = pub_path.exists();
+            let fingerprint = Self::read_public_key_fingerprint(&pub_path);
+
+            keys.push(SshKeyInfo {
+                path: path.to_string_lossy().to_string(),
+                name,
+                key_type,
+                fingerprint,
+                has_public_key,
+            });
+        }
+
+        keys.sort_by(|a, b| a.name.cmp(&b.name));
+        keys
     }
 }
 
@@ -348,13 +360,7 @@ mod tests {
 
     #[test]
     fn test_ssh_key_info_key_types() {
-        let types = vec![
-            "OpenSSH",
-            "RSA (PEM)",
-            "EC (PEM)",
-            "PKCS8",
-            "Unknown",
-        ];
+        let types = vec!["OpenSSH", "RSA (PEM)", "EC (PEM)", "PKCS8", "Unknown"];
         for kt in types {
             let info = SshKeyInfo {
                 path: "/test".to_string(),

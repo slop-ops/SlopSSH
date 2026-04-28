@@ -418,8 +418,16 @@ mod tests {
 
     #[test]
     fn test_host_matches_ipv4() {
-        assert!(HostKeyVerifier::host_matches("192.168.1.1", "192.168.1.1", 22));
-        assert!(!HostKeyVerifier::host_matches("192.168.1.1", "192.168.1.2", 22));
+        assert!(HostKeyVerifier::host_matches(
+            "192.168.1.1",
+            "192.168.1.1",
+            22
+        ));
+        assert!(!HostKeyVerifier::host_matches(
+            "192.168.1.1",
+            "192.168.1.2",
+            22
+        ));
     }
 
     #[test]

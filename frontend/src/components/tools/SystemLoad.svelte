@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte'
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
 
@@ -15,13 +16,14 @@
   let loading = $state(false)
   let error = $state('')
   let running = $state(false)
-  let interval: ReturnType<typeof setInterval> | undefined
+  let interval: ReturnType<typeof setInterval> | undefined = $state()
 
-  $effect(() => {
-    return () => {
-      if (interval) clearInterval(interval)
+  function clearPolling() {
+    if (interval) {
+      clearInterval(interval)
+      interval = undefined
     }
-  })
+  }
 
   async function sample() {
     try {
@@ -78,13 +80,13 @@
   function start() {
     running = true
     sample()
+    clearPolling()
     interval = setInterval(sample, 2000)
   }
 
   function stop() {
     running = false
-    if (interval) clearInterval(interval)
-    interval = undefined
+    clearPolling()
   }
 
   function sparklinePath(data: number[], height: number = 40): string {
@@ -99,6 +101,10 @@
       })
       .join(' ')
   }
+
+  onDestroy(() => {
+    clearPolling()
+  })
 </script>
 
 <div class="system-load" role="region" aria-label="System load monitoring">

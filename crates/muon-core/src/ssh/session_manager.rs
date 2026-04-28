@@ -352,6 +352,14 @@ impl SessionManager {
             .get(session_id)
             .map(|s| s.connection.remote_forwards.clone())
     }
+
+    pub fn connected_session_ids(&self) -> Vec<String> {
+        self.sessions
+            .iter()
+            .filter(|(_, s)| s.connection.is_connected())
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
 }
 
 impl Default for SessionManager {

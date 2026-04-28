@@ -184,6 +184,18 @@ pub fn run() {
             }
 
             let app_handle = app.handle().clone();
+            app.listen("tauri://close-requested", move |_event: tauri::Event| {
+                let handle = app_handle.clone();
+                tauri::async_runtime::block_on(async {
+                    if let Some(state) = handle.try_state::<tauri::async_runtime::Mutex<AppState>>()
+                    {
+                        let mut state = state.lock().await;
+                        state.shutdown().await;
+                    }
+                });
+            });
+
+            let app_handle = app.handle().clone();
             app.listen("tauri://file-drop", move |event: tauri::Event| {
                 let payload = event.payload();
                 if let Ok(files) = serde_json::from_str::<Vec<String>>(payload) {

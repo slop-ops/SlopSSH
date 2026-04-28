@@ -47,6 +47,36 @@ impl AppState {
             plugin_manager: PluginManager::new(),
         }
     }
+
+    pub async fn shutdown(&mut self) {
+        tracing::info!("App shutdown: cleaning up resources");
+
+        self.port_forward_manager.stop_all().await;
+        tracing::info!("Port forwards stopped");
+
+        self.sftp_sessions.clear();
+        tracing::info!("SFTP sessions dropped");
+
+        self.connection_pool.close_all().await;
+        tracing::info!("Connection pool closed");
+
+        let session_ids = self.ssh_manager.connected_session_ids();
+        for id in &session_ids {
+            let _ = self.ssh_manager.disconnect(id).await;
+        }
+        if !session_ids.is_empty() {
+            tracing::info!(count = session_ids.len(), "SSH sessions disconnected");
+        }
+
+        if let Ok(mut lt) = self.local_terminal.lock() {
+            lt.close_all();
+            tracing::info!("Local terminals closed");
+        }
+
+        self.transfer_engine.clear_completed().await;
+
+        tracing::info!("App shutdown complete");
+    }
 }
 
 impl Default for AppState {

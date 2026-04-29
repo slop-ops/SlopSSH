@@ -35,12 +35,14 @@ pub async fn transfer_upload(
 
     let app_clone = app.clone();
     let tid = transfer_id.clone();
-    engine.spawn_upload(request, sftp, move |progress| {
-        let _ = app_clone.emit(
-            &format!("transfer-progress-{}", tid),
-            serde_json::to_value(progress).unwrap_or_default(),
-        );
-    });
+    engine
+        .spawn_upload(request, sftp, move |progress| {
+            let _ = app_clone.emit(
+                &format!("transfer-progress-{}", tid),
+                serde_json::to_value(progress).unwrap_or_default(),
+            );
+        })
+        .await;
 
     Ok(())
 }
@@ -78,12 +80,14 @@ pub async fn transfer_download(
 
     let app_clone = app.clone();
     let tid = transfer_id.clone();
-    engine.spawn_download(request, sftp, move |progress| {
-        let _ = app_clone.emit(
-            &format!("transfer-progress-{}", tid),
-            serde_json::to_value(progress).unwrap_or_default(),
-        );
-    });
+    engine
+        .spawn_download(request, sftp, move |progress| {
+            let _ = app_clone.emit(
+                &format!("transfer-progress-{}", tid),
+                serde_json::to_value(progress).unwrap_or_default(),
+            );
+        })
+        .await;
 
     Ok(())
 }

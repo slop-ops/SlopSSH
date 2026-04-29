@@ -4,6 +4,7 @@ use std::time::Instant;
 
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
 
 use russh_sftp::client::SftpSession;
 
@@ -13,12 +14,14 @@ const CHUNK_SIZE: usize = 32768;
 
 pub struct TransferEngine {
     active_transfers: Arc<Mutex<HashMap<String, TransferProgress>>>,
+    spawned_tasks: Mutex<HashMap<String, JoinHandle<()>>>,
 }
 
 impl TransferEngine {
     pub fn new() -> Self {
         Self {
             active_transfers: Arc::new(Mutex::new(HashMap::new())),
+            spawned_tasks: Mutex::new(HashMap::new()),
         }
     }
 
@@ -55,7 +58,27 @@ impl TransferEngine {
         });
     }
 
-    pub fn spawn_upload(
+    pub async fn cleanup_tasks(&self) {
+        let mut tasks = self.spawned_tasks.lock().await;
+        let mut to_remove = Vec::new();
+        for (id, handle) in tasks.iter() {
+            if handle.is_finished() {
+                to_remove.push(id.clone());
+            }
+        }
+        for id in to_remove {
+            tasks.remove(&id);
+        }
+    }
+
+    pub async fn abort_all(&self) {
+        let mut tasks = self.spawned_tasks.lock().await;
+        for (_, handle) in tasks.drain() {
+            handle.abort();
+        }
+    }
+
+    pub async fn spawn_upload(
         &self,
         request: TransferRequest,
         sftp: Arc<Mutex<Option<SftpSession>>>,
@@ -71,7 +94,7 @@ impl TransferEngine {
             dest = %dest,
             "Upload started"
         );
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             let progress = TransferProgress::new(request.id.clone(), request.file_size);
             {
                 let mut t = transfers.lock().await;
@@ -113,9 +136,10 @@ impl TransferEngine {
                 }
             }
         });
+        self.spawned_tasks.lock().await.insert(transfer_id, handle);
     }
 
-    pub fn spawn_download(
+    pub async fn spawn_download(
         &self,
         request: TransferRequest,
         sftp: Arc<Mutex<Option<SftpSession>>>,
@@ -131,7 +155,7 @@ impl TransferEngine {
             dest = %dest,
             "Download started"
         );
-        tokio::spawn(async move {
+        let handle = tokio::spawn(async move {
             let progress = TransferProgress::new(request.id.clone(), request.file_size);
             {
                 let mut t = transfers.lock().await;
@@ -173,6 +197,7 @@ impl TransferEngine {
                 }
             }
         });
+        self.spawned_tasks.lock().await.insert(transfer_id, handle);
     }
 }
 

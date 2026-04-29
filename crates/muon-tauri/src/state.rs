@@ -17,55 +17,67 @@ use muon_core::ssh::port_forward::PortForwardManager;
 use muon_core::ssh::session_manager::SessionManager;
 
 pub struct AppState {
-    pub settings: Settings,
-    pub session_store: SessionStore,
-    #[allow(dead_code)]
-    pub credential_cache: muon_core::credentials::CredentialCache,
-    pub credential_store: CredentialStore,
-    pub ssh_manager: SessionManager,
-    pub sftp_sessions: HashMap<String, Arc<Mutex<Option<SftpSession>>>>,
+    pub settings: Mutex<Settings>,
+    pub session_store: Mutex<SessionStore>,
+    pub ssh_manager: Mutex<SessionManager>,
+    pub sftp_sessions: Mutex<HashMap<String, Arc<Mutex<Option<SftpSession>>>>>,
     pub transfer_engine: Arc<TransferEngine>,
-    pub port_forward_manager: PortForwardManager,
-    pub connection_pool: ConnectionPool,
+    pub port_forward_manager: Mutex<PortForwardManager>,
+    pub connection_pool: Mutex<ConnectionPool>,
     pub local_terminal: std::sync::Mutex<LocalTerminalManager>,
-    pub plugin_manager: PluginManager,
+    pub plugin_manager: Mutex<PluginManager>,
+    pub credential_store: Mutex<CredentialStore>,
+    #[allow(dead_code)]
+    pub credential_cache: CredentialCache,
 }
 
 impl AppState {
     pub fn new(settings: Settings, session_store: SessionStore) -> Self {
         Self {
-            settings,
-            session_store,
+            settings: Mutex::new(settings),
+            session_store: Mutex::new(session_store),
             credential_cache: CredentialCache::new(),
-            credential_store: CredentialStore::new_keyring_with_fallback(),
-            ssh_manager: SessionManager::new(),
-            sftp_sessions: HashMap::new(),
+            credential_store: Mutex::new(CredentialStore::new_keyring_with_fallback()),
+            ssh_manager: Mutex::new(SessionManager::new()),
+            sftp_sessions: Mutex::new(HashMap::new()),
             transfer_engine: Arc::new(TransferEngine::new()),
-            port_forward_manager: PortForwardManager::new(),
-            connection_pool: ConnectionPool::new(3),
+            port_forward_manager: Mutex::new(PortForwardManager::new()),
+            connection_pool: Mutex::new(ConnectionPool::new(3)),
             local_terminal: std::sync::Mutex::new(LocalTerminalManager::new()),
-            plugin_manager: PluginManager::new(),
+            plugin_manager: Mutex::new(PluginManager::new()),
         }
     }
 
-    pub async fn shutdown(&mut self) {
+    pub async fn shutdown(&self) {
         tracing::info!("App shutdown: cleaning up resources");
 
-        self.port_forward_manager.stop_all().await;
+        {
+            let mut pf = self.port_forward_manager.lock().await;
+            pf.stop_all().await;
+        }
         tracing::info!("Port forwards stopped");
 
-        self.sftp_sessions.clear();
+        {
+            let mut sftp = self.sftp_sessions.lock().await;
+            sftp.clear();
+        }
         tracing::info!("SFTP sessions dropped");
 
-        self.connection_pool.close_all().await;
+        {
+            let mut pool = self.connection_pool.lock().await;
+            pool.close_all().await;
+        }
         tracing::info!("Connection pool closed");
 
-        let session_ids = self.ssh_manager.connected_session_ids();
-        for id in &session_ids {
-            let _ = self.ssh_manager.disconnect(id).await;
-        }
-        if !session_ids.is_empty() {
-            tracing::info!(count = session_ids.len(), "SSH sessions disconnected");
+        {
+            let mut mgr = self.ssh_manager.lock().await;
+            let session_ids = mgr.connected_session_ids();
+            for id in &session_ids {
+                let _ = mgr.disconnect(id).await;
+            }
+            if !session_ids.is_empty() {
+                tracing::info!(count = session_ids.len(), "SSH sessions disconnected");
+            }
         }
 
         if let Ok(mut lt) = self.local_terminal.lock() {
@@ -82,17 +94,17 @@ impl AppState {
 impl Default for AppState {
     fn default() -> Self {
         Self {
-            settings: Settings::default(),
-            session_store: SessionStore::from(SessionFolder::new("Root")),
+            settings: Mutex::new(Settings::default()),
+            session_store: Mutex::new(SessionStore::from(SessionFolder::new("Root"))),
             credential_cache: CredentialCache::new(),
-            credential_store: CredentialStore::new_keyring_with_fallback(),
-            ssh_manager: SessionManager::new(),
-            sftp_sessions: HashMap::new(),
+            credential_store: Mutex::new(CredentialStore::new_keyring_with_fallback()),
+            ssh_manager: Mutex::new(SessionManager::new()),
+            sftp_sessions: Mutex::new(HashMap::new()),
             transfer_engine: Arc::new(TransferEngine::new()),
-            port_forward_manager: PortForwardManager::new(),
-            connection_pool: ConnectionPool::new(3),
+            port_forward_manager: Mutex::new(PortForwardManager::new()),
+            connection_pool: Mutex::new(ConnectionPool::new(3)),
             local_terminal: std::sync::Mutex::new(LocalTerminalManager::new()),
-            plugin_manager: PluginManager::new(),
+            plugin_manager: Mutex::new(PluginManager::new()),
         }
     }
 }

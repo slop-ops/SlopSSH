@@ -4,15 +4,14 @@ use crate::AppState;
 
 #[tauri::command]
 pub async fn remote_exec(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     command: String,
     timeout_secs: Option<u64>,
 ) -> Result<serde_json::Value, String> {
     tracing::debug!(session_id = %session_id, "remote_exec");
-    let state = state.lock().await;
-    let handle = state
-        .ssh_manager
+    let ssh_manager = state.ssh_manager.lock().await;
+    let handle = ssh_manager
         .get_handle(&session_id)
         .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
 
@@ -32,7 +31,7 @@ pub async fn remote_exec(
 
 #[tauri::command]
 pub async fn archive_create(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     archive_path: String,
     sources: Vec<String>,
@@ -40,9 +39,8 @@ pub async fn archive_create(
 ) -> Result<(), String> {
     tracing::debug!(session_id = %session_id, format = %format, "archive_create");
     let handle = {
-        let state = state.lock().await;
-        state
-            .ssh_manager
+        let ssh_manager = state.ssh_manager.lock().await;
+        ssh_manager
             .get_handle(&session_id)
             .ok_or_else(|| "Not connected".to_string())?
     };
@@ -94,16 +92,15 @@ pub async fn archive_create(
 
 #[tauri::command]
 pub async fn archive_extract(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     archive_path: String,
     target_dir: String,
 ) -> Result<(), String> {
     tracing::debug!(session_id = %session_id, "archive_extract");
     let handle = {
-        let state = state.lock().await;
-        state
-            .ssh_manager
+        let ssh_manager = state.ssh_manager.lock().await;
+        ssh_manager
             .get_handle(&session_id)
             .ok_or_else(|| "Not connected".to_string())?
     };

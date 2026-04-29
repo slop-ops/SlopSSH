@@ -83,10 +83,7 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .manage(tauri::async_runtime::Mutex::new(AppState::new(
-            settings,
-            session_store,
-        )))
+        .manage(AppState::new(settings, session_store))
         .invoke_handler(tauri::generate_handler![
             get_settings,
             save_settings,
@@ -191,9 +188,7 @@ pub fn run() {
             app.listen("tauri://close-requested", move |_event: tauri::Event| {
                 let handle = app_handle.clone();
                 tauri::async_runtime::block_on(async {
-                    if let Some(state) = handle.try_state::<tauri::async_runtime::Mutex<AppState>>()
-                    {
-                        let mut state = state.lock().await;
+                    if let Some(state) = handle.try_state::<AppState>() {
                         state.shutdown().await;
                     }
                 });

@@ -3,9 +3,7 @@ use tauri::State;
 use crate::AppState;
 
 #[tauri::command]
-pub async fn list_local_keys(
-    _state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-) -> Result<Vec<serde_json::Value>, String> {
+pub async fn list_local_keys() -> Result<Vec<serde_json::Value>, String> {
     tracing::debug!("list_local_keys");
     let keys =
         muon_core::ssh::key_manager::KeyManager::list_local_keys().map_err(|e| e.to_string())?;
@@ -26,13 +24,12 @@ pub async fn list_local_keys(
 
 #[tauri::command]
 pub async fn list_remote_keys(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
 ) -> Result<Vec<serde_json::Value>, String> {
     tracing::debug!(session_id = %session_id, "list_remote_keys");
-    let state = state.lock().await;
-    let handle = state
-        .ssh_manager
+    let ssh_manager = state.ssh_manager.lock().await;
+    let handle = ssh_manager
         .get_handle(&session_id)
         .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
 
@@ -56,7 +53,6 @@ pub async fn list_remote_keys(
 
 #[tauri::command]
 pub async fn generate_key_pair(
-    _state: State<'_, tauri::async_runtime::Mutex<AppState>>,
     algorithm: String,
     path: String,
     passphrase: Option<String>,
@@ -81,14 +77,13 @@ pub async fn generate_key_pair(
 
 #[tauri::command]
 pub async fn deploy_public_key(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     public_key: String,
 ) -> Result<(), String> {
     tracing::info!(session_id = %session_id, "deploy_public_key");
-    let state = state.lock().await;
-    let handle = state
-        .ssh_manager
+    let ssh_manager = state.ssh_manager.lock().await;
+    let handle = ssh_manager
         .get_handle(&session_id)
         .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
 
@@ -98,10 +93,7 @@ pub async fn deploy_public_key(
 }
 
 #[tauri::command]
-pub async fn read_public_key(
-    _state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-    path: String,
-) -> Result<String, String> {
+pub async fn read_public_key(path: String) -> Result<String, String> {
     tracing::debug!(path = %path, "read_public_key");
     muon_core::ssh::key_manager::KeyManager::read_public_key(&path).map_err(|e| e.to_string())
 }

@@ -13,27 +13,22 @@ fn validate_path(path: &str) -> Result<String, String> {
 }
 
 async fn get_sftp(
-    state: &tauri::async_runtime::Mutex<AppState>,
+    state: &AppState,
     session_id: &str,
 ) -> Result<Arc<Mutex<Option<SftpSession>>>, String> {
-    let state = state.lock().await;
-    let entry = state
-        .sftp_sessions
+    let sftp_sessions = state.sftp_sessions.lock().await;
+    let entry = sftp_sessions
         .get(session_id)
         .ok_or_else(|| format!("No SFTP session for session '{}'", session_id))?;
     Ok(entry.clone())
 }
 
 #[tauri::command]
-pub async fn sftp_connect(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-    session_id: String,
-) -> Result<(), String> {
+pub async fn sftp_connect(state: State<'_, AppState>, session_id: String) -> Result<(), String> {
     tracing::info!(session_id = %session_id, "SFTP connect");
     let sftp_session = {
-        let state = state.lock().await;
-        let channel = state
-            .ssh_manager
+        let ssh_manager = state.ssh_manager.lock().await;
+        let channel = ssh_manager
             .open_sftp_channel(&session_id)
             .await
             .map_err(|e| {
@@ -48,20 +43,17 @@ pub async fn sftp_connect(
         Arc::new(Mutex::new(Some(sftp)))
     };
 
-    let mut state = state.lock().await;
-    state.sftp_sessions.insert(session_id, sftp_session);
+    let mut sftp_sessions = state.sftp_sessions.lock().await;
+    sftp_sessions.insert(session_id, sftp_session);
 
     Ok(())
 }
 
 #[tauri::command]
-pub async fn sftp_disconnect(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-    session_id: String,
-) -> Result<(), String> {
+pub async fn sftp_disconnect(state: State<'_, AppState>, session_id: String) -> Result<(), String> {
     tracing::info!(session_id = %session_id, "SFTP disconnect");
-    let mut state = state.lock().await;
-    if let Some(sftp_arc) = state.sftp_sessions.remove(&session_id) {
+    let mut sftp_sessions = state.sftp_sessions.lock().await;
+    if let Some(sftp_arc) = sftp_sessions.remove(&session_id) {
         let mut guard = sftp_arc.lock().await;
         if let Some(sftp) = guard.take()
             && let Err(e) = sftp.close().await
@@ -74,7 +66,7 @@ pub async fn sftp_disconnect(
 
 #[tauri::command]
 pub async fn sftp_list_dir(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     path: String,
 ) -> Result<serde_json::Value, String> {
@@ -122,7 +114,7 @@ pub async fn sftp_list_dir(
 
 #[tauri::command]
 pub async fn sftp_mkdir(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     path: String,
 ) -> Result<(), String> {
@@ -138,7 +130,7 @@ pub async fn sftp_mkdir(
 
 #[tauri::command]
 pub async fn sftp_remove(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     path: String,
 ) -> Result<(), String> {
@@ -160,7 +152,7 @@ pub async fn sftp_remove(
 
 #[tauri::command]
 pub async fn sftp_rename(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     from: String,
     to: String,
@@ -178,7 +170,7 @@ pub async fn sftp_rename(
 
 #[tauri::command]
 pub async fn sftp_read_file(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     path: String,
 ) -> Result<String, String> {
@@ -198,7 +190,7 @@ pub async fn sftp_read_file(
 
 #[tauri::command]
 pub async fn sftp_write_file(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     path: String,
     data: String,
@@ -218,7 +210,7 @@ pub async fn sftp_write_file(
 
 #[tauri::command]
 pub async fn sftp_stat(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     path: String,
 ) -> Result<serde_json::Value, String> {
@@ -247,10 +239,7 @@ pub async fn sftp_stat(
 }
 
 #[tauri::command]
-pub async fn sftp_home(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-    session_id: String,
-) -> Result<String, String> {
+pub async fn sftp_home(state: State<'_, AppState>, session_id: String) -> Result<String, String> {
     tracing::debug!(session_id = %session_id, "SFTP home");
     let sftp_arc = get_sftp(&state, &session_id).await?;
     let guard = sftp_arc.lock().await;
@@ -262,7 +251,7 @@ pub async fn sftp_home(
 
 #[tauri::command]
 pub async fn sftp_upload_sudo(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     remote_path: String,
     data: String,
@@ -291,9 +280,8 @@ pub async fn sftp_upload_sudo(
     }
 
     let handle = {
-        let state = state.lock().await;
-        state
-            .ssh_manager
+        let ssh_manager = state.ssh_manager.lock().await;
+        ssh_manager
             .get_handle(&session_id)
             .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?
     };
@@ -328,16 +316,15 @@ pub async fn sftp_upload_sudo(
 
 #[tauri::command]
 pub async fn sftp_download_sudo(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     remote_path: String,
 ) -> Result<String, String> {
     tracing::debug!(session_id = %session_id, path = %remote_path, "SFTP download_sudo");
     let remote_path = validate_path(&remote_path)?;
     let handle = {
-        let state = state.lock().await;
-        state
-            .ssh_manager
+        let ssh_manager = state.ssh_manager.lock().await;
+        ssh_manager
             .get_handle(&session_id)
             .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?
     };

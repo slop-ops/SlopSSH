@@ -5,7 +5,7 @@ use crate::AppState;
 #[tauri::command]
 pub async fn transfer_upload(
     app: tauri::AppHandle,
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     transfer_id: String,
     session_id: String,
     local_path: String,
@@ -14,9 +14,8 @@ pub async fn transfer_upload(
 ) -> Result<(), String> {
     tracing::debug!(transfer_id = %transfer_id, session_id = %session_id, file_size, "transfer_upload");
     let sftp = {
-        let state = state.lock().await;
-        state
-            .sftp_sessions
+        let sftp_sessions = state.sftp_sessions.lock().await;
+        sftp_sessions
             .get(&session_id)
             .ok_or_else(|| format!("No SFTP session established for session '{}'", session_id))?
             .clone()
@@ -32,10 +31,7 @@ pub async fn transfer_upload(
         conflict_resolution: muon_core::file_transfer::progress::ConflictResolution::Overwrite,
     };
 
-    let engine = {
-        let state = state.lock().await;
-        state.transfer_engine.clone()
-    };
+    let engine = state.transfer_engine.clone();
 
     let app_clone = app.clone();
     let tid = transfer_id.clone();
@@ -52,7 +48,7 @@ pub async fn transfer_upload(
 #[tauri::command]
 pub async fn transfer_download(
     app: tauri::AppHandle,
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     transfer_id: String,
     session_id: String,
     remote_path: String,
@@ -61,9 +57,8 @@ pub async fn transfer_download(
 ) -> Result<(), String> {
     tracing::debug!(transfer_id = %transfer_id, session_id = %session_id, file_size, "transfer_download");
     let sftp = {
-        let state = state.lock().await;
-        state
-            .sftp_sessions
+        let sftp_sessions = state.sftp_sessions.lock().await;
+        sftp_sessions
             .get(&session_id)
             .ok_or_else(|| format!("No SFTP session established for session '{}'", session_id))?
             .clone()
@@ -79,10 +74,7 @@ pub async fn transfer_download(
         conflict_resolution: muon_core::file_transfer::progress::ConflictResolution::Overwrite,
     };
 
-    let engine = {
-        let state = state.lock().await;
-        state.transfer_engine.clone()
-    };
+    let engine = state.transfer_engine.clone();
 
     let app_clone = app.clone();
     let tid = transfer_id.clone();
@@ -98,11 +90,10 @@ pub async fn transfer_download(
 
 #[tauri::command]
 pub async fn transfer_cancel(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     transfer_id: String,
 ) -> Result<bool, String> {
     tracing::debug!(transfer_id = %transfer_id, "transfer_cancel");
-    let state = state.lock().await;
     state
         .transfer_engine
         .cancel(&transfer_id)
@@ -112,21 +103,15 @@ pub async fn transfer_cancel(
 }
 
 #[tauri::command]
-pub async fn transfer_list(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-) -> Result<serde_json::Value, String> {
+pub async fn transfer_list(state: State<'_, AppState>) -> Result<serde_json::Value, String> {
     tracing::debug!("transfer_list");
-    let state = state.lock().await;
     let list = state.transfer_engine.list_progress().await;
     serde_json::to_value(&list).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn transfer_clear_completed(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-) -> Result<(), String> {
+pub async fn transfer_clear_completed(state: State<'_, AppState>) -> Result<(), String> {
     tracing::debug!("transfer_clear_completed");
-    let state = state.lock().await;
     state.transfer_engine.clear_completed().await;
     Ok(())
 }

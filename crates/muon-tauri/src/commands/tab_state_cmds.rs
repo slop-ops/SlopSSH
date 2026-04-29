@@ -1,12 +1,5 @@
-use tauri::State;
-
-use crate::AppState;
-
 #[tauri::command]
-pub async fn save_tab_state(
-    _state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-    tabs: serde_json::Value,
-) -> Result<(), String> {
+pub async fn save_tab_state(tabs: serde_json::Value) -> Result<(), String> {
     tracing::debug!("save_tab_state");
     let tab_state: muon_core::tab_state::TabState =
         serde_json::from_value(tabs).map_err(|e| e.to_string())?;

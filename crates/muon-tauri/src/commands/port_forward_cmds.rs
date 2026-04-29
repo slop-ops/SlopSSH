@@ -4,7 +4,7 @@ use crate::AppState;
 
 #[tauri::command]
 pub async fn port_forward_start(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     session_id: String,
     bind_host: String,
     bind_port: u16,
@@ -21,11 +21,6 @@ pub async fn port_forward_start(
         direction = %direction,
         "port_forward_start"
     );
-    let mut state = state.lock().await;
-    let handle = state
-        .ssh_manager
-        .get_handle(&session_id)
-        .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
 
     let rule = match direction.as_str() {
         "local" => muon_core::ssh::port_forward::PortForwardRule::new_local(
@@ -46,20 +41,31 @@ pub async fn port_forward_start(
     let forward_id = rule.id.clone();
 
     match rule.direction {
-        muon_core::ssh::port_forward::ForwardDirection::Local => state
-            .port_forward_manager
-            .start_local(handle, rule)
-            .map_err(|e| e.to_string())?,
+        muon_core::ssh::port_forward::ForwardDirection::Local => {
+            let handle = {
+                let ssh_manager = state.ssh_manager.lock().await;
+                ssh_manager
+                    .get_handle(&session_id)
+                    .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?
+            };
+            let mut pf = state.port_forward_manager.lock().await;
+            pf.start_local(handle, rule).map_err(|e| e.to_string())?;
+        }
         muon_core::ssh::port_forward::ForwardDirection::Remote => {
-            let forward_map = state
-                .ssh_manager
-                .get_remote_forward_map(&session_id)
-                .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
-            state
-                .port_forward_manager
-                .start_remote(handle, rule, forward_map)
+            let (handle, forward_map) = {
+                let ssh_manager = state.ssh_manager.lock().await;
+                let handle = ssh_manager
+                    .get_handle(&session_id)
+                    .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
+                let forward_map = ssh_manager
+                    .get_remote_forward_map(&session_id)
+                    .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
+                (handle, forward_map)
+            };
+            let mut pf = state.port_forward_manager.lock().await;
+            pf.start_remote(handle, rule, forward_map)
                 .await
-                .map_err(|e| e.to_string())?
+                .map_err(|e| e.to_string())?;
         }
     };
 
@@ -68,26 +74,19 @@ pub async fn port_forward_start(
 
 #[tauri::command]
 pub async fn port_forward_stop(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
+    state: State<'_, AppState>,
     forward_id: String,
 ) -> Result<(), String> {
     tracing::info!(forward_id = %forward_id, "port_forward_stop");
-    let mut state = state.lock().await;
-    state
-        .port_forward_manager
-        .stop(&forward_id)
-        .await
-        .map_err(|e| e.to_string())
+    let mut pf = state.port_forward_manager.lock().await;
+    pf.stop(&forward_id).await.map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-pub async fn port_forward_list(
-    state: State<'_, tauri::async_runtime::Mutex<AppState>>,
-) -> Result<Vec<String>, String> {
+pub async fn port_forward_list(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     tracing::debug!("port_forward_list");
-    let state = state.lock().await;
-    Ok(state
-        .port_forward_manager
+    let pf = state.port_forward_manager.lock().await;
+    Ok(pf
         .list_active()
         .into_iter()
         .map(|s| s.to_string())

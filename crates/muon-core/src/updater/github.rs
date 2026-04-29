@@ -101,6 +101,37 @@ impl UpdateChecker {
             is_newer: true,
         }))
     }
+
+    pub async fn download_update(&self, info: &UpdateInfo) -> anyhow::Result<std::path::PathBuf> {
+        let dir = crate::config::paths::config_dir()?.join("updates");
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+
+        let url = &info.download_url;
+        let file_name = url.rsplit('/').next().unwrap_or("update").to_string();
+        let dest = dir.join(&file_name);
+
+        tracing::info!(url = %url, dest = %dest.display(), "Downloading update");
+
+        let response = self.client.get(url).send().await?;
+
+        if !response.status().is_success() {
+            return Err(anyhow::anyhow!(
+                "Download failed with status {}",
+                response.status()
+            ));
+        }
+
+        let total_size = response.content_length().unwrap_or(0);
+        tracing::info!(total_bytes = total_size, "Update download started");
+
+        let bytes = response.bytes().await?;
+        std::fs::write(&dest, &bytes)?;
+
+        tracing::info!(path = %dest.display(), size = bytes.len(), "Update downloaded");
+        Ok(dest)
+    }
 }
 
 fn parse_version(v: &str) -> Vec<u64> {

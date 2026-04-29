@@ -374,3 +374,11 @@ export async function loadTabState(): Promise<unknown> {
 export async function clearTabState(): Promise<void> {
   return invoke('clear_tab_state')
 }
+
+export async function checkForUpdates(): Promise<unknown> {
+  return invoke('check_for_updates')
+}
+
+export async function downloadUpdate(updateInfo: unknown): Promise<unknown> {
+  return invoke('download_update', { updateInfo })
+}

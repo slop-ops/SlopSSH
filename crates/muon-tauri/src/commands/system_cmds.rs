@@ -59,3 +59,23 @@ pub async fn check_for_updates() -> Result<serde_json::Value, String> {
         Err(e) => Err(format!("Update check failed: {}", e)),
     }
 }
+
+#[tauri::command]
+pub async fn download_update(update_info: serde_json::Value) -> Result<serde_json::Value, String> {
+    tracing::info!("download_update");
+    let info: muon_core::updater::github::UpdateInfo =
+        serde_json::from_value(update_info).map_err(|e| e.to_string())?;
+    let checker = muon_core::updater::github::UpdateChecker::new(
+        "muon-ssh",
+        "muon-ssh-rust",
+        muon_core::version(),
+    );
+    let path = checker
+        .download_update(&info)
+        .await
+        .map_err(|e| format!("Download failed: {}", e))?;
+    Ok(serde_json::json!({
+        "path": path.to_string_lossy(),
+        "size": std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0),
+    }))
+}

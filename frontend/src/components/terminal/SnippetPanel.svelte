@@ -1,10 +1,11 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import type { Snippet } from '$lib/types'
 
   let { onSend }: { onSend: (command: string) => void } = $props()
 
-  let snippets = $state<any[]>([])
+  let snippets = $state<Snippet[]>([])
   let search = $state('')
   let showForm = $state(false)
   let editingId = $state<string | null>(null)
@@ -68,7 +69,7 @@
     }
   }
 
-  function editSnippet(snippet: any) {
+  function editSnippet(snippet: Snippet) {
     editingId = snippet.id
     formName = snippet.name
     formCommand = snippet.command

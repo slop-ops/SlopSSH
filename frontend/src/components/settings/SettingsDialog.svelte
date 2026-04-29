@@ -3,10 +3,11 @@
   import * as api from '$lib/api/invoke'
   import { setTheme, persistTheme, setTerminalSettings } from '$lib/stores/theme'
   import { loadLocale, t } from '$lib/utils/i18n'
+  import type { Settings, EditorInfo, PluginInfo } from '$lib/types'
 
   let { open = $bindable() }: { open: boolean } = $props()
 
-  let settings = $state<any>(null)
+  let settings = $state<Settings | null>(null)
   let loading = $state(false)
   let saving = $state(false)
   let error = $state('')
@@ -23,8 +24,8 @@
     { id: 'plugins', get label() { return t('settings.plugins') } },
   ]
 
-  let detectedEditors: any[] = $state([])
-  let plugins: any[] = $state([])
+  let detectedEditors: EditorInfo[] = $state([])
+  let plugins: PluginInfo[] = $state([])
   let pluginLoading = $state(false)
   let selectedPluginId = $state<string | null>(null)
   let pluginSettingsMap = $state<Record<string, Record<string, string>>>({})
@@ -288,7 +289,7 @@
                     <button
                       class="editor-item"
                       class:selected={settings.external_editor === editor.command}
-                      onclick={() => (settings.external_editor = editor.command)}
+                      onclick={() => { if (settings) settings.external_editor = editor.command }}
                     >
                       <span class="editor-name">{editor.name}</span>
                       <span class="editor-path">{editor.path || editor.command}</span>
@@ -338,7 +339,7 @@
                   </div>
                   <div class="plugin-detail">
                     {#if selectedPluginId}
-                      {@const selected = plugins.find((p: any) => p.id === selectedPluginId)}
+                      {@const selected = plugins.find((p) => p.id === selectedPluginId)}
                       {#if selected}
                         <div class="plugin-detail-header">
                           <div>

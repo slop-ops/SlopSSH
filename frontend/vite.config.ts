@@ -13,6 +13,16 @@ export default defineConfig({
     },
   },
   clearScreen: false,
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('@xterm')) return 'xterm'
+          if (id.includes('@tauri-apps')) return 'tauri'
+        },
+      },
+    },
+  },
   server: {
     port: 1420,
     strictPort: true,

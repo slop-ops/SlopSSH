@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte'
   import * as api from '$lib/api/invoke'
+  import type { SshKeyInfo } from '$lib/types'
   import { t } from '$lib/utils/i18n'
 
   let {
@@ -9,8 +10,8 @@
     sessionId: string
   } = $props()
 
-  let localKeys = $state<any[]>([])
-  let remoteKeys = $state<any[]>([])
+  let localKeys = $state<SshKeyInfo[]>([])
+  let remoteKeys = $state<SshKeyInfo[]>([])
   let loading = $state(false)
   let error = $state('')
   let showGenerate = $state(false)
@@ -64,7 +65,7 @@
       genName = 'id_muon'
       genPassphrase = ''
       genPath = ''
-      successMsg = 'Key generated successfully'
+      successMsg = t('tools.keyGenerated')
       scheduleClearMsg()
       await loadKeys()
     } catch (e) {
@@ -80,7 +81,7 @@
     try {
       const pubKey = await api.readPublicKey(keyPath)
       await api.deployPublicKey(sessionId, pubKey)
-      successMsg = 'Key deployed to remote server'
+      successMsg = t('tools.keyDeployed')
       scheduleClearMsg()
       await loadKeys()
     } catch (e) {
@@ -121,13 +122,13 @@
             <div class="key-item">
               <div class="key-info">
                 <span class="key-name">{key.name}</span>
-                <span class="key-type">{key.keyType}</span>
+                  <span class="key-type">{key.key_type}</span>
                 {#if key.fingerprint}
                   <span class="key-fp" title={key.fingerprint}>{key.fingerprint.substring(0, 40)}...</span>
                 {/if}
               </div>
               <div class="key-actions">
-                {#if key.hasPublicKey && sessionId}
+                {#if key.has_public_key && sessionId}
                   <button
                     class="btn btn-sm"
                     disabled={deploying === key.path}
@@ -154,7 +155,7 @@
               <div class="key-item">
                 <div class="key-info">
                   <span class="key-name">{key.name}</span>
-                  <span class="key-type">{key.keyType}</span>
+                <span class="key-type">{key.key_type}</span>
                 </div>
               </div>
             {/each}

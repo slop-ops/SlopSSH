@@ -194,3 +194,8 @@ export interface TabState {
   tabs: SavedTab[]
   active_tab_id: string | null
 }
+
+export interface UpdateInfo {
+  has_update: boolean
+  version: string
+}

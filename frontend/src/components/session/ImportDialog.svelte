@@ -1,8 +1,9 @@
 <script lang="ts">
   import { importSshConfig, importSshConfigToFolder, listSessions } from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import type { SessionInfo } from '$lib/types'
 
-  let preview: any[] = $state([])
+  let preview: Partial<SessionInfo>[] = $state([])
   let loading = $state(false)
   let imported = $state(false)
   let error = $state('')
@@ -13,8 +14,8 @@
     preview = []
     try {
       preview = await importSshConfig()
-    } catch (e: any) {
-      error = e.toString()
+    } catch (e) {
+      error = String(e)
     }
     loading = false
   }
@@ -26,8 +27,8 @@
       await importSshConfigToFolder()
       imported = true
       preview = []
-    } catch (e: any) {
-      error = e.toString()
+    } catch (e) {
+      error = String(e)
     }
     loading = false
   }

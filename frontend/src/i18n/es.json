@@ -2,7 +2,11 @@
   "app": {
     "title": "Muon SSH",
     "noActiveSession": "Sin sesión activa",
-    "connectHint": "Conéctese a una sesión desde la barra lateral para comenzar"
+    "connectHint": "Conéctese a una sesión desde la barra lateral para comenzar",
+    "localTerminal": "Terminal local",
+    "newTab": "Pestaña {count}",
+    "noTerminalSessions": "Sin sesiones de terminal",
+    "openLocalTerminal": "Abrir terminal local"
   },
   "sidebar": {
     "sessions": "Sesiones",
@@ -105,7 +109,26 @@
     "passphrase": "Frase de contraseña (opcional)",
     "generate": "Generar",
     "noLocalKeys": "No se encontraron claves SSH locales",
-    "noRemoteKeys": "No se encontraron claves en authorized_keys remoto"
+    "noRemoteKeys": "No se encontraron claves en authorized_keys remoto",
+    "colPid": "PID",
+    "colUser": "Usuario",
+    "colCpu": "CPU%",
+    "colMem": "MEM%",
+    "colStat": "Estado",
+    "colCommand": "Comando",
+    "colProto": "Proto",
+    "colState": "Estado",
+    "colLocalAddr": "Dirección local",
+    "colPort": "Puerto",
+    "colProcess": "Proceso",
+    "namePlaceholder": "*.log, *.conf...",
+    "contentPlaceholder": "Filtrar por contenido...",
+    "killConfirm": "¿Terminar proceso {pid}?",
+    "noResults": "La búsqueda no devolvió resultados",
+    "targetRequired": "El host de destino es obligatorio",
+    "keyGenerated": "Clave generada correctamente",
+    "keyDeployed": "Clave desplegada en el servidor remoto",
+    "forwardStarted": "Redirección {direction} iniciada en {bindHost}:{bindPort} -> {targetHost}:{targetPort}"
   },
   "settings": {
     "title": "Configuración",
@@ -131,7 +154,8 @@
     "keepAlive": "Intervalo de keep-alive (segundos)",
     "save": "Guardar",
     "close": "Cerrar",
-    "saved": "Configuración guardada"
+    "saved": "Configuración guardada",
+    "editorHint": "Dejar vacío para detección automática. Ingrese nombre de comando o ruta completa."
   },
   "common": {
     "ok": "OK",
@@ -152,6 +176,7 @@
     "checking": "Buscando...",
     "upToDate": "Estás actualizado",
     "updateAvailable": "Actualización disponible: {version}",
-    "updateFailed": "Error al buscar actualizaciones"
+    "updateFailed": "Error al buscar actualizaciones",
+    "description": "Cliente SSH/SCP/SFTP multiplataforma construido con Rust, Tauri y Svelte."
   }
 }

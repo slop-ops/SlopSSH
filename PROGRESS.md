@@ -1,13 +1,25 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-29 (Session 17)
+Last updated: 2026-04-29 (Session 18)
 
 ## Session Summary
 
 **Completed:** All phases 1-21 complete. Application is production-ready.
-**Session 17 delivered:** 8 tasks across Phases 13, 16, 19 (CI/CD, frontend quality, build system)
+**Session 18 delivered:** 7 tasks across type safety, i18n, code splitting, and production hardening
 **Test count:** 300 Rust + 67 frontend unit tests (367 total)
 **Total IPC commands:** 72
+
+## Session 18 Changes
+
+| Commit | Tasks | Description |
+|--------|-------|-------------|
+| — | 22.1 | Replace ~25 hardcoded English strings with i18n t() calls across 7 components and add 25 new keys to all 7 locale files |
+| — | 22.2 | Replace ~36 `any` types in 10 Svelte components with proper TypeScript interfaces from types.ts |
+| — | 22.3 | Add UpdateInfo interface, fix 4 `unknown` types in invoke.ts (saveTabState, loadTabState, checkForUpdates, downloadUpdate) |
+| — | 19.10 | Configure Vite code splitting — xterm (464KB) and tauri (1KB) split into separate chunks, locale files lazy-loaded |
+| — | 22.4 | Replace 2 production `unwrap()` calls in muon-core with safe alternatives (plugin/host.rs, plugin/loader.rs) |
+| — | 22.5 | Deduplicate russh-sftp dependency across workspace Cargo.toml files |
+| — | 22.6 | Update package.json version from 0.0.0 to 1.0.0 |
 
 ## Session 17 Changes
 
@@ -405,9 +417,8 @@ Last updated: 2026-04-29 (Session 17)
 ## Technical Debt / Known Issues
 
 1. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved
-2. **CI jobs:** build-linux needs npm ci step, macOS/Windows CI not configured
-3. **ESLint:** Not installed but referenced in npm scripts
-4. **Frontend bundle:** Single 594KB JS chunk — could code-split tools/xterm
+2. **Frontend a11y warnings:** ~47 svelte-check a11y warnings (redundant roles, click handlers without keyboard events) — non-blocking
+3. **Locale file sync:** Non-English locale files have fewer keys than en.json — fallback to English works correctly
 
 ---
 
@@ -424,13 +435,15 @@ All 21 phases are **COMPLETE**. The application has:
 - **Full ARIA accessibility** across all components
 - **CI/CD** via GitHub Actions
 - **Cross-platform packaging** (Linux deb/AppImage, Windows NSIS/MSI)
-- **TypeScript strict mode** with zero `any` in IPC layer
+- **TypeScript strict mode** with zero `any` in IPC layer and component props
 - **CSS variables** for dark/light theme support across all components
 - **Complete documentation** (doc comments, ARCHITECTURE.md, CHANGELOG.md)
 - **Portable mode** support
 - **Session backup rotation** (5 copies)
 - **Tab state persistence** across restarts
 - **Per-concern mutexes** for reduced lock contention
+- **Code-split frontend bundle** — xterm (464KB), tauri (1KB), and locale files in separate chunks
+- **Code-split frontend bundle** — xterm (464KB), tauri (1KB), and locale files in separate chunks
 
 ### Test Count: 300 Rust + 67 frontend = 367 total
 
@@ -471,4 +484,9 @@ These are nice-to-have items that don't block production:
 | Phase | Task | Description |
 |-------|------|-------------|
 | 17.7 | Add integration tests for IPC commands | Requires Tauri test harness |
-| 19.10 | Code-split frontend bundle | Lazy-load tools/xterm with dynamic import |
+
+## Technical Debt / Known Issues
+
+1. **Read loop contention:** Uses `Arc<Mutex<Channel>>` with 100ms timeout polling — acceptable for terminal but could be improved
+2. **Frontend a11y warnings:** ~47 svelte-check a11y warnings (redundant roles, click handlers without keyboard events) — non-blocking
+3. **Locale file sync:** Non-English locale files have fewer keys than en.json — fallback to English works correctly

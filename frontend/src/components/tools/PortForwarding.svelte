@@ -14,8 +14,8 @@
   async function refresh() {
     try {
       forwards = await portForwardList()
-    } catch (e: any) {
-      error = e.toString()
+    } catch (e) {
+      error = String(e)
     }
   }
 
@@ -23,7 +23,7 @@
     error = ''
     success = ''
     if (!targetHost) {
-      error = 'Target host is required'
+      error = t('tools.targetRequired')
       return
     }
     try {
@@ -35,11 +35,11 @@
         targetPort,
         direction,
       )
-      success = `${direction} forward started on ${bindHost}:${bindPort} -> ${targetHost}:${targetPort}`
+      success = t('tools.forwardStarted', { direction, bindHost, targetHost, bindPort: String(bindPort), targetPort: String(targetPort) })
       await refresh()
       bindPort = bindPort + 1
-    } catch (e: any) {
-      error = e.toString()
+    } catch (e) {
+      error = String(e)
     }
   }
 
@@ -47,8 +47,8 @@
     try {
       await portForwardStop(id)
       await refresh()
-    } catch (e: any) {
-      error = e.toString()
+    } catch (e) {
+      error = String(e)
     }
   }
 

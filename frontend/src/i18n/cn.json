@@ -2,7 +2,11 @@
   "app": {
     "title": "Muon SSH",
     "noActiveSession": "没有活动会话",
-    "connectHint": "从侧边栏连接到会话以开始使用"
+    "connectHint": "从侧边栏连接到会话以开始使用",
+    "localTerminal": "本地",
+    "newTab": "标签页 {count}",
+    "noTerminalSessions": "没有终端会话",
+    "openLocalTerminal": "打开本地终端"
   },
   "sidebar": {
     "sessions": "会话",
@@ -105,7 +109,26 @@
     "passphrase": "密码短语（可选）",
     "generate": "生成",
     "noLocalKeys": "未找到本地SSH密钥",
-    "noRemoteKeys": "远程authorized_keys中未找到密钥"
+    "noRemoteKeys": "远程authorized_keys中未找到密钥",
+    "colPid": "PID",
+    "colUser": "用户",
+    "colCpu": "CPU%",
+    "colMem": "内存%",
+    "colStat": "状态",
+    "colCommand": "命令",
+    "colProto": "协议",
+    "colState": "状态",
+    "colLocalAddr": "本地地址",
+    "colPort": "端口",
+    "colProcess": "进程",
+    "namePlaceholder": "*.log, *.conf...",
+    "contentPlaceholder": "按内容过滤...",
+    "killConfirm": "终止进程 {pid}？",
+    "noResults": "搜索未返回结果",
+    "targetRequired": "目标主机是必需的",
+    "keyGenerated": "密钥生成成功",
+    "keyDeployed": "密钥已部署到远程服务器",
+    "forwardStarted": "{direction} 转发已在 {bindHost}:{bindPort} -> {targetHost}:{targetPort} 上启动"
   },
   "settings": {
     "title": "设置",
@@ -131,7 +154,8 @@
     "keepAlive": "Keep-Alive间隔（秒）",
     "save": "保存",
     "close": "关闭",
-    "saved": "设置已保存"
+    "saved": "设置已保存",
+    "editorHint": "留空以自动检测。输入命令名称或完整路径。"
   },
   "common": {
     "ok": "确定",
@@ -152,6 +176,7 @@
     "checking": "检查中...",
     "upToDate": "已是最新版本",
     "updateAvailable": "有可用更新：{version}",
-    "updateFailed": "检查更新失败"
+    "updateFailed": "检查更新失败",
+    "description": "使用 Rust、Tauri 和 Svelte 构建的跨平台 SSH/SCP/SFTP 客户端。"
   }
 }

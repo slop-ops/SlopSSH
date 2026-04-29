@@ -5,16 +5,26 @@
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
 
+  interface FileEntry {
+    name: string
+    path: string
+    isDir: boolean
+    isFile: boolean
+    isSymlink: boolean
+    size: number
+    modified: number | null
+  }
+
   let { sessionId }: { sessionId: string } = $props()
 
   let currentPath = $state('')
-  let entries = $state<any[]>([])
+  let entries = $state<FileEntry[]>([])
   let loading = $state(false)
   let error = $state('')
   let pathInput = $state('')
   let editingPath = $state(false)
   let dragOverState = $state(false)
-  let contextMenu = $state<{ x: number; y: number; entry: any } | null>(null)
+  let contextMenu = $state<{ x: number; y: number; entry: FileEntry | null } | null>(null)
   let editingFile = $state<string | null>(null)
 
   $effect(() => {
@@ -40,7 +50,7 @@
     loading = true
     error = ''
     try {
-      entries = await api.sftpListDir(sessionId, path)
+      entries = (await api.sftpListDir(sessionId, path)) as unknown as FileEntry[]
       currentPath = path
       pathInput = path
     } catch (e) {
@@ -50,7 +60,7 @@
     }
   }
 
-  function navigate(entry: any) {
+  function navigate(entry: FileEntry) {
     if (entry.isDir) {
       loadDir(entry.path)
     }
@@ -83,7 +93,7 @@
     }
   }
 
-  async function deleteEntry(entry: any) {
+  async function deleteEntry(entry: FileEntry) {
     if (!confirm(t('files.delete') + ' ' + entry.name + '?')) return
     try {
       await api.sftpRemove(sessionId, entry.path)
@@ -93,7 +103,7 @@
     }
   }
 
-  async function renameEntry(entry: any) {
+  async function renameEntry(entry: FileEntry) {
     const newName = prompt(t('files.rename'), entry.name)
     if (!newName || newName === entry.name) return
     const newPath = currentPath === '/' ? `/${newName}` : `${currentPath}/${newName}`
@@ -173,7 +183,7 @@
     await loadDir(currentPath)
   }
 
-  function handleFileDragStart(entry: any, e: DragEvent) {
+  function handleFileDragStart(entry: FileEntry, e: DragEvent) {
     if (!e.dataTransfer) return
     e.dataTransfer.setData('text/plain', JSON.stringify({
       type: 'remote-file',
@@ -186,7 +196,7 @@
     e.dataTransfer.effectAllowed = 'copy'
   }
 
-  function handleContextMenu(entry: any, e: MouseEvent) {
+  function handleContextMenu(entry: FileEntry, e: MouseEvent) {
     e.preventDefault()
     contextMenu = { x: e.clientX, y: e.clientY, entry }
   }
@@ -195,6 +205,8 @@
     if (!contextMenu) return
     const entry = contextMenu.entry
     contextMenu = null
+
+    if (!entry) return
 
     switch (action) {
       case 'open':
@@ -224,7 +236,7 @@
     }
   }
 
-  async function extractArchive(entry: any) {
+  async function extractArchive(entry: FileEntry) {
     const dirName = entry.name.replace(/\.(tar\.gz|tar\.bz2|tgz|tar|zip)$/, '')
     const targetPath = currentPath === '/' ? `/${dirName}` : `${currentPath}/${dirName}`
     try {
@@ -235,7 +247,7 @@
     }
   }
 
-  async function archiveEntry(entry: any) {
+  async function archiveEntry(entry: FileEntry) {
     const format = entry.isDir ? 'tar.gz' : 'tar.gz'
     const archiveName = `${entry.name}.tar.gz`
     const archivePath = currentPath === '/' ? `/${archiveName}` : `${currentPath}/${archiveName}`

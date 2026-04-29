@@ -27,7 +27,7 @@
       const result = await api.remoteExec(sessionId, cmd, 60)
       results = result.stdout.split('\n').filter((l: string) => l.trim())
       if (results.length === 0 && result.exitCode !== 0) {
-        error = 'Search returned no results'
+        error = t('tools.noResults')
       }
     } catch (e) {
       error = String(e)
@@ -59,7 +59,7 @@
         <input
           type="text"
           bind:value={pattern}
-          placeholder="*.log, *.conf..."
+          placeholder={t('tools.namePlaceholder')}
           class="input"
           onkeydown={(e) => { if (e.key === 'Enter') searchByName() }}
         />
@@ -69,7 +69,7 @@
         <input
           type="text"
           bind:value={contentFilter}
-          placeholder="Filter by content..."
+          placeholder={t('tools.contentPlaceholder')}
           class="input"
           onkeydown={(e) => { if (e.key === 'Enter') searchFiles() }}
         />

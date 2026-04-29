@@ -4,7 +4,12 @@
 
   let { sessionId }: { sessionId: string } = $props()
 
-  let diskUsage = $state<any[]>([])
+  interface DiskEntry {
+    size: string
+    path: string
+  }
+
+  let diskUsage = $state<DiskEntry[]>([])
   let loading = $state(false)
   let error = $state('')
   let scanPath = $state('/')
@@ -33,7 +38,7 @@
           }
           return null
         })
-        .filter(Boolean) as any[]
+        .filter((d): d is DiskEntry => d !== null)
     } catch (e) {
       error = String(e)
       diskUsage = []

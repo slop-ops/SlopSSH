@@ -2,7 +2,11 @@
   "app": {
     "title": "Muon SSH",
     "noActiveSession": "Нет активной сессии",
-    "connectHint": "Подключитесь к сессии из боковой панели для начала работы"
+    "connectHint": "Подключитесь к сессии из боковой панели для начала работы",
+    "localTerminal": "Локальный",
+    "newTab": "Вкладка {count}",
+    "noTerminalSessions": "Нет сессий терминала",
+    "openLocalTerminal": "Открыть локальный терминал"
   },
   "sidebar": {
     "sessions": "Сессии",
@@ -105,7 +109,26 @@
     "passphrase": "Парольная фраза (необязательно)",
     "generate": "Создать",
     "noLocalKeys": "Локальные SSH ключи не найдены",
-    "noRemoteKeys": "Ключи в удалённом authorized_keys не найдены"
+    "noRemoteKeys": "Ключи в удалённом authorized_keys не найдены",
+    "colPid": "PID",
+    "colUser": "Пользователь",
+    "colCpu": "ЦП%",
+    "colMem": "Память%",
+    "colStat": "Статус",
+    "colCommand": "Команда",
+    "colProto": "Прото",
+    "colState": "Состояние",
+    "colLocalAddr": "Локальный адрес",
+    "colPort": "Порт",
+    "colProcess": "Процесс",
+    "namePlaceholder": "*.log, *.conf...",
+    "contentPlaceholder": "Фильтр по содержимому...",
+    "killConfirm": "Завершить процесс {pid}?",
+    "noResults": "Поиск не дал результатов",
+    "targetRequired": "Необходим целевой хост",
+    "keyGenerated": "Ключ успешно создан",
+    "keyDeployed": "Ключ развёрнут на удалённом сервере",
+    "forwardStarted": "Перенаправление {direction} запущено на {bindHost}:{bindPort} -> {targetHost}:{targetPort}"
   },
   "settings": {
     "title": "Настройки",
@@ -131,7 +154,8 @@
     "keepAlive": "Интервал keep-alive (секунды)",
     "save": "Сохранить",
     "close": "Закрыть",
-    "saved": "Настройки сохранены"
+    "saved": "Настройки сохранены",
+    "editorHint": "Оставьте пустым для автоопределения. Введите имя команды или полный путь."
   },
   "common": {
     "ok": "ОК",
@@ -152,6 +176,7 @@
     "checking": "Проверка...",
     "upToDate": "Установлена последняя версия",
     "updateAvailable": "Доступно обновление: {version}",
-    "updateFailed": "Не удалось проверить обновления"
+    "updateFailed": "Не удалось проверить обновления",
+    "description": "Кроссплатформенный SSH/SCP/SFTP клиент на Rust, Tauri и Svelte."
   }
 }

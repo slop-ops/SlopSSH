@@ -4,7 +4,9 @@
     "noActiveSession": "No active session",
     "connectHint": "Connect to a session from the sidebar to get started",
     "noTerminalSessions": "No terminal sessions",
-    "openLocalTerminal": "Open Local Terminal"
+    "openLocalTerminal": "Open Local Terminal",
+    "localTerminal": "Local",
+    "newTab": "Tab {count}"
   },
   "sidebar": {
     "sessions": "Sessions",
@@ -114,6 +116,17 @@
     "filter": "Filter...",
     "filterProcesses": "Filter processes...",
     "filterPorts": "Filter ports...",
+    "colPid": "PID",
+    "colUser": "User",
+    "colCpu": "CPU%",
+    "colMem": "MEM%",
+    "colStat": "Stat",
+    "colCommand": "Command",
+    "colProto": "Proto",
+    "colState": "State",
+    "colLocalAddr": "Local Address",
+    "colPort": "Port",
+    "colProcess": "Process",
     "kill": "Kill",
     "killConfirm": "Kill process {pid}?",
     "logPath": "Log file path",
@@ -126,7 +139,9 @@
     "searchInFiles": "Search",
     "directory": "Dir",
     "namePattern": "Name",
+    "namePlaceholder": "*.log, *.conf...",
     "contentPattern": "Content",
+    "contentPlaceholder": "Filter by content...",
     "maxResults": "Max results",
     "resultsCount": "{count} results",
     "noResults": "Search returned no results",
@@ -224,7 +239,8 @@
     "by": "by {author}",
     "key": "Key",
     "value": "Value",
-    "add": "Add"
+    "add": "Add",
+    "editorHint": "Leave empty for auto-detection. Enter command name or full path."
   },
   "common": {
     "ok": "OK",
@@ -245,6 +261,7 @@
     "checking": "Checking...",
     "upToDate": "You're up to date",
     "updateAvailable": "Update available: {version}",
-    "updateFailed": "Failed to check for updates"
+    "updateFailed": "Failed to check for updates",
+    "description": "Cross-platform SSH/SCP/SFTP client built with Rust, Tauri, and Svelte."
   }
 }

@@ -2,9 +2,19 @@
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
 
+  interface PortEntry {
+    proto: string
+    state: string
+    recvQ: string
+    sendQ: string
+    local: string
+    port: string
+    process: string
+  }
+
   let { sessionId }: { sessionId: string } = $props()
 
-  let ports = $state<any[]>([])
+  let ports = $state<PortEntry[]>([])
   let loading = $state(false)
   let error = $state('')
   let filter = $state('')
@@ -31,7 +41,7 @@
     }
   }
 
-  function parsePorts(output: string): any[] {
+  function parsePorts(output: string): PortEntry[] {
     return output
       .split('\n')
       .filter((l: string) => l.trim())
@@ -53,7 +63,7 @@
         }
         return null
       })
-      .filter(Boolean) as any[]
+      .filter((p): p is PortEntry => p !== null)
   }
 
   let filtered = $derived(
@@ -88,11 +98,11 @@
     <table>
       <thead>
         <tr>
-          <th>Proto</th>
-          <th>State</th>
-          <th>Local Address</th>
-          <th>Port</th>
-          <th>Process</th>
+          <th>{t('tools.colProto')}</th>
+          <th>{t('tools.colState')}</th>
+          <th>{t('tools.colLocalAddr')}</th>
+          <th>{t('tools.colPort')}</th>
+          <th>{t('tools.colProcess')}</th>
         </tr>
       </thead>
       <tbody>

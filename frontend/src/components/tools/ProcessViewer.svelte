@@ -2,9 +2,24 @@
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
 
+  interface ProcessEntry {
+    pid: string
+    ppid: string
+    user: string
+    cpu: string
+    mem: string
+    vsz: string
+    rss: string
+    tty: string
+    stat: string
+    start: string
+    time: string
+    command: string
+  }
+
   let { sessionId }: { sessionId: string } = $props()
 
-  let processes = $state<any[]>([])
+  let processes = $state<ProcessEntry[]>([])
   let loading = $state(false)
   let error = $state('')
   let filter = $state('')
@@ -33,7 +48,7 @@
     }
   }
 
-  function parsePsOutput(output: string): any[] {
+  function parsePsOutput(output: string): ProcessEntry[] {
     return output
       .split('\n')
       .filter((l: string) => l.trim())
@@ -57,11 +72,11 @@
         }
         return null
       })
-      .filter(Boolean)
+      .filter((p): p is ProcessEntry => p !== null)
   }
 
   async function killProcess(pid: string) {
-    if (!confirm(`Kill process ${pid}?`)) return
+    if (!confirm(t('tools.killConfirm', { pid }))) return
     try {
       await api.remoteExec(sessionId, `kill -9 ${pid}`, 5)
       await refresh()
@@ -83,9 +98,9 @@
   let sorted = $derived(() => {
     const list = [...filtered]
     list.sort((a, b) => {
-      const av = a[sortBy] ?? ''
-      const bv = b[sortBy] ?? ''
-      const cmp = typeof av === 'number' ? av - bv : String(av).localeCompare(String(bv))
+      const av = a[sortBy as keyof ProcessEntry] ?? ''
+      const bv = b[sortBy as keyof ProcessEntry] ?? ''
+      const cmp = String(av).localeCompare(String(bv))
       return sortDir === 'asc' ? cmp : -cmp
     })
     return list
@@ -122,12 +137,12 @@
     <table>
       <thead>
         <tr>
-          <th class="sortable" onclick={() => toggleSort('pid')}>PID</th>
-          <th class="sortable" onclick={() => toggleSort('user')}>User</th>
-          <th class="sortable" onclick={() => toggleSort('cpu')}>CPU%</th>
-          <th class="sortable" onclick={() => toggleSort('mem')}>MEM%</th>
-          <th class="sortable" onclick={() => toggleSort('stat')}>Stat</th>
-          <th class="sortable" onclick={() => toggleSort('command')}>Command</th>
+          <th class="sortable" onclick={() => toggleSort('pid')}>{t('tools.colPid')}</th>
+          <th class="sortable" onclick={() => toggleSort('user')}>{t('tools.colUser')}</th>
+          <th class="sortable" onclick={() => toggleSort('cpu')}>{t('tools.colCpu')}</th>
+          <th class="sortable" onclick={() => toggleSort('mem')}>{t('tools.colMem')}</th>
+          <th class="sortable" onclick={() => toggleSort('stat')}>{t('tools.colStat')}</th>
+          <th class="sortable" onclick={() => toggleSort('command')}>{t('tools.colCommand')}</th>
           <th></th>
         </tr>
       </thead>

@@ -2,7 +2,11 @@
   "app": {
     "title": "Muon SSH",
     "noActiveSession": "Keine aktive Sitzung",
-    "connectHint": "Verbinden Sie sich über die Seitenleiste mit einer Sitzung, um zu beginnen"
+    "connectHint": "Verbinden Sie sich über die Seitenleiste mit einer Sitzung, um zu beginnen",
+    "localTerminal": "Lokal",
+    "newTab": "Tab {count}",
+    "noTerminalSessions": "Keine Terminal-Sitzungen",
+    "openLocalTerminal": "Lokales Terminal öffnen"
   },
   "sidebar": {
     "sessions": "Sitzungen",
@@ -105,7 +109,26 @@
     "passphrase": "Passphrase (optional)",
     "generate": "Generieren",
     "noLocalKeys": "Keine lokalen SSH-Schlüssel gefunden",
-    "noRemoteKeys": "Keine Schlüssel in entfernter authorized_keys gefunden"
+    "noRemoteKeys": "Keine Schlüssel in entfernter authorized_keys gefunden",
+    "colPid": "PID",
+    "colUser": "Benutzer",
+    "colCpu": "CPU%",
+    "colMem": "MEM%",
+    "colStat": "Status",
+    "colCommand": "Befehl",
+    "colProto": "Proto",
+    "colState": "Status",
+    "colLocalAddr": "Lokale Adresse",
+    "colPort": "Port",
+    "colProcess": "Prozess",
+    "namePlaceholder": "*.log, *.conf...",
+    "contentPlaceholder": "Nach Inhalt filtern...",
+    "killConfirm": "Prozess {pid} beenden?",
+    "noResults": "Suche lieferte keine Ergebnisse",
+    "targetRequired": "Ziel-Host ist erforderlich",
+    "keyGenerated": "Schlüssel erfolgreich generiert",
+    "keyDeployed": "Schlüssel auf Remote-Server bereitgestellt",
+    "forwardStarted": "{direction}-Weiterleitung gestartet auf {bindHost}:{bindPort} -> {targetHost}:{targetPort}"
   },
   "settings": {
     "title": "Einstellungen",
@@ -131,7 +154,8 @@
     "keepAlive": "Keep-Alive-Intervall (Sekunden)",
     "save": "Speichern",
     "close": "Schließen",
-    "saved": "Einstellungen gespeichert"
+    "saved": "Einstellungen gespeichert",
+    "editorHint": "Leer lassen für automatische Erkennung. Befehlsname oder vollständigen Pfad eingeben."
   },
   "common": {
     "ok": "OK",
@@ -152,6 +176,7 @@
     "checking": "Suche...",
     "upToDate": "Sie sind auf dem neuesten Stand",
     "updateAvailable": "Update verfügbar: {version}",
-    "updateFailed": "Update-Suche fehlgeschlagen"
+    "updateFailed": "Update-Suche fehlgeschlagen",
+    "description": "Plattformübergreifender SSH/SCP/SFTP-Client, gebaut mit Rust, Tauri und Svelte."
   }
 }

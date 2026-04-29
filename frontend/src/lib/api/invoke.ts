@@ -11,6 +11,8 @@ import type {
   PluginInfo,
   RemoteExecResult,
   ConnectResult,
+  TabState,
+  UpdateInfo,
 } from '$lib/types'
 
 export async function getSettings(): Promise<Settings> {
@@ -363,11 +365,11 @@ export async function pluginShowNotification(
   return invoke('plugin_show_notification', { pluginId, title, body })
 }
 
-export async function saveTabState(tabs: unknown): Promise<void> {
+export async function saveTabState(tabs: TabState): Promise<void> {
   return invoke('save_tab_state', { tabs })
 }
 
-export async function loadTabState(): Promise<unknown> {
+export async function loadTabState(): Promise<TabState> {
   return invoke('load_tab_state')
 }
 
@@ -375,11 +377,11 @@ export async function clearTabState(): Promise<void> {
   return invoke('clear_tab_state')
 }
 
-export async function checkForUpdates(): Promise<unknown> {
+export async function checkForUpdates(): Promise<UpdateInfo> {
   return invoke('check_for_updates')
 }
 
-export async function downloadUpdate(updateInfo: unknown): Promise<unknown> {
+export async function downloadUpdate(updateInfo: UpdateInfo): Promise<string> {
   return invoke('download_update', { updateInfo })
 }
 

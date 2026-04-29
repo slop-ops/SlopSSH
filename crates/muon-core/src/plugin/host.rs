@@ -175,7 +175,12 @@ impl PluginManager {
                 Arc::new(Mutex::new(PluginHost::new(caps))),
             );
         }
-        self.hosts.get(plugin_id).cloned().unwrap()
+        self.hosts.get(plugin_id).cloned().unwrap_or_else(|| {
+            let caps: &[crate::plugin::api::PluginCapability] = &[];
+            let host = Arc::new(Mutex::new(PluginHost::new(caps)));
+            self.hosts.insert(plugin_id.to_string(), host.clone());
+            host
+        })
     }
 
     /// Retrieves a single plugin setting value.

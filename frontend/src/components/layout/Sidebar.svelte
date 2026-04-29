@@ -2,19 +2,20 @@
   import * as api from '$lib/api/invoke'
   import ImportDialog from '$components/session/ImportDialog.svelte'
   import { t } from '$lib/utils/i18n'
+  import type { SessionFolder, SessionInfo } from '$lib/types'
 
   let {
     onConnect,
     onNewSession,
     showImport = $bindable(false),
     selectedSessionId = $bindable(''),
-    sessions: sessions = $bindable<any>(null),
+    sessions: sessions = $bindable<SessionFolder | null>(null),
   }: {
     onConnect: (id: string, name: string) => void
     onNewSession: () => void
     showImport?: boolean
     selectedSessionId?: string
-    sessions?: any
+    sessions?: SessionFolder | null
   } = $props()
 
   let password = $state('')
@@ -58,16 +59,25 @@
     }
   }
 
+  interface FlatItem {
+    id: string
+    name: string
+    host: string
+    username: string
+    port: number
+    isFolder?: boolean
+  }
+
   function flattenSessions(
-    folder: any,
+    folder: SessionFolder,
     depth: number = 0,
-  ): Array<{ item: any; depth: number }> {
-    const result: Array<{ item: any; depth: number }> = []
+  ): Array<{ item: FlatItem; depth: number }> {
+    const result: Array<{ item: FlatItem; depth: number }> = []
     for (const item of folder.items || []) {
       result.push({ item, depth })
     }
     for (const sub of folder.folders || []) {
-      result.push({ item: { isFolder: true, ...sub }, depth })
+      result.push({ item: { ...sub, isFolder: true, host: '', username: '', port: 0 }, depth })
       result.push(...flattenSessions(sub, depth + 1))
     }
     return result

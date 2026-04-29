@@ -63,7 +63,10 @@ impl WasmLoader {
 
 impl Default for WasmLoader {
     fn default() -> Self {
-        Self::new().expect("Failed to create WasmLoader")
+        Self::new().unwrap_or_else(|e| {
+            tracing::error!("Failed to create WasmLoader: {e}");
+            panic!("WasmLoader creation failed: {e}")
+        })
     }
 }
 

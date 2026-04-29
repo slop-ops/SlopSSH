@@ -39,7 +39,7 @@
 
   async function restoreTabState() {
     try {
-      const state = await api.loadTabState() as TabState
+      const state = await api.loadTabState()
       if (state?.tabs?.length) {
         const restored: Tab[] = state.tabs.map((st: SavedTab) => ({
           id: crypto.randomUUID(),
@@ -98,7 +98,7 @@
   function openLocalTerminal() {
     const channelId = crypto.randomUUID()
     const tabId = crypto.randomUUID()
-    tabs = [...tabs, { id: tabId, sessionId: '', channelId, title: 'Local', isLocal: true }]
+    tabs = [...tabs, { id: tabId, sessionId: '', channelId, title: t('app.localTerminal'), isLocal: true }]
     activeTabId = tabId
   }
 
@@ -117,7 +117,7 @@
     switch (action) {
       case 'new-tab':
         if (activeSessionId) {
-          handleConnect(activeSessionId, `Tab ${tabs.length + 1}`)
+          handleConnect(activeSessionId, t('app.newTab', { count: String(tabs.length + 1) }))
         }
         break
       case 'close-tab':
@@ -341,7 +341,7 @@
         case 'check_updates':
           updateStatus = t('about.checking')
           try {
-            const result = await api.checkForUpdates() as { has_update?: boolean; version?: string }
+            const result = await api.checkForUpdates()
             if (result?.has_update) {
               updateStatus = t('about.updateAvailable', { version: result.version ?? '' })
             } else {
@@ -427,10 +427,10 @@
       <div class="about-body">
         <p class="about-name">Muon SSH</p>
         <p class="about-version">{t('about.version')}: {appVersion}</p>
-        <p class="about-desc">Cross-platform SSH/SCP/SFTP client built with Rust, Tauri, and Svelte.</p>
+        <p class="about-desc">{t('about.description')}</p>
       </div>
       <div class="about-actions">
-        <button class="save-btn" onclick={async () => { updateStatus = t('about.checking'); try { const r = await api.checkForUpdates() as { has_update?: boolean; version?: string }; updateStatus = r?.has_update ? t('about.updateAvailable', { version: r.version ?? '' }) : t('about.upToDate') } catch { updateStatus = t('about.updateFailed') } }}>{t('about.checkUpdates')}</button>
+        <button class="save-btn" onclick={async () => { updateStatus = t('about.checking'); try { const r = await api.checkForUpdates(); updateStatus = r?.has_update ? t('about.updateAvailable', { version: r.version ?? '' }) : t('about.upToDate') } catch { updateStatus = t('about.updateFailed') } }}>{t('about.checkUpdates')}</button>
         <button class="cancel-btn" onclick={() => (showAbout = false)}>{t('common.close')}</button>
       </div>
     </div>

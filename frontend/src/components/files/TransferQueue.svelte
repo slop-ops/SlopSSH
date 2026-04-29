@@ -17,8 +17,12 @@
 
   $effect(() => {
     loadTransfers()
-    const poll = setInterval(loadTransfers, 2000)
-    return () => clearInterval(poll)
+    const poll = setInterval(loadTransfers, 5000)
+    const unlistenPromise = listen('transfers-changed', () => loadTransfers())
+    return () => {
+      clearInterval(poll)
+      unlistenPromise.then((fn) => fn())
+    }
   })
 
   async function loadTransfers() {

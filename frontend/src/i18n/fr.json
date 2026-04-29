@@ -144,5 +144,14 @@
     "loading": "Chargement...",
     "error": "Erreur",
     "success": "Succès"
+  },
+  "about": {
+    "title": "À propos de Muon SSH",
+    "version": "Version",
+    "checkUpdates": "Vérifier les mises à jour",
+    "checking": "Vérification...",
+    "upToDate": "Vous êtes à jour",
+    "updateAvailable": "Mise à jour disponible : {version}",
+    "updateFailed": "Échec de la vérification des mises à jour"
   }
 }

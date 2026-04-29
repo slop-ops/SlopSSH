@@ -144,5 +144,14 @@
     "loading": "加载中...",
     "error": "错误",
     "success": "成功"
+  },
+  "about": {
+    "title": "关于 Muon SSH",
+    "version": "版本",
+    "checkUpdates": "检查更新",
+    "checking": "检查中...",
+    "upToDate": "已是最新版本",
+    "updateAvailable": "有可用更新：{version}",
+    "updateFailed": "检查更新失败"
   }
 }

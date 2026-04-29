@@ -237,5 +237,14 @@
     "loading": "Loading...",
     "error": "Error",
     "success": "Success"
+  },
+  "about": {
+    "title": "About Muon SSH",
+    "version": "Version",
+    "checkUpdates": "Check for Updates",
+    "checking": "Checking...",
+    "upToDate": "You're up to date",
+    "updateAvailable": "Update available: {version}",
+    "updateFailed": "Failed to check for updates"
   }
 }

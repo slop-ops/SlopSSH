@@ -10,8 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test",
-    "lint": "eslint src/ || true"
+    "test:e2e": "playwright test"
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",

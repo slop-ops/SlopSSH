@@ -144,5 +144,14 @@
     "loading": "Cargando...",
     "error": "Error",
     "success": "Éxito"
+  },
+  "about": {
+    "title": "Acerca de Muon SSH",
+    "version": "Versión",
+    "checkUpdates": "Buscar actualizaciones",
+    "checking": "Buscando...",
+    "upToDate": "Estás actualizado",
+    "updateAvailable": "Actualización disponible: {version}",
+    "updateFailed": "Error al buscar actualizaciones"
   }
 }

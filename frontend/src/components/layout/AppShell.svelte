@@ -11,7 +11,7 @@
   import { registerHandler, setEnabled as setShortcutsEnabled } from '$lib/utils/shortcuts'
   import { listen } from '@tauri-apps/api/event'
   import * as api from '$lib/api/invoke'
-  import type { TabState, SavedTab } from '$lib/types'
+  import type { TabState, SavedTab, SessionInfo, SessionFolder } from '$lib/types'
 
   interface Tab {
     id: string
@@ -30,6 +30,12 @@
   let activeSessionId = $state('')
   let theme = $state(getTheme())
   let restoring = $state(true)
+  let showAbout = $state(false)
+  let showImport = $state(false)
+  let updateStatus = $state('')
+  let appVersion = $state('')
+  let selectedSessionId = $state('')
+  let sidebarSessions = $state<SessionFolder | null>(null)
 
   async function restoreTabState() {
     try {
@@ -87,6 +93,24 @@
   function handleToggleTheme() {
     toggleTheme()
     theme = getTheme()
+  }
+
+  function openLocalTerminal() {
+    const channelId = crypto.randomUUID()
+    const tabId = crypto.randomUUID()
+    tabs = [...tabs, { id: tabId, sessionId: '', channelId, title: 'Local', isLocal: true }]
+    activeTabId = tabId
+  }
+
+  function findSessionInTree(folder: SessionFolder, id: string): SessionInfo | null {
+    for (const item of folder.items) {
+      if (item.id === id) return item
+    }
+    for (const sub of folder.folders) {
+      const found = findSessionInTree(sub, id)
+      if (found) return found
+    }
+    return null
   }
 
   function handleShortcutAction(action: string) {
@@ -179,24 +203,48 @@
   })
 
   $effect(() => {
-    const unlisten = listen<string>('menu-event', (event) => {
+    const unlisten = listen<string>('menu-event', async (event) => {
       switch (event.payload) {
         case 'new_session':
           showNewSession = true
           break
         case 'import_sessions':
+          showImport = true
           break
         case 'close_tab':
           if (activeTabId) closeTab(activeTabId)
           break
         case 'quit':
+          window.close()
           break
-        case 'copy':
-          document.execCommand('copy')
+        case 'copy': {
+          const sel = window.getSelection()?.toString() ?? ''
+          if (sel) {
+            try {
+              await navigator.clipboard.writeText(sel)
+            } catch {
+              document.execCommand('copy')
+            }
+          }
           break
-        case 'paste':
-          document.execCommand('paste')
+        }
+        case 'paste': {
+          try {
+            const text = await navigator.clipboard.readText()
+            if (text) {
+              const el = document.activeElement
+              if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) {
+                const start = el.selectionStart ?? 0
+                const end = el.selectionEnd ?? 0
+                el.setRangeText(text, start, end, 'end')
+                el.dispatchEvent(new Event('input', { bubbles: true }))
+              }
+            }
+          } catch {
+            document.execCommand('paste')
+          }
           break
+        }
         case 'select_all':
           document.execCommand('selectAll')
           break
@@ -204,17 +252,55 @@
           showSettings = !showSettings
           break
         case 'connect':
+          if (selectedSessionId) {
+            try {
+              const sessions = await api.listSessions()
+              const session = findSessionInTree(sessions, selectedSessionId)
+              if (session) await api.sshConnect(session.id)
+              handleConnect(session!.id, session!.name || session!.host)
+            } catch (e) {
+              console.error('Connect failed:', e)
+            }
+          } else {
+            showNewSession = true
+          }
           break
         case 'disconnect':
+          if (activeSessionId) {
+            try {
+              await api.sshDisconnect(activeSessionId)
+            } catch (e) {
+              console.error('Disconnect failed:', e)
+            }
+          }
           break
         case 'duplicate':
+          if (selectedSessionId && sidebarSessions) {
+            const session = findSessionInTree(sidebarSessions, selectedSessionId)
+            if (session) {
+              try {
+                const { id, last_connected, ...rest } = session
+                await api.createSession({ ...rest, name: rest.name + ' (copy)' })
+              } catch (e) {
+                console.error('Duplicate failed:', e)
+              }
+            }
+          }
           break
         case 'delete_session':
+          if (selectedSessionId) {
+            try {
+              await api.deleteSession(selectedSessionId)
+            } catch (e) {
+              console.error('Delete failed:', e)
+            }
+          }
           break
         case 'toggle_sidebar':
           toggleSidebar()
           break
         case 'local_terminal':
+          openLocalTerminal()
           break
         case 'zoom_in':
           document.documentElement.style.fontSize = `${parseFloat(getComputedStyle(document.documentElement).fontSize) + 1}px`
@@ -245,8 +331,25 @@
           if (activeSessionId) activeView = 'tools'
           break
         case 'about':
+          try {
+            appVersion = await api.getAppVersion()
+          } catch {
+            appVersion = 'unknown'
+          }
+          showAbout = true
           break
         case 'check_updates':
+          updateStatus = t('about.checking')
+          try {
+            const result = await api.checkForUpdates() as { has_update?: boolean; version?: string }
+            if (result?.has_update) {
+              updateStatus = t('about.updateAvailable', { version: result.version ?? '' })
+            } else {
+              updateStatus = t('about.upToDate')
+            }
+          } catch {
+            updateStatus = t('about.updateFailed')
+          }
           break
       }
     })
@@ -259,7 +362,7 @@
   <div class="app-shell" role="application" aria-label={t('app.title')}>
   {#if showSidebar}
     <aside class="sidebar" role="navigation" aria-label={t('sidebar.sessionList')}>
-      <Sidebar onConnect={handleConnect} onNewSession={() => (showNewSession = true)} />
+      <Sidebar onConnect={handleConnect} onNewSession={() => (showNewSession = true)} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} />
     </aside>
   {/if}
   <main class="content" role="main">
@@ -275,6 +378,9 @@
         <button class="toolbar-btn" class:active={activeView === 'tools'} onclick={() => (activeView = 'tools')} aria-pressed={activeView === 'tools'}>{t('toolbar.tools')}</button>
       {/if}
       <div class="toolbar-spacer"></div>
+      {#if updateStatus}
+        <span class="update-status">{updateStatus}</span>
+      {/if}
       <button class="toolbar-btn theme-toggle" onclick={handleToggleTheme} title={t('toolbar.toggleTheme')} aria-label={theme === 'dark' ? t('toolbar.switchToLight') : t('toolbar.switchToDark')}>
         {theme === 'dark' ? '&#9728;' : '&#9790;'}
       </button>
@@ -310,6 +416,26 @@
 {/if}
 
 <SettingsDialog bind:open={showSettings} />
+
+{#if showAbout}
+  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) showAbout = false }} role="dialog" aria-modal="true" aria-label={t('about.title')}>
+    <div class="about-dialog" role="document">
+      <div class="about-header">
+        <h3>{t('about.title')}</h3>
+        <button class="close-btn" onclick={() => (showAbout = false)} aria-label={t('common.close')}>x</button>
+      </div>
+      <div class="about-body">
+        <p class="about-name">Muon SSH</p>
+        <p class="about-version">{t('about.version')}: {appVersion}</p>
+        <p class="about-desc">Cross-platform SSH/SCP/SFTP client built with Rust, Tauri, and Svelte.</p>
+      </div>
+      <div class="about-actions">
+        <button class="save-btn" onclick={async () => { updateStatus = t('about.checking'); try { const r = await api.checkForUpdates() as { has_update?: boolean; version?: string }; updateStatus = r?.has_update ? t('about.updateAvailable', { version: r.version ?? '' }) : t('about.upToDate') } catch { updateStatus = t('about.updateFailed') } }}>{t('about.checkUpdates')}</button>
+        <button class="cancel-btn" onclick={() => (showAbout = false)}>{t('common.close')}</button>
+      </div>
+    </div>
+  </div>
+{/if}
 
 <style>
   .app-shell {
@@ -424,5 +550,123 @@
   .hint {
     font-size: 12px !important;
     color: var(--text-tertiary);
+  }
+
+  .update-status {
+    font-size: 11px;
+    color: var(--text-tertiary);
+    padding: 2px 8px;
+    background: var(--bg-hover);
+    border-radius: 4px;
+  }
+
+  .backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+
+  .about-dialog {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 8px;
+    width: 360px;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .about-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-primary);
+  }
+
+  .about-header h3 {
+    margin: 0;
+    font-size: 14px;
+    color: var(--text-primary);
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+
+  .close-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .about-body {
+    padding: 24px 16px;
+    text-align: center;
+  }
+
+  .about-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin: 0 0 8px 0;
+  }
+
+  .about-version {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin: 0 0 12px 0;
+  }
+
+  .about-desc {
+    font-size: 12px;
+    color: var(--text-tertiary);
+    margin: 0;
+  }
+
+  .about-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-primary);
+  }
+
+  .save-btn {
+    background: var(--accent);
+    border: none;
+    color: var(--text-inverse);
+    padding: 6px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .save-btn:hover {
+    background: var(--accent-hover);
+  }
+
+  .cancel-btn {
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    padding: 6px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+  }
+
+  .cancel-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
   }
 </style>

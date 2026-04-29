@@ -144,5 +144,14 @@
     "loading": "Загрузка...",
     "error": "Ошибка",
     "success": "Успех"
+  },
+  "about": {
+    "title": "О Muon SSH",
+    "version": "Версия",
+    "checkUpdates": "Проверить обновления",
+    "checking": "Проверка...",
+    "upToDate": "Установлена последняя версия",
+    "updateAvailable": "Доступно обновление: {version}",
+    "updateFailed": "Не удалось проверить обновления"
   }
 }

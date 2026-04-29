@@ -44,6 +44,7 @@ pub async fn transfer_upload(
         })
         .await;
 
+    let _ = app.emit("transfers-changed", ());
     Ok(())
 }
 
@@ -89,21 +90,25 @@ pub async fn transfer_download(
         })
         .await;
 
+    let _ = app.emit("transfers-changed", ());
     Ok(())
 }
 
 #[tauri::command]
 pub async fn transfer_cancel(
+    app: tauri::AppHandle,
     state: State<'_, AppState>,
     transfer_id: String,
 ) -> Result<bool, String> {
     tracing::debug!(transfer_id = %transfer_id, "transfer_cancel");
-    state
+    let cancelled = state
         .transfer_engine
         .cancel(&transfer_id)
         .await
         .then_some(true)
-        .ok_or_else(|| format!("Transfer '{}' not found or already completed", transfer_id))
+        .ok_or_else(|| format!("Transfer '{}' not found or already completed", transfer_id))?;
+    let _ = app.emit("transfers-changed", ());
+    Ok(cancelled)
 }
 
 #[tauri::command]
@@ -114,8 +119,12 @@ pub async fn transfer_list(state: State<'_, AppState>) -> Result<serde_json::Val
 }
 
 #[tauri::command]
-pub async fn transfer_clear_completed(state: State<'_, AppState>) -> Result<(), String> {
+pub async fn transfer_clear_completed(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
     tracing::debug!("transfer_clear_completed");
     state.transfer_engine.clear_completed().await;
+    let _ = app.emit("transfers-changed", ());
     Ok(())
 }

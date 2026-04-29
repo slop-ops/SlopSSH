@@ -6,17 +6,21 @@
   let {
     onConnect,
     onNewSession,
+    showImport = $bindable(false),
+    selectedSessionId = $bindable(''),
+    sessions: sessions = $bindable<any>(null),
   }: {
     onConnect: (id: string, name: string) => void
     onNewSession: () => void
+    showImport?: boolean
+    selectedSessionId?: string
+    sessions?: any
   } = $props()
 
-  let sessions = $state<any>(null)
   let password = $state('')
   let connectingId = $state('')
   let error = $state('')
   let editingId = $state<string | null>(null)
-  let showImport = $state(false)
 
   $effect(() => {
     loadSessions()
@@ -31,6 +35,7 @@
   }
 
   async function connect(id: string, name: string) {
+    selectedSessionId = id
     connectingId = id
     error = ''
     try {

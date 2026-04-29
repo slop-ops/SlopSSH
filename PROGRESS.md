@@ -1,13 +1,26 @@
 # PROGRESS.md — Muon SSH Rust/Tauri Rewrite
 
-Last updated: 2026-04-29 (Session 16)
+Last updated: 2026-04-29 (Session 17)
 
 ## Session Summary
 
 **Completed:** All phases 1-21 complete. Application is production-ready.
-**Session 16 delivered:** 10 tasks across Phases 19-21 (production features, performance, documentation)
+**Session 17 delivered:** 8 tasks across Phases 13, 16, 19 (CI/CD, frontend quality, build system)
 **Test count:** 300 Rust + 67 frontend unit tests (367 total)
 **Total IPC commands:** 72
+
+## Session 17 Changes
+
+| Commit | Tasks | Description |
+|--------|-------|-------------|
+| — | 13.10 | Remove ESLint lint script (not installed) and remove from CI |
+| — | 13.4 | Add macOS and Windows CI build jobs to ci.yml |
+| — | 13.5 | Create release.yml workflow — tag-triggered multi-platform release with artifact upload |
+| — | 16.10 | Replace `document.execCommand('copy'/'paste')` with Clipboard API in AppShell |
+| — | 16.11 | Replace TransferQueue 2s polling with event-driven updates via `transfers-changed` Tauri event + 5s fallback |
+| — | 16.12 | Implement all empty menu action handlers: import_sessions, quit, connect, disconnect, duplicate, delete_session, local_terminal, about, check_updates |
+| — | 16.12 | Add About dialog with version display and update check button |
+| — | 16.12 | Add about i18n keys to all 7 language files |
 
 ## Session 16 Changes
 
@@ -260,20 +273,20 @@ Last updated: 2026-04-29 (Session 16)
 | 12.5 | Encrypt credential store fallback | DONE | AES-256-GCM with machine-derived key, backward compat |
 | 12.6 | Fix download entire-file-into-RAM | DONE | Streaming SFTP reads with 32KB chunks |
 
-## Phase 13: Build System & CI — IN PROGRESS
+## Phase 13: Build System & CI — COMPLETE
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
 | 13.1 | Fix tauri.conf.json paths | DONE | frontendDist, beforeDevCommand, beforeBuildCommand |
 | 13.2 | Run cargo fmt | DONE | Applied + clean |
-| 13.3 | Fix CI build-linux job | TODO | |
-| 13.4 | Add macOS and Windows CI jobs | TODO | |
-| 13.5 | Create release workflow | TODO | |
+| 13.3 | Fix CI build-linux job | DONE | npm ci step already present |
+| 13.4 | Add macOS and Windows CI jobs | DONE | macOS + Windows jobs in ci.yml |
+| 13.5 | Create release workflow | DONE | .github/workflows/release.yml with multi-platform builds |
 | 13.6 | Fix $schema URL | DONE | Updated to tauri repo URL |
 | 13.7 | Change bundle identifier | DONE | com.muon-ssh.desktop |
 | 13.8 | Remove duplicate #[allow(dead_code)] | DONE | |
 | 13.9 | Remove greet command | DONE | |
-| 13.10 | Fix ESLint or remove lint script | TODO | |
+| 13.10 | Fix ESLint or remove lint script | DONE | Removed lint script and CI step |
 
 ## Phase 14: Error Handling & Resilience — COMPLETE
 
@@ -305,7 +318,7 @@ Last updated: 2026-04-29 (Session 16)
 | 15.5 | Extract shared shell_escape() utility | DONE | muon-core/src/utils.rs |
 | 15.6 | Add validation to port forwarding | DONE | PortForwardRule::validate() with 6 tests |
 
-## Phase 16: Frontend Type Safety & Quality — MOSTLY COMPLETE
+## Phase 16: Frontend Type Safety & Quality — COMPLETE
 
 | # | Task | Status | Notes |
 |---|------|--------|-------|
@@ -318,9 +331,9 @@ Last updated: 2026-04-29 (Session 16)
 | 16.7 | Wire light theme to terminals | DONE | lightTheme applied based on theme setting |
 | 16.8 | Fix NewSessionDialog password not sent | DONE | password_key and private_key_path passed to createSession |
 | 16.9 | Replace hardcoded hex colors with CSS variables | DONE | ~100 colors replaced in 12 components |
-| 16.10 | Fix `document.execCommand()` deprecated calls | TODO | |
-| 16.11 | Fix TransferQueue polling | TODO | |
-| 16.12 | Implement empty menu action handlers | TODO | |
+| 16.10 | Fix `document.execCommand()` deprecated calls | DONE | Clipboard API with execCommand fallback |
+| 16.11 | Fix TransferQueue polling | DONE | Event-driven via `transfers-changed` event + 5s fallback |
+| 16.12 | Implement empty menu action handlers | DONE | All 9 handlers wired: import, quit, connect, disconnect, duplicate, delete, local_terminal, about, check_updates |
 
 ## Phase 17: Test Coverage — COMPLETE
 
@@ -457,12 +470,5 @@ These are nice-to-have items that don't block production:
 
 | Phase | Task | Description |
 |-------|------|-------------|
-| 13.3 | Fix CI build-linux job | Add npm ci step for frontend |
-| 13.4 | Add macOS and Windows CI jobs | Cross-platform CI |
-| 13.5 | Create release workflow | Tag-triggered release with artifact upload |
-| 13.10 | Fix ESLint or remove lint script | Install eslint or remove from package.json |
-| 16.10 | Fix document.execCommand() | Use Clipboard API instead |
-| 16.11 | Fix TransferQueue polling | Switch to event-driven |
-| 16.12 | Implement empty menu action handlers | Wire up remaining menu actions |
 | 17.7 | Add integration tests for IPC commands | Requires Tauri test harness |
 | 19.10 | Code-split frontend bundle | Lazy-load tools/xterm with dynamic import |

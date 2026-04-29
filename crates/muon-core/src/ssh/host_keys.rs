@@ -1,3 +1,5 @@
+//! Host key verification against `~/.ssh/known_hosts`.
+
 use std::io::{BufRead, Write};
 use std::path::PathBuf;
 
@@ -5,13 +7,18 @@ use base64::Engine;
 use russh::keys::ssh_key;
 use sha2::{Digest, Sha256};
 
+/// Trust status of a server host key after verification.
 #[derive(Debug, Clone, PartialEq)]
 pub enum HostKeyStatus {
+    /// Key matches a known entry.
     Trusted,
+    /// No entry found for this host.
     Unknown,
+    /// Key differs from the previously stored entry.
     Changed,
 }
 
+/// A single parsed entry from a `known_hosts` file.
 #[derive(Debug, Clone)]
 struct KnownHostEntry {
     host_pattern: String,
@@ -19,12 +26,14 @@ struct KnownHostEntry {
     key_data: Vec<u8>,
 }
 
+/// Parses and verifies host keys against the user's `known_hosts` file.
 pub struct HostKeyVerifier {
     entries: Vec<KnownHostEntry>,
     known_hosts_path: PathBuf,
 }
 
 impl HostKeyVerifier {
+    /// Loads the default `~/.ssh/known_hosts` file.
     pub fn load() -> anyhow::Result<Self> {
         let path = Self::known_hosts_path()?;
         let entries = if path.exists() {
@@ -38,6 +47,7 @@ impl HostKeyVerifier {
         })
     }
 
+    /// Checks whether the given public key is trusted, unknown, or changed for the host.
     pub fn verify(&self, host: &str, port: u16, public_key: &ssh_key::PublicKey) -> HostKeyStatus {
         let key_bytes = match public_key.to_bytes() {
             Ok(b) => b,
@@ -57,6 +67,7 @@ impl HostKeyVerifier {
         HostKeyStatus::Unknown
     }
 
+    /// Appends a new host key entry to the `known_hosts` file.
     pub fn add_host_key(
         &mut self,
         host: &str,
@@ -104,6 +115,7 @@ impl HostKeyVerifier {
         Ok(())
     }
 
+    /// Appends a host key entry using raw bytes and type string instead of a parsed key.
     pub fn add_host_key_raw(
         &mut self,
         host: &str,
@@ -135,6 +147,7 @@ impl HostKeyVerifier {
         Ok(())
     }
 
+    /// Returns the path to `~/.ssh/known_hosts`, creating the `.ssh` directory if needed.
     fn known_hosts_path() -> anyhow::Result<PathBuf> {
         let home = dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
@@ -145,6 +158,7 @@ impl HostKeyVerifier {
         Ok(ssh_dir.join("known_hosts"))
     }
 
+    /// Parses a `known_hosts` file into structured entries.
     fn parse_file(path: &PathBuf) -> anyhow::Result<Vec<KnownHostEntry>> {
         let file = std::fs::File::open(path)?;
         let reader = std::io::BufReader::new(file);
@@ -179,6 +193,7 @@ impl HostKeyVerifier {
         Ok(entries)
     }
 
+    /// Checks whether a `known_hosts` pattern matches the given host and port.
     fn host_matches(pattern: &str, host: &str, port: u16) -> bool {
         if pattern.starts_with('@') {
             return false;
@@ -218,6 +233,7 @@ impl HostKeyVerifier {
         false
     }
 
+    /// Matches a glob-style pattern (with `*` and `?`) against text using dynamic programming.
     fn wildcard_match(pattern: &str, text: &str) -> bool {
         let p: Vec<char> = pattern.chars().collect();
         let t: Vec<char> = text.chars().collect();
@@ -244,6 +260,7 @@ impl HostKeyVerifier {
     }
 }
 
+/// Convenience function: verifies a host key against `known_hosts`.
 pub fn verify_host_key(host: &str, port: u16, public_key: &ssh_key::PublicKey) -> HostKeyStatus {
     match HostKeyVerifier::load() {
         Ok(verifier) => verifier.verify(host, port, public_key),
@@ -251,11 +268,13 @@ pub fn verify_host_key(host: &str, port: u16, public_key: &ssh_key::PublicKey) -
     }
 }
 
+/// Convenience function: adds a host key to `known_hosts`.
 pub fn add_host_key(host: &str, port: u16, public_key: &ssh_key::PublicKey) -> anyhow::Result<()> {
     let mut verifier = HostKeyVerifier::load()?;
     verifier.add_host_key(host, port, public_key)
 }
 
+/// Convenience function: adds a raw host key entry to `known_hosts`.
 pub fn add_host_key_raw(
     host: &str,
     port: u16,
@@ -266,6 +285,7 @@ pub fn add_host_key_raw(
     verifier.add_host_key_raw(host, port, key_bytes, key_type)
 }
 
+/// Computes a SHA-256 fingerprint string for the given public key.
 pub fn compute_fingerprint(public_key: &ssh_key::PublicKey) -> Option<String> {
     let key_bytes = public_key.to_bytes().ok()?;
     let hash = Sha256::digest(key_bytes.as_ref() as &[u8]);
@@ -275,6 +295,7 @@ pub fn compute_fingerprint(public_key: &ssh_key::PublicKey) -> Option<String> {
     ))
 }
 
+/// Returns the SSH key type name (e.g. `"ssh-ed25519"`) for the given public key.
 pub fn key_type_name(public_key: &ssh_key::PublicKey) -> &'static str {
     match public_key.algorithm() {
         ssh_key::Algorithm::Rsa { .. } => "ssh-rsa",

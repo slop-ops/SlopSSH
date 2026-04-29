@@ -1,3 +1,6 @@
+//! Muon SSH core library — SSH session management, file transfer, and
+//! application configuration built on top of `russh`.
+
 pub mod config;
 pub mod credentials;
 pub mod file_transfer;
@@ -14,6 +17,7 @@ pub mod tools;
 pub mod updater;
 pub mod utils;
 
+/// Returns the crate version as determined at compile time by `Cargo.toml`.
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }

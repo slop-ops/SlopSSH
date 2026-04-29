@@ -1,11 +1,15 @@
+//! Execute commands on a remote SSH server and collect output.
+
 use russh::ChannelMsg;
 use tokio::time::{Duration, timeout};
 
 use crate::ssh::connection::{ClientHandler, SshError};
 
+/// Executes commands on a remote host over an SSH channel.
 pub struct RemoteExecutor;
 
 impl RemoteExecutor {
+    /// Runs a command on the remote host and waits for it to finish or time out.
     pub async fn execute(
         handle: &russh::client::Handle<ClientHandler>,
         command: &str,
@@ -52,13 +56,17 @@ impl RemoteExecutor {
     }
 }
 
+/// The result of a remote command execution.
 #[derive(Debug, Clone)]
 pub struct CommandResult {
+    /// Combined stdout and stderr output bytes.
     pub stdout: Vec<u8>,
+    /// Process exit code, or -1 if not received.
     pub exit_code: i32,
 }
 
 impl CommandResult {
+    /// Returns the output as a UTF-8 string, replacing invalid bytes.
     pub fn stdout_string(&self) -> String {
         String::from_utf8_lossy(&self.stdout).to_string()
     }

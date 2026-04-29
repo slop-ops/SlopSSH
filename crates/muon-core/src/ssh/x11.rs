@@ -1,3 +1,5 @@
+//! X11 forwarding over SSH.
+
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -7,19 +9,25 @@ use tokio::net::UnixStream;
 
 use super::connection::SshError;
 
+/// Parsed X11 display information from the `$DISPLAY` environment variable.
 #[derive(Debug, Clone)]
 pub struct X11Display {
+    /// X11 display number (e.g. `0` for `:0`).
     pub display_number: u32,
+    /// X11 screen number (e.g. `0` for `:0.0`).
     pub screen_number: u32,
+    /// Path to the X11 Unix domain socket.
     pub socket_path: PathBuf,
 }
 
 impl X11Display {
+    /// Parses the `$DISPLAY` environment variable.
     pub fn from_env() -> Option<Self> {
         let display = std::env::var("DISPLAY").ok()?;
         Self::parse(&display)
     }
 
+    /// Parses a `DISPLAY` string (e.g. `:0`, `:1.0`) into display info.
     pub fn parse(display: &str) -> Option<Self> {
         let display = display.strip_prefix(':').unwrap_or(display);
 
@@ -40,10 +48,12 @@ impl X11Display {
         })
     }
 
+    /// Returns the X11 authentication protocol name.
     pub fn auth_protocol(&self) -> &str {
         "MIT-MAGIC-COOKIE-1"
     }
 
+    /// Connects to the local X11 Unix domain socket.
     pub async fn connect(&self) -> Result<UnixStream, SshError> {
         UnixStream::connect(&self.socket_path).await.map_err(|e| {
             SshError::ChannelError(format!(
@@ -54,9 +64,11 @@ impl X11Display {
     }
 }
 
+/// Forwards data between an SSH X11 channel and the local X11 display.
 pub struct X11Forwarder;
 
 impl X11Forwarder {
+    /// Spawns a bidirectional forwarding task between the SSH channel and the X display.
     pub fn spawn_forward(
         channel: russh::Channel<russh::client::Msg>,
         display: Arc<X11Display>,

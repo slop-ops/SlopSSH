@@ -1,17 +1,20 @@
+//! SSH authentication method definitions.
+
 use std::path::PathBuf;
 
+/// Supported SSH authentication methods.
 #[derive(Debug, Clone)]
 pub enum AuthMethod {
-    Password {
-        password: String,
-    },
+    /// Authenticate with a plaintext password.
+    Password { password: String },
+    /// Authenticate with a public key file and optional passphrase.
     PublicKey {
         key_path: PathBuf,
         passphrase: Option<String>,
     },
-    KeyboardInteractive {
-        responses: Vec<String>,
-    },
+    /// Authenticate using keyboard-interactive with pre-supplied responses.
+    KeyboardInteractive { responses: Vec<String> },
+    /// No authentication (for testing or permissive servers).
     None,
 }
 

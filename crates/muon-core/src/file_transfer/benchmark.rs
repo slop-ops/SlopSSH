@@ -1,11 +1,15 @@
+//! Transfer throughput measurement and formatting.
+
 use std::time::Instant;
 
+/// Measures throughput by tracking bytes transferred over time.
 pub struct ThroughputMeter {
     start: Instant,
     bytes: u64,
 }
 
 impl ThroughputMeter {
+    /// Creates a new meter starting from now with zero bytes.
     pub fn new() -> Self {
         Self {
             start: Instant::now(),
@@ -13,10 +17,12 @@ impl ThroughputMeter {
         }
     }
 
+    /// Accumulates the given number of transferred bytes.
     pub fn add_bytes(&mut self, count: u64) {
         self.bytes += count;
     }
 
+    /// Returns the average throughput in bytes per second.
     pub fn bytes_per_second(&self) -> f64 {
         let elapsed = self.start.elapsed().as_secs_f64();
         if elapsed == 0.0 {
@@ -25,14 +31,17 @@ impl ThroughputMeter {
         self.bytes as f64 / elapsed
     }
 
+    /// Returns the total number of bytes recorded.
     pub fn total_bytes(&self) -> u64 {
         self.bytes
     }
 
+    /// Returns the number of seconds elapsed since the meter was created or last reset.
     pub fn elapsed_secs(&self) -> f64 {
         self.start.elapsed().as_secs_f64()
     }
 
+    /// Returns a human-readable speed string (e.g. `"1.5 MB/s"`).
     pub fn format_speed(&self) -> String {
         let bps = self.bytes_per_second();
         if bps < 1024.0 {
@@ -46,6 +55,7 @@ impl ThroughputMeter {
         }
     }
 
+    /// Resets the meter to zero bytes and restarts the timer.
     pub fn reset(&mut self) {
         self.start = Instant::now();
         self.bytes = 0;
@@ -58,6 +68,7 @@ impl Default for ThroughputMeter {
     }
 }
 
+/// Formats a throughput value as a human-readable speed string.
 pub fn format_throughput(bytes: u64, elapsed_secs: f64) -> String {
     if elapsed_secs == 0.0 {
         return "N/A".to_string();

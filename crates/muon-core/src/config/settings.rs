@@ -1,26 +1,46 @@
+//! Application settings with TOML persistence and validation.
+
 use serde::{Deserialize, Serialize};
 
 use super::paths;
 
+/// Global application settings persisted as `settings.toml`.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
+    /// UI language code (e.g. `"en"`, `"de"`).
     pub language: String,
+    /// Theme name (`"dark"` or `"light"`).
     pub theme: String,
+    /// Terminal font family.
     pub font_family: String,
+    /// Terminal font size in points.
     pub font_size: u32,
+    /// Maximum number of lines kept in the terminal scrollback buffer.
     pub terminal_scrollback: u32,
+    /// Whether selected text is automatically copied to the clipboard.
     pub terminal_copy_on_select: bool,
+    /// Whether to show hidden files in the file browser.
     pub show_hidden_files: bool,
+    /// Default editor command for remote file editing.
     pub default_edit_command: String,
+    /// External editor binary path (overrides `default_edit_command` when set).
     pub external_editor: String,
+    /// Whether to prompt before deleting files.
     pub confirm_before_delete: bool,
+    /// Whether to prompt before overwriting files.
     pub confirm_before_overwrite: bool,
+    /// Number of parallel connections for file transfers.
     pub transfer_parallel_count: u32,
+    /// SSH connection timeout in seconds.
     pub connection_timeout_secs: u64,
+    /// SSH keep-alive interval in seconds.
     pub keep_alive_interval_secs: u64,
+    /// Whether to enable SSH compression.
     pub enable_compression: bool,
+    /// Keyboard shortcuts profile name (JSON).
     pub keyboard_shortcuts: String,
+    /// Log verbosity level (`"trace"`, `"debug"`, `"info"`, `"warn"`, `"error"`).
     pub log_level: String,
 }
 
@@ -49,6 +69,7 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// Clamps all fields to their allowed ranges and resets invalid values to defaults.
     pub fn validate(&mut self) {
         if self.font_size == 0 {
             self.font_size = 14;
@@ -95,9 +116,11 @@ impl Settings {
     }
 }
 
+/// Load/save helper for [`Settings`].
 pub struct SettingsManager;
 
 impl SettingsManager {
+    /// Loads settings from disk, creating the file with defaults if it does not exist.
     pub fn load() -> anyhow::Result<Settings> {
         let path = paths::settings_file()?;
         if !path.exists() {
@@ -111,6 +134,7 @@ impl SettingsManager {
         Ok(settings)
     }
 
+    /// Validates and persists settings to disk.
     pub fn save(settings: &mut Settings) -> anyhow::Result<()> {
         settings.validate();
         let path = paths::settings_file()?;

@@ -1,3 +1,8 @@
+//! Application path resolution for config, data, and log directories.
+//!
+//! Supports both standard OS paths and portable mode (detected via a
+//! `portable.marker` file next to the executable).
+
 use std::path::PathBuf;
 
 fn portable_marker() -> Option<PathBuf> {
@@ -11,6 +16,10 @@ fn portable_marker() -> Option<PathBuf> {
     }
 }
 
+/// Returns the application config directory, creating it if necessary.
+///
+/// Uses a `config/` subdirectory next to the executable in portable mode,
+/// otherwise falls back to the OS-specific config directory (`~/.config/muon-ssh`).
 pub fn config_dir() -> anyhow::Result<PathBuf> {
     if let Some(portable_dir) = portable_marker() {
         let dir = portable_dir.join("config");
@@ -29,22 +38,30 @@ pub fn config_dir() -> anyhow::Result<PathBuf> {
     Ok(dir)
 }
 
+/// Returns the path to `sessions.json` inside the config directory.
 pub fn sessions_file() -> anyhow::Result<PathBuf> {
     Ok(config_dir()?.join("sessions.json"))
 }
 
+/// Returns the path to `settings.toml` inside the config directory.
 pub fn settings_file() -> anyhow::Result<PathBuf> {
     Ok(config_dir()?.join("settings.toml"))
 }
 
+/// Returns the path to `snippets.json` inside the config directory.
 pub fn snippets_file() -> anyhow::Result<PathBuf> {
     Ok(config_dir()?.join("snippets.json"))
 }
 
+/// Returns the path to `tab_state.json` inside the config directory.
 pub fn tab_state_file() -> anyhow::Result<PathBuf> {
     Ok(config_dir()?.join("tab_state.json"))
 }
 
+/// Returns the log output directory, creating it if necessary.
+///
+/// Uses a `logs/` subdirectory next to the executable in portable mode,
+/// otherwise falls back to the OS-specific local data directory.
 pub fn log_dir() -> anyhow::Result<PathBuf> {
     if let Some(portable_dir) = portable_marker() {
         let dir = portable_dir.join("logs");
@@ -62,6 +79,7 @@ pub fn log_dir() -> anyhow::Result<PathBuf> {
     Ok(dir)
 }
 
+/// Returns `true` when running in portable mode.
 pub fn is_portable() -> bool {
     portable_marker().is_some()
 }

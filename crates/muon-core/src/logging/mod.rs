@@ -1,5 +1,11 @@
+//! Application-wide logging initialisation with daily file rotation.
+
 use tracing_subscriber::EnvFilter;
 
+/// Initialises the `tracing` subscriber with both stderr output and a daily
+/// rotating log file.
+///
+/// Falls back to stderr-only output when the log directory cannot be created.
 pub fn init(level: &str) {
     let log_dir = match crate::config::paths::log_dir() {
         Ok(dir) => dir,
@@ -28,6 +34,7 @@ pub fn init(level: &str) {
     tracing::info!("Muon SSH logging initialized (level={})", level);
 }
 
+/// Initialises the `tracing` subscriber with stderr output only.
 fn init_stderr_only(level: &str) {
     let env_filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new(level));
 

@@ -1,11 +1,18 @@
+//! Persistent credential storage backends (OS keyring and encrypted file).
+
 use serde::{Deserialize, Serialize};
 
+/// Trait for credential persistence backends.
 pub trait CredentialBackend: Send + Sync {
+    /// Persists a key/value pair.
     fn save(&self, key: &str, value: &str) -> anyhow::Result<()>;
+    /// Retrieves the value for a key, returning `None` if not found.
     fn get(&self, key: &str) -> anyhow::Result<Option<String>>;
+    /// Deletes a credential entry. Succeeds even if the key does not exist.
     fn delete(&self, key: &str) -> anyhow::Result<()>;
 }
 
+/// Credential backend backed by the OS keyring via the `keyring` crate.
 pub struct KeyringBackend;
 
 impl CredentialBackend for KeyringBackend {
@@ -34,8 +41,10 @@ impl CredentialBackend for KeyringBackend {
     }
 }
 
+/// Credential backend backed by an AES-256-GCM encrypted JSON file.
 pub struct FileBackend;
 
+/// A single key/value entry in the file-based credential store.
 #[derive(Serialize, Deserialize)]
 struct CredentialEntry {
     key: String,
@@ -100,23 +109,28 @@ fn load_all(path: &std::path::Path) -> anyhow::Result<Vec<CredentialEntry>> {
     Ok(creds)
 }
 
+/// High-level credential store that delegates to a [`CredentialBackend`].
 pub struct CredentialStore {
     backend: Box<dyn CredentialBackend>,
 }
 
 impl CredentialStore {
+    /// Creates a store backed by the OS keyring.
     pub fn new_keyring() -> Self {
         Self {
             backend: Box::new(KeyringBackend),
         }
     }
 
+    /// Creates a store backed by an encrypted file.
     pub fn new_file() -> Self {
         Self {
             backend: Box::new(FileBackend),
         }
     }
 
+    /// Creates a store backed by the OS keyring, falling back to file-based
+    /// storage if the keyring is unavailable.
     pub fn new_keyring_with_fallback() -> Self {
         match keyring::Entry::new("muon-ssh", "__test__") {
             Ok(_) => {
@@ -132,10 +146,12 @@ impl CredentialStore {
         }
     }
 
+    /// Builds the composite key used to address a session credential field.
     pub fn key_for_session(session_id: &str, field: &str) -> String {
         format!("muon-ssh:{}:{}", session_id, field)
     }
 
+    /// Persists a credential value for the given session and field.
     pub fn save_credential(
         &self,
         session_id: &str,
@@ -146,16 +162,20 @@ impl CredentialStore {
         self.backend.save(&key, value)
     }
 
+    /// Retrieves a credential value for the given session and field.
     pub fn get_credential(&self, session_id: &str, field: &str) -> anyhow::Result<Option<String>> {
         let key = Self::key_for_session(session_id, field);
         self.backend.get(&key)
     }
 
+    /// Deletes a single credential for the given session and field.
     pub fn delete_credential(&self, session_id: &str, field: &str) -> anyhow::Result<()> {
         let key = Self::key_for_session(session_id, field);
         self.backend.delete(&key)
     }
 
+    /// Removes all known credential fields (`password`, `passphrase`,
+    /// `proxy_password`) for a session.
     pub fn delete_all_for_session(&self, session_id: &str) -> anyhow::Result<()> {
         for field in &["password", "passphrase", "proxy_password"] {
             let key = Self::key_for_session(session_id, field);

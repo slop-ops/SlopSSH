@@ -1,3 +1,5 @@
+//! Reusable SSH connection pool with per-session limits.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -7,17 +9,20 @@ use crate::ssh::connection::{
     ClientHandler, ConnectionOptions, RemoteForwardMap, SshConnection, SshError,
 };
 
+/// A single pooled SSH connection with its in-use flag.
 struct PooledConnection {
     connection: SshConnection,
     in_use: bool,
 }
 
+/// Pool that manages reusable SSH connections keyed by session ID.
 pub struct ConnectionPool {
     pools: HashMap<String, Vec<PooledConnection>>,
     max_per_session: usize,
 }
 
 impl ConnectionPool {
+    /// Creates a new pool with the given per-session connection limit.
     pub fn new(max_per_session: usize) -> Self {
         Self {
             pools: HashMap::new(),
@@ -25,6 +30,8 @@ impl ConnectionPool {
         }
     }
 
+    /// Returns a handle to an existing idle connection, creates a new one if
+    /// capacity allows, or returns an error if the pool is exhausted.
     pub async fn get_or_create(
         &mut self,
         session_info: &SessionInfo,
@@ -84,6 +91,7 @@ impl ConnectionPool {
         }
     }
 
+    /// Marks the first in-use connection for a session as released.
     pub fn release(&mut self, session_id: &str) {
         if let Some(pool) = self.pools.get_mut(session_id) {
             for conn in pool.iter_mut() {
@@ -95,6 +103,7 @@ impl ConnectionPool {
         }
     }
 
+    /// Drops disconnected connections and removes empty session entries.
     pub async fn cleanup(&mut self) {
         let mut to_remove = Vec::new();
         for (session_id, pool) in &mut self.pools {
@@ -108,6 +117,7 @@ impl ConnectionPool {
         }
     }
 
+    /// Disconnects and removes all connections for a given session.
     pub async fn close_session(&mut self, session_id: &str) {
         if let Some(pool) = self.pools.remove(session_id) {
             for mut conn in pool {
@@ -116,6 +126,7 @@ impl ConnectionPool {
         }
     }
 
+    /// Disconnects and removes all pooled connections.
     pub async fn close_all(&mut self) {
         for (_, pool) in self.pools.drain() {
             for mut conn in pool {
@@ -124,6 +135,7 @@ impl ConnectionPool {
         }
     }
 
+    /// Returns the number of currently in-use connections for a session.
     pub fn active_count(&self, session_id: &str) -> usize {
         self.pools
             .get(session_id)
@@ -131,6 +143,7 @@ impl ConnectionPool {
             .unwrap_or(0)
     }
 
+    /// Returns the total number of connections (idle + active) for a session.
     pub fn total_count(&self, session_id: &str) -> usize {
         self.pools
             .get(session_id)

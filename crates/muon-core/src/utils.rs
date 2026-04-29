@@ -1,3 +1,6 @@
+//! Utility functions for path validation, shell escaping, and AES-256-GCM
+//! encryption of credential values.
+
 pub fn validate_sftp_path(path: &str) -> Result<String, String> {
     if path.trim().is_empty() {
         return Err("Path cannot be empty".to_string());
@@ -13,6 +16,7 @@ pub fn validate_sftp_path(path: &str) -> Result<String, String> {
     Ok(normalized)
 }
 
+/// Normalises a POSIX-style path by resolving `.` and `..` segments.
 fn normalize_path(path: &str) -> String {
     let parts: Vec<&str> = path.split('/').collect();
     let mut result: Vec<&str> = Vec::new();
@@ -34,6 +38,10 @@ fn normalize_path(path: &str) -> String {
     }
 }
 
+/// Escapes a string for safe interpolation into a POSIX shell command.
+///
+/// Wraps the value in single quotes when it contains any shell-active
+/// characters.
 pub fn shell_escape(s: &str) -> String {
     if s.contains(' ')
         || s.contains('"')
@@ -58,6 +66,10 @@ pub fn shell_escape(s: &str) -> String {
     }
 }
 
+/// Encrypts a plaintext string using AES-256-GCM with a machine-derived key.
+///
+/// Returns a base64-encoded string containing the nonce prepended to the
+/// ciphertext.
 pub fn encrypt_value(plaintext: &str) -> anyhow::Result<String> {
     use aes_gcm::Aes256Gcm;
     use aes_gcm::aead::{Aead, AeadCore, KeyInit, OsRng};
@@ -78,6 +90,8 @@ pub fn encrypt_value(plaintext: &str) -> anyhow::Result<String> {
     Ok(base64::engine::general_purpose::STANDARD.encode(&combined))
 }
 
+/// Decrypts a base64-encoded AES-256-GCM ciphertext produced by
+/// [`encrypt_value`].
 pub fn decrypt_value(encoded: &str) -> anyhow::Result<String> {
     use aes_gcm::aead::{Aead, KeyInit};
     use aes_gcm::{Aes256Gcm, Nonce};
@@ -104,6 +118,8 @@ pub fn decrypt_value(encoded: &str) -> anyhow::Result<String> {
     String::from_utf8(plaintext).map_err(|e| anyhow::anyhow!("UTF-8 decode failed: {}", e))
 }
 
+/// Derives a 32-byte AES key from the config directory path and current user
+/// name using SHA-256.
 fn derive_machine_key() -> [u8; 32] {
     use sha2::{Digest, Sha256};
 

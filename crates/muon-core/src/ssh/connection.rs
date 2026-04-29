@@ -1,3 +1,5 @@
+//! SSH connection establishment and lifecycle management.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -10,41 +12,61 @@ use super::auth::AuthMethod;
 use super::host_keys::{HostKeyStatus, compute_fingerprint, key_type_name};
 use crate::session::info::SessionInfo;
 
+/// Shared map of remote forwarding address bindings, keyed by (bind_host, bind_port).
 pub type RemoteForwardMap = Arc<tokio::sync::Mutex<HashMap<(String, u32), (String, u16)>>>;
 
+/// Result of a host key verification check during connection.
 #[derive(Debug, Clone, Default, serde::Serialize)]
 pub struct HostKeyCheckResult {
+    /// The trust status of the host key: "Trusted", "Unknown", or "Changed".
     pub status: String,
+    /// SHA-256 fingerprint of the host key, if available.
     pub fingerprint: Option<String>,
+    /// Raw bytes of the pending host key awaiting user acceptance.
     pub pending_key_bytes: Option<Vec<u8>>,
+    /// SSH key type string (e.g. "ssh-ed25519").
     pub pending_key_type: Option<String>,
 }
 
+/// Errors that can occur during SSH operations.
 #[derive(Debug, thiserror::Error)]
 pub enum SshError {
+    /// TCP or SSH handshake failure.
     #[error("Connection failed: {0}")]
     ConnectionFailed(String),
+    /// Authentication was rejected or failed.
     #[error("Authentication failed: {0}")]
     AuthFailed(String),
+    /// Channel open or operation failure.
     #[error("Channel error: {0}")]
     ChannelError(String),
+    /// Host key verification failure.
     #[error("Host key verification failed: {0}")]
     HostKeyError(String),
+    /// Proxy connection failure.
     #[error("Proxy error: {0}")]
     ProxyError(String),
+    /// Operation timed out.
     #[error("Timeout")]
     Timeout,
+    /// Session is not connected.
     #[error("Not connected")]
     NotConnected,
+    /// Catch-all error variant.
     #[error("{0}")]
     Other(String),
 }
 
+/// Tunable parameters for an SSH connection.
 #[derive(Debug, Clone)]
 pub struct ConnectionOptions {
+    /// Interval in seconds between keep-alive messages. `None` disables keep-alive.
     pub keep_alive_interval_secs: Option<u64>,
+    /// Number of unanswered keep-alives before the connection is considered dead.
     pub keep_alive_max_count: u32,
+    /// Whether to request compression.
     pub enable_compression: bool,
+    /// Timeout in seconds for the initial TCP connection.
     pub connection_timeout_secs: u64,
 }
 
@@ -59,17 +81,25 @@ impl Default for ConnectionOptions {
     }
 }
 
+/// russh client handler that processes server callbacks (host key checks, forwarded channels, X11).
 #[derive(Debug, Clone)]
 pub struct ClientHandler {
+    /// Remote host being connected to.
     pub host: String,
+    /// Remote port.
     pub port: u16,
+    /// Result of the host key verification.
     pub host_key_status: HostKeyStatus,
+    /// Shared map for remote (-R) port forwarding routes.
     pub remote_forwards: RemoteForwardMap,
+    /// X11 display used for X11 forwarding.
     pub x11_display: Option<Arc<super::x11::X11Display>>,
+    /// Shared host key check result populated during `check_server_key`.
     pub host_key_check: Arc<tokio::sync::Mutex<HostKeyCheckResult>>,
 }
 
 impl ClientHandler {
+    /// Creates a basic handler with no remote forwards or X11 support.
     pub fn new(host: String, port: u16) -> Self {
         Self {
             host,
@@ -81,6 +111,7 @@ impl ClientHandler {
         }
     }
 
+    /// Creates a handler pre-wired with a shared remote forward map.
     pub fn with_remote_forwards(
         host: String,
         port: u16,
@@ -96,6 +127,7 @@ impl ClientHandler {
         }
     }
 
+    /// Creates a handler with remote forwards and X11 forwarding enabled.
     pub fn with_x11(
         host: String,
         port: u16,
@@ -196,6 +228,7 @@ impl client::Handler for ClientHandler {
     }
 }
 
+/// Bidirectionally forwards data between an SSH channel and a TCP stream.
 async fn forward_channel_tcp(
     mut channel: Channel<client::Msg>,
     tcp_stream: &mut TcpStream,
@@ -236,6 +269,7 @@ async fn forward_channel_tcp(
     Ok(())
 }
 
+/// An established SSH connection with associated session metadata.
 pub struct SshConnection {
     pub(crate) handle: Option<Arc<client::Handle<ClientHandler>>>,
     pub(crate) session_info: SessionInfo,
@@ -247,6 +281,7 @@ pub struct SshConnection {
 }
 
 impl SshConnection {
+    /// Connects to an SSH server using default connection options.
     pub async fn connect(
         session_info: SessionInfo,
         auth_method: AuthMethod,
@@ -260,6 +295,7 @@ impl SshConnection {
         .await
     }
 
+    /// Connects to an SSH server with the given options and remote forward map.
     pub async fn connect_with_options(
         session_info: SessionInfo,
         auth_method: AuthMethod,
@@ -408,6 +444,7 @@ impl SshConnection {
         })
     }
 
+    /// Connects to an SSH server through an HTTP or SOCKS5 proxy.
     pub async fn connect_via_proxy(
         session_info: SessionInfo,
         auth_method: AuthMethod,
@@ -546,14 +583,17 @@ impl SshConnection {
         })
     }
 
+    /// Returns `true` if the connection is alive.
     pub fn is_connected(&self) -> bool {
         self.connected && self.handle.is_some()
     }
 
+    /// Returns a reference to the underlying russh session handle, if connected.
     pub fn handle(&self) -> Option<&Arc<client::Handle<ClientHandler>>> {
         self.handle.as_ref()
     }
 
+    /// Gracefully disconnects from the SSH server.
     pub async fn disconnect(&mut self) -> Result<(), SshError> {
         let host = self.session_info.host.clone();
         let port = self.session_info.port;
@@ -571,17 +611,20 @@ impl SshConnection {
         Ok(())
     }
 
+    /// Returns a reference to the session metadata.
     pub fn session_info(&self) -> &SessionInfo {
         &self.session_info
     }
 }
 
+/// Loads an SSH private key from disk without a passphrase.
 fn load_key_pair(path: &std::path::Path) -> Result<PrivateKey, SshError> {
     let path_str = path.to_string_lossy().to_string();
     load_secret_key(&path_str, None)
         .map_err(|e| SshError::AuthFailed(format!("Failed to load key '{}': {}", path_str, e)))
 }
 
+/// Loads an SSH private key from disk with an optional passphrase.
 fn load_key_pair_with_passphrase(
     path: &std::path::Path,
     passphrase: Option<&str>,

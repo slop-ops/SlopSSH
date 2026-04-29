@@ -1,3 +1,5 @@
+//! WASM module loading and store creation using wasmtime.
+
 use std::path::Path;
 
 use anyhow::Result;
@@ -6,11 +8,13 @@ use wasmtime::*;
 use super::api::PluginManifest;
 use super::host::PluginHost;
 
+/// Loads and instantiates WASM plugin modules.
 pub struct WasmLoader {
     engine: Engine,
 }
 
 impl WasmLoader {
+    /// Creates a new loader with multi-memory and fuel consumption enabled.
     pub fn new() -> Result<Self> {
         let mut config = Config::new();
         config.wasm_multi_memory(true);
@@ -19,6 +23,7 @@ impl WasmLoader {
         Ok(Self { engine })
     }
 
+    /// Compiles a WASM module from disk and generates a default manifest.
     pub fn load_module(&self, wasm_path: &Path) -> Result<(Module, PluginManifest)> {
         let module = Module::from_file(&self.engine, wasm_path)?;
 
@@ -39,6 +44,7 @@ impl WasmLoader {
         Ok((module, manifest))
     }
 
+    /// Creates a new wasmtime store with the given fuel limit and a default plugin host.
     pub fn create_store(&self, fuel: u64) -> Result<Store<PluginHost>> {
         let host = PluginHost::new(&[
             super::api::PluginCapability::ExecuteCommand,
@@ -49,6 +55,7 @@ impl WasmLoader {
         Ok(store)
     }
 
+    /// Returns a reference to the underlying wasmtime engine.
     pub fn engine(&self) -> &Engine {
         &self.engine
     }

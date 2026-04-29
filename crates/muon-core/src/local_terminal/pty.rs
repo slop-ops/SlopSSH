@@ -1,3 +1,5 @@
+//! Local PTY-based terminal session management.
+
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::Arc;
@@ -6,6 +8,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use anyhow::Result;
 use portable_pty::{CommandBuilder, MasterPty, PtySize, native_pty_system};
 
+/// A single local terminal session backed by a system PTY.
 pub struct LocalTerminalSession {
     writer: Option<Box<dyn Write + Send>>,
     _reader: Option<Box<dyn Read + Send>>,
@@ -16,6 +19,7 @@ pub struct LocalTerminalSession {
 }
 
 impl LocalTerminalSession {
+    /// Creates a new local terminal session with the given dimensions.
     pub fn new(cols: u16, rows: u16, on_data: Box<dyn Fn(Vec<u8>) + Send + Sync>) -> Result<Self> {
         let pty_system = native_pty_system();
 
@@ -60,6 +64,7 @@ impl LocalTerminalSession {
         })
     }
 
+    /// Writes raw bytes to the terminal's stdin.
     pub fn write(&mut self, data: &[u8]) -> Result<()> {
         if let Some(ref mut w) = self.writer {
             w.write_all(data)?;
@@ -68,6 +73,7 @@ impl LocalTerminalSession {
         Ok(())
     }
 
+    /// Resizes the terminal to the given dimensions.
     pub fn resize(&self, cols: u16, rows: u16) -> Result<()> {
         self.master.resize(PtySize {
             rows,
@@ -90,17 +96,20 @@ impl Drop for LocalTerminalSession {
     }
 }
 
+/// Manages multiple local terminal sessions.
 pub struct LocalTerminalManager {
     sessions: HashMap<String, LocalTerminalSession>,
 }
 
 impl LocalTerminalManager {
+    /// Creates a new manager with no sessions.
     pub fn new() -> Self {
         Self {
             sessions: HashMap::new(),
         }
     }
 
+    /// Opens a new local terminal session with the given ID and dimensions.
     pub fn open(
         &mut self,
         session_id: &str,
@@ -113,6 +122,7 @@ impl LocalTerminalManager {
         Ok(())
     }
 
+    /// Writes data to a local terminal session.
     pub fn write(&mut self, session_id: &str, data: &[u8]) -> Result<()> {
         let session = self
             .sessions
@@ -121,6 +131,7 @@ impl LocalTerminalManager {
         session.write(data)
     }
 
+    /// Resizes a local terminal session.
     pub fn resize(&self, session_id: &str, cols: u16, rows: u16) -> Result<()> {
         let session = self
             .sessions
@@ -129,10 +140,12 @@ impl LocalTerminalManager {
         session.resize(cols, rows)
     }
 
+    /// Closes a specific local terminal session.
     pub fn close(&mut self, session_id: &str) {
         self.sessions.remove(session_id);
     }
 
+    /// Closes all local terminal sessions.
     pub fn close_all(&mut self) {
         self.sessions.clear();
     }

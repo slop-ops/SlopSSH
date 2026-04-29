@@ -1,34 +1,57 @@
+//! GitHub Releases API client for checking and downloading updates.
+
 use serde::{Deserialize, Serialize};
 
+/// A GitHub release as returned by the Releases API.
 #[derive(Debug, Clone, Deserialize)]
 pub struct GitHubRelease {
+    /// Git tag name (e.g. `"v1.2.3"`).
     pub tag_name: String,
+    /// Human-readable release name.
     pub name: String,
+    /// URL to the release page on GitHub.
     pub html_url: String,
+    /// Markdown release notes body.
     pub body: Option<String>,
+    /// Whether this release is a pre-release.
     pub prerelease: bool,
+    /// Whether this release is a draft.
     pub draft: bool,
+    /// ISO 8601 publication timestamp.
     pub published_at: Option<String>,
+    /// Downloadable assets attached to the release.
     pub assets: Vec<GitHubAsset>,
 }
 
+/// A single downloadable asset within a GitHub release.
 #[derive(Debug, Clone, Deserialize)]
 pub struct GitHubAsset {
+    /// Asset filename.
     pub name: String,
+    /// Direct download URL.
     pub browser_download_url: String,
+    /// Asset size in bytes.
     pub size: u64,
 }
 
+/// Information about an available application update.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateInfo {
+    /// Currently installed version string.
     pub current_version: String,
+    /// Latest available version string.
     pub latest_version: String,
+    /// URL to download the update.
     pub download_url: String,
+    /// Markdown release notes for the update.
     pub release_notes: Option<String>,
+    /// URL to view the release on GitHub.
     pub release_url: String,
+    /// Whether the latest version is newer than the current one.
     pub is_newer: bool,
 }
 
+/// Checks for application updates via the GitHub Releases API.
 pub struct UpdateChecker {
     client: reqwest::Client,
     repo_owner: String,
@@ -37,6 +60,7 @@ pub struct UpdateChecker {
 }
 
 impl UpdateChecker {
+    /// Creates a new update checker for the given GitHub repository.
     pub fn new(repo_owner: &str, repo_name: &str, current_version: &str) -> Self {
         Self {
             client: reqwest::Client::builder()
@@ -49,6 +73,7 @@ impl UpdateChecker {
         }
     }
 
+    /// Queries the GitHub API for the latest release and returns update info if newer.
     pub async fn check_for_update(&self) -> anyhow::Result<Option<UpdateInfo>> {
         let url = format!(
             "https://api.github.com/repos/{}/{}/releases/latest",
@@ -102,6 +127,7 @@ impl UpdateChecker {
         }))
     }
 
+    /// Downloads the update file to the config directory and returns its path.
     pub async fn download_update(&self, info: &UpdateInfo) -> anyhow::Result<std::path::PathBuf> {
         let dir = crate::config::paths::config_dir()?.join("updates");
         if !dir.exists() {
@@ -134,6 +160,7 @@ impl UpdateChecker {
     }
 }
 
+/// Parses a semver-like version string into numeric parts, ignoring pre-release suffixes.
 fn parse_version(v: &str) -> Vec<u64> {
     v.split('-')
         .next()
@@ -143,6 +170,7 @@ fn parse_version(v: &str) -> Vec<u64> {
         .collect::<Vec<_>>()
 }
 
+/// Compares two version strings and returns `true` if `latest` is newer than `current`.
 fn is_version_newer(current: &str, latest: &str) -> bool {
     let cur_parts = parse_version(current);
     let lat_parts = parse_version(latest);

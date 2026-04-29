@@ -1,3 +1,5 @@
+//! SSH local and remote port forwarding.
+
 use std::sync::Arc;
 
 use russh::ChannelMsg;
@@ -7,24 +9,35 @@ use tokio::net::{TcpListener, TcpStream};
 
 use super::connection::{ClientHandler, RemoteForwardMap, SshError};
 
+/// Direction of a port forwarding rule.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ForwardDirection {
+    /// Local port forward (`-L`): local listener → remote target.
     Local,
+    /// Remote port forward (`-R`): remote listener → local target.
     Remote,
 }
 
+/// A single port forwarding rule with bind/target addresses and direction.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortForwardRule {
+    /// Unique identifier for this rule.
     pub id: String,
+    /// Address to bind the listener on.
     pub bind_host: String,
+    /// Port to bind the listener on.
     pub bind_port: u16,
+    /// Target host to forward traffic to.
     pub target_host: String,
+    /// Target port to forward traffic to.
     pub target_port: u16,
+    /// Whether this is a local or remote forward.
     pub direction: ForwardDirection,
 }
 
 impl PortForwardRule {
+    /// Validates the rule fields, returning an error message if invalid.
     pub fn validate(&self) -> Result<(), String> {
         if self.bind_host.trim().is_empty() {
             return Err("Bind host cannot be empty".to_string());
@@ -41,6 +54,7 @@ impl PortForwardRule {
         Ok(())
     }
 
+    /// Creates a new local port forward rule with a generated ID.
     pub fn new_local(bind_host: &str, bind_port: u16, target_host: &str, target_port: u16) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
@@ -52,6 +66,7 @@ impl PortForwardRule {
         }
     }
 
+    /// Creates a new remote port forward rule with a generated ID.
     pub fn new_remote(
         bind_host: &str,
         bind_port: u16,
@@ -69,6 +84,7 @@ impl PortForwardRule {
     }
 }
 
+/// Internal bookkeeping for an active forward and its associated task.
 struct ForwardEntry {
     task: tokio::task::JoinHandle<()>,
     direction: ForwardDirection,
@@ -78,17 +94,20 @@ struct ForwardEntry {
     ssh_handle: Option<Arc<russh::client::Handle<ClientHandler>>>,
 }
 
+/// Manages active local and remote port forwarding tunnels.
 pub struct PortForwardManager {
     entries: Vec<(String, ForwardEntry)>,
 }
 
 impl PortForwardManager {
+    /// Creates an empty manager with no active forwards.
     pub fn new() -> Self {
         Self {
             entries: Vec::new(),
         }
     }
 
+    /// Starts a local (`-L` style) port forward. Returns the forward ID.
     pub fn start_local(
         &mut self,
         handle: Arc<russh::client::Handle<ClientHandler>>,
@@ -138,6 +157,7 @@ impl PortForwardManager {
         Ok(forward_id)
     }
 
+    /// Starts a remote (`-R` style) port forward. Returns the forward ID.
     pub async fn start_remote(
         &mut self,
         handle: Arc<russh::client::Handle<ClientHandler>>,
@@ -179,6 +199,7 @@ impl PortForwardManager {
         Ok(forward_id)
     }
 
+    /// Stops a running forward by ID, cleaning up listeners and remote registrations.
     pub async fn stop(&mut self, forward_id: &str) -> Result<(), SshError> {
         if let Some(pos) = self.entries.iter().position(|(id, _)| id == forward_id) {
             let (_, entry) = self.entries.remove(pos);
@@ -205,6 +226,7 @@ impl PortForwardManager {
         }
     }
 
+    /// Stops all active forwards.
     pub async fn stop_all(&mut self) {
         for (_, entry) in self.entries.drain(..) {
             entry.task.abort();
@@ -222,6 +244,7 @@ impl PortForwardManager {
         }
     }
 
+    /// Returns the IDs of all currently active forwards.
     pub fn list_active(&self) -> Vec<&str> {
         self.entries.iter().map(|(id, _)| id.as_str()).collect()
     }
@@ -233,6 +256,7 @@ impl Default for PortForwardManager {
     }
 }
 
+/// Forwards data between a local TCP stream and an SSH channel.
 async fn forward_local_connection(
     channel: &mut russh::Channel<russh::client::Msg>,
     mut tcp_stream: TcpStream,

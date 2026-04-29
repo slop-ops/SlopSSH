@@ -1,3 +1,5 @@
+//! SSH jump host (bastion) tunneling for multi-hop connections.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -9,16 +11,24 @@ use super::connection::{ClientHandler, SshError};
 use crate::session::AuthType;
 use crate::session::info::SessionInfo;
 
+/// Describes a single jump host in a connection chain.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct JumpHost {
+    /// Jump host hostname or IP.
     pub host: String,
+    /// Jump host SSH port.
     pub port: u16,
+    /// Username for the jump host.
     pub username: String,
+    /// Authentication type to use for this jump host.
     pub auth_type: AuthType,
+    /// Key into the credentials map for password-based auth.
     pub password_key: Option<String>,
+    /// Path to the private key file for public-key auth.
     pub private_key_path: Option<std::path::PathBuf>,
 }
 
+/// russh client handler for intermediate jump host connections.
 struct JumpClientHandler {
     host: String,
     port: u16,
@@ -55,9 +65,11 @@ impl client::Handler for JumpClientHandler {
     }
 }
 
+/// Establishes SSH connections through one or more jump hosts.
 pub struct JumpHostTunnel;
 
 impl JumpHostTunnel {
+    /// Connects to the target host by tunnelling through the given jump hosts in order.
     pub async fn connect_via_jumps(
         target: &SessionInfo,
         target_auth: &AuthMethod,
@@ -123,6 +135,7 @@ impl JumpHostTunnel {
         Ok(session)
     }
 
+    /// Connects directly to the first jump host in the chain.
     async fn connect_direct(
         jump: &JumpHost,
         jump_credentials: &HashMap<String, String>,
@@ -144,6 +157,7 @@ impl JumpHostTunnel {
         Ok(session)
     }
 
+    /// Connects to a jump host by opening a forwarding channel through the previous hop.
     async fn connect_through_jump(
         prev_handle: &client::Handle<JumpClientHandler>,
         jump: &JumpHost,
@@ -186,6 +200,7 @@ impl JumpHostTunnel {
         Ok(session)
     }
 
+    /// Looks up a jump host password from the credentials map.
     fn resolve_password(
         jump: &JumpHost,
         jump_credentials: &HashMap<String, String>,
@@ -195,6 +210,7 @@ impl JumpHostTunnel {
             .and_then(|pk| jump_credentials.get(pk).cloned())
     }
 
+    /// Authenticates to an intermediate jump host.
     async fn authenticate_jump(
         session: &mut client::Handle<JumpClientHandler>,
         jump: &JumpHost,
@@ -250,6 +266,7 @@ impl JumpHostTunnel {
         Ok(())
     }
 
+    /// Authenticates to the final target host through the jump chain.
     async fn authenticate_target(
         session: &mut client::Handle<ClientHandler>,
         target: &SessionInfo,
@@ -296,6 +313,7 @@ impl JumpHostTunnel {
     }
 }
 
+/// Loads an SSH private key for jump host authentication.
 fn load_jump_key(path: &std::path::Path) -> Result<PrivateKey, SshError> {
     let path_str = path.to_string_lossy().to_string();
     load_secret_key(&path_str, None)

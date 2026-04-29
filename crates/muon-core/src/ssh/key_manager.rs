@@ -1,24 +1,35 @@
+//! SSH key discovery, generation, and deployment.
+
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+/// Metadata about an SSH key pair.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SshKeyInfo {
+    /// Filesystem path to the private key.
     pub path: String,
+    /// Filename of the key.
     pub name: String,
+    /// Key format (e.g. "OpenSSH", "RSA (PEM)").
     pub key_type: String,
+    /// SHA-256 fingerprint of the public key, if available.
     pub fingerprint: Option<String>,
+    /// Whether a `.pub` companion file exists.
     pub has_public_key: bool,
 }
 
+/// Utility for listing, generating, and deploying SSH keys.
 pub struct KeyManager;
 
 impl KeyManager {
+    /// Lists all SSH private keys found in `~/.ssh/`.
     pub fn list_local_keys() -> anyhow::Result<Vec<SshKeyInfo>> {
         let ssh_dir = Self::ssh_dir()?;
         Ok(Self::list_local_keys_sync(&ssh_dir))
     }
 
+    /// Lists public keys from the remote host's `authorized_keys`.
     pub async fn list_remote_keys(
         handle: &russh::client::Handle<super::connection::ClientHandler>,
     ) -> anyhow::Result<Vec<SshKeyInfo>> {
@@ -62,6 +73,7 @@ impl KeyManager {
         Ok(keys)
     }
 
+    /// Generates a new SSH key pair using `ssh-keygen`.
     pub async fn generate_key_pair(
         algorithm: &str,
         path: &str,
@@ -125,6 +137,7 @@ impl KeyManager {
         })
     }
 
+    /// Deploys a public key string to the remote host's `authorized_keys`.
     pub async fn deploy_public_key(
         handle: &russh::client::Handle<super::connection::ClientHandler>,
         public_key: &str,
@@ -149,11 +162,13 @@ impl KeyManager {
         Ok(())
     }
 
+    /// Reads the `.pub` file corresponding to the given private key path.
     pub fn read_public_key(path: &str) -> anyhow::Result<String> {
         let pub_path = PathBuf::from(path).with_extension("pub");
         Ok(std::fs::read_to_string(&pub_path)?.trim().to_string())
     }
 
+    /// Returns the path to `~/.ssh/`, creating it if needed.
     fn ssh_dir() -> anyhow::Result<PathBuf> {
         let home = dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
@@ -164,6 +179,7 @@ impl KeyManager {
         Ok(ssh_dir)
     }
 
+    /// Reads the fingerprint of a public key file using `ssh-keygen -lf`.
     fn read_public_key_fingerprint(pub_path: &PathBuf) -> Option<String> {
         if !pub_path.exists() {
             return None;
@@ -182,6 +198,7 @@ impl KeyManager {
         Some(line.trim().to_string())
     }
 
+    /// Truncates a fingerprint string to 20 characters with an ellipsis.
     fn truncate_fingerprint(hash: &str) -> String {
         if hash.len() > 20 {
             format!("{}...", &hash[..20])
@@ -190,6 +207,7 @@ impl KeyManager {
         }
     }
 
+    /// Synchronous implementation that scans a directory for SSH private keys.
     pub fn list_local_keys_sync(ssh_dir: &std::path::Path) -> Vec<SshKeyInfo> {
         let mut keys = Vec::new();
         let entries = match std::fs::read_dir(ssh_dir) {

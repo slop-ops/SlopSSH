@@ -1,3 +1,5 @@
+//! Plugin host sandbox, lifecycle management, and settings persistence.
+
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -7,12 +9,14 @@ use tokio::sync::Mutex;
 use super::api::{PluginCapability, PluginEvent, PluginManifest, PluginPanel};
 use crate::config::paths;
 
+/// Sandboxed execution host for a single plugin, enforcing capability restrictions.
 pub struct PluginHost {
     allowed_capabilities: Vec<PluginCapability>,
     settings: HashMap<String, String>,
 }
 
 impl PluginHost {
+    /// Creates a new host allowing the specified capabilities.
     pub fn new(capabilities: &[PluginCapability]) -> Self {
         Self {
             allowed_capabilities: capabilities.to_vec(),
@@ -20,31 +24,40 @@ impl PluginHost {
         }
     }
 
+    /// Checks whether the given capability is allowed for this host.
     pub fn is_capability_allowed(&self, capability: &PluginCapability) -> bool {
         self.allowed_capabilities.contains(capability)
     }
 
+    /// Retrieves a setting value by key.
     pub fn get_setting(&self, key: &str) -> Option<&str> {
         self.settings.get(key).map(|s| s.as_str())
     }
 
+    /// Sets a setting value.
     pub fn set_setting(&mut self, key: &str, value: &str) {
         self.settings.insert(key.to_string(), value.to_string());
     }
 
+    /// Returns a reference to all settings.
     pub fn all_settings(&self) -> &HashMap<String, String> {
         &self.settings
     }
 }
 
+/// A loaded plugin with its manifest, WASM path, and enabled state.
 pub struct LoadedPlugin {
+    /// Plugin manifest metadata.
     pub manifest: PluginManifest,
+    /// Path to the WASM module on disk.
     pub wasm_path: PathBuf,
+    /// Whether the plugin is currently enabled.
     pub enabled: bool,
 }
 
 type PluginEventCallback = Box<dyn Fn(PluginEvent) + Send + Sync>;
 
+/// Discovers, loads, and manages the lifecycle of WASM plugins.
 #[derive(Default)]
 pub struct PluginManager {
     plugins: Vec<LoadedPlugin>,
@@ -53,6 +66,7 @@ pub struct PluginManager {
 }
 
 impl PluginManager {
+    /// Creates a new empty plugin manager.
     pub fn new() -> Self {
         Self {
             plugins: Vec::new(),
@@ -61,6 +75,7 @@ impl PluginManager {
         }
     }
 
+    /// Returns the plugin directory path, creating it if needed.
     pub fn plugin_dir() -> anyhow::Result<PathBuf> {
         let dir = paths::config_dir()?.join("plugins");
         if !dir.exists() {
@@ -69,6 +84,7 @@ impl PluginManager {
         Ok(dir)
     }
 
+    /// Scans the plugin directory for `.wasm` files and registers new plugins.
     pub fn discover_plugins(&mut self) -> anyhow::Result<Vec<PluginManifest>> {
         let dir = Self::plugin_dir()?;
         let mut discovered = Vec::new();
@@ -109,10 +125,12 @@ impl PluginManager {
         Ok(discovered)
     }
 
+    /// Returns references to all loaded plugin manifests.
     pub fn list_plugins(&self) -> Vec<&PluginManifest> {
         self.plugins.iter().map(|p| &p.manifest).collect()
     }
 
+    /// Enables or disables a plugin by ID. Returns `false` if not found.
     pub fn set_enabled(&mut self, plugin_id: &str, enabled: bool) -> bool {
         if let Some(plugin) = self.plugins.iter_mut().find(|p| p.manifest.id == plugin_id) {
             plugin.enabled = enabled;
@@ -122,10 +140,12 @@ impl PluginManager {
         }
     }
 
+    /// Returns the sandboxed host for a plugin, if it has been created.
     pub fn get_host(&self, plugin_id: &str) -> Option<Arc<Mutex<PluginHost>>> {
         self.hosts.get(plugin_id).cloned()
     }
 
+    /// Removes a plugin by ID. Returns `false` if not found.
     pub fn remove_plugin(&mut self, plugin_id: &str) -> bool {
         let before = self.plugins.len();
         self.plugins.retain(|p| p.manifest.id != plugin_id);
@@ -133,14 +153,17 @@ impl PluginManager {
         self.plugins.len() < before
     }
 
+    /// Returns a reference to a loaded plugin by ID.
     pub fn get_plugin(&self, plugin_id: &str) -> Option<&LoadedPlugin> {
         self.plugins.iter().find(|p| p.manifest.id == plugin_id)
     }
 
+    /// Returns references to all loaded plugins with full metadata.
     pub fn list_plugins_full(&self) -> Vec<&LoadedPlugin> {
         self.plugins.iter().collect()
     }
 
+    /// Ensures a sandboxed host exists for the given plugin, creating one if needed.
     pub fn ensure_host(&mut self, plugin_id: &str) -> Arc<Mutex<PluginHost>> {
         if !self.hosts.contains_key(plugin_id) {
             let plugin = self.plugins.iter().find(|p| p.manifest.id == plugin_id);
@@ -155,24 +178,28 @@ impl PluginManager {
         self.hosts.get(plugin_id).cloned().unwrap()
     }
 
+    /// Retrieves a single plugin setting value.
     pub async fn get_plugin_setting(&mut self, plugin_id: &str, key: &str) -> Option<String> {
         let host = self.ensure_host(plugin_id);
         let host = host.lock().await;
         host.get_setting(key).map(|s| s.to_string())
     }
 
+    /// Sets a plugin setting value.
     pub async fn set_plugin_setting(&mut self, plugin_id: &str, key: &str, value: &str) {
         let host = self.ensure_host(plugin_id);
         let mut host = host.lock().await;
         host.set_setting(key, value);
     }
 
+    /// Returns all settings for a plugin.
     pub async fn get_all_plugin_settings(&mut self, plugin_id: &str) -> HashMap<String, String> {
         let host = self.ensure_host(plugin_id);
         let host = host.lock().await;
         host.all_settings().clone()
     }
 
+    /// Registers a callback to be invoked when a plugin event is fired.
     pub fn on_event<F>(&mut self, callback: F)
     where
         F: Fn(PluginEvent) + Send + Sync + 'static,
@@ -180,12 +207,14 @@ impl PluginManager {
         self.event_callbacks.push(Box::new(callback));
     }
 
+    /// Dispatches an event to all registered callbacks.
     pub fn fire_event(&self, event: PluginEvent) {
         for cb in &self.event_callbacks {
             cb(event.clone());
         }
     }
 
+    /// Loads plugin settings from the on-disk JSON file.
     pub fn load_settings_from_disk(&mut self) -> anyhow::Result<()> {
         let dir = Self::plugin_dir()?;
         let settings_file = dir.join("plugin_settings.json");
@@ -216,6 +245,7 @@ impl PluginManager {
         Ok(())
     }
 
+    /// Persists all plugin settings to disk as JSON.
     pub fn save_settings_to_disk(&self) -> anyhow::Result<()> {
         let dir = Self::plugin_dir()?;
         let mut all_settings: HashMap<String, HashMap<String, String>> = HashMap::new();
@@ -232,6 +262,7 @@ impl PluginManager {
         Ok(())
     }
 
+    /// Attempts to render a panel for the given plugin, if it has the `RenderPanel` capability.
     pub fn render_panel(&self, plugin_id: &str) -> Option<PluginPanel> {
         let plugin = self.plugins.iter().find(|p| p.manifest.id == plugin_id)?;
         if !plugin.enabled {

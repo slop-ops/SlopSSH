@@ -1,3 +1,5 @@
+//! SSH session connection details and validation.
+
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
@@ -133,33 +135,57 @@ mod tests {
     }
 }
 
+/// Complete connection parameters for a single SSH session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SessionInfo {
+    /// Unique session identifier (UUID).
     pub id: String,
+    /// User-visible display name.
     pub name: String,
+    /// Remote hostname or IP address.
     pub host: String,
+    /// Remote TCP port.
     pub port: u16,
+    /// SSH login username.
     pub username: String,
+    /// Authentication method to use.
     pub auth_type: AuthType,
+    /// Backend key for the stored password credential.
     pub password_key: Option<String>,
+    /// Path to the SSH private key file (required when `auth_type` is `PublicKey`).
     pub private_key_path: Option<PathBuf>,
+    /// Backend key for the stored private-key passphrase credential.
     pub passphrase_key: Option<String>,
+    /// Proxy protocol to tunnel through.
     pub proxy_type: ProxyType,
+    /// Proxy hostname.
     pub proxy_host: Option<String>,
+    /// Proxy port.
     pub proxy_port: Option<u16>,
+    /// Proxy authentication username.
     pub proxy_user: Option<String>,
+    /// Backend key for the stored proxy password credential.
     pub proxy_password_key: Option<String>,
+    /// Ordered list of jump-host session IDs for cascaded connections.
     pub jump_hosts: Vec<String>,
+    /// Whether X11 forwarding is requested.
     pub x11_forwarding: bool,
+    /// Optional command to execute instead of an interactive shell.
     pub remote_command: Option<String>,
+    /// Working directory to open after connecting.
     pub start_directory: Option<String>,
+    /// Character encoding for the session (e.g. `"utf-8"`).
     pub encoding: String,
+    /// ID of the parent folder in the session tree.
     pub folder_id: Option<String>,
+    /// ISO-8601 timestamp of the last successful connection.
     pub last_connected: Option<String>,
 }
 
 impl SessionInfo {
+    /// Validates all fields and returns an error message describing the first
+    /// problem found.
     pub fn validate(&self) -> Result<(), String> {
         if self.host.trim().is_empty() {
             return Err("Host cannot be empty".to_string());

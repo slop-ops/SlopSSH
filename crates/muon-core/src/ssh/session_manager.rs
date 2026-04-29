@@ -1,3 +1,5 @@
+//! High-level SSH session management: connect, shell channels, disconnect.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -8,13 +10,18 @@ use super::connection::{
 };
 use crate::session::info::SessionInfo;
 
+/// Result returned after a successful SSH connection.
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct ConnectResult {
+    /// The session identifier.
     pub session_id: String,
+    /// Host key verification status string.
     pub host_key_status: String,
+    /// SHA-256 fingerprint of the host key, if available.
     pub host_key_fingerprint: Option<String>,
 }
 
+/// A host key awaiting user acceptance, held temporarily during connection.
 struct PendingHostKey {
     host: String,
     port: u16,
@@ -22,6 +29,7 @@ struct PendingHostKey {
     key_type: String,
 }
 
+/// An active SSH session with its connection, shell channels, and read loops.
 struct ActiveSession {
     connection: SshConnection,
     shell_channels: HashMap<String, ShellChannel>,
@@ -30,17 +38,20 @@ struct ActiveSession {
     pending_host_key: Option<PendingHostKey>,
 }
 
+/// Manages multiple concurrent SSH sessions, their shell channels, and lifecycle.
 pub struct SessionManager {
     sessions: HashMap<String, ActiveSession>,
 }
 
 impl SessionManager {
+    /// Creates a new session manager with no active sessions.
     pub fn new() -> Self {
         Self {
             sessions: HashMap::new(),
         }
     }
 
+    /// Connects to an SSH server using sensible defaults for keep-alive and timeout.
     pub async fn connect(
         &mut self,
         session_info: SessionInfo,
@@ -58,6 +69,7 @@ impl SessionManager {
             .await
     }
 
+    /// Connects to an SSH server with full control over connection options.
     pub async fn connect_with_options(
         &mut self,
         session_info: SessionInfo,
@@ -177,6 +189,7 @@ impl SessionManager {
         Ok(result)
     }
 
+    /// Accepts and persists an unknown host key for the given session.
     pub async fn accept_host_key(&mut self, session_id: &str) -> Result<(), SshError> {
         let session = self
             .sessions
@@ -195,6 +208,7 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Disconnects a session, closing all channels and releasing resources.
     pub async fn disconnect(&mut self, session_id: &str) -> Result<(), SshError> {
         if let Some(mut session) = self.sessions.remove(session_id) {
             for (_, handle) in session.read_loop_handles.drain() {
@@ -209,6 +223,7 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Opens an interactive shell channel on the given session.
     pub async fn open_shell(
         &mut self,
         session_id: &str,
@@ -239,6 +254,7 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Spawns a background read loop that calls `on_data` for each chunk of output.
     pub fn spawn_shell_read_loop<F>(
         &mut self,
         session_id: &str,
@@ -267,6 +283,7 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Writes raw bytes to a shell channel.
     pub async fn shell_write(
         &mut self,
         session_id: &str,
@@ -284,6 +301,7 @@ impl SessionManager {
         channel.write(data).await
     }
 
+    /// Resizes the PTY of a shell channel.
     pub async fn shell_resize(
         &self,
         session_id: &str,
@@ -302,6 +320,7 @@ impl SessionManager {
         channel.resize(cols, rows).await
     }
 
+    /// Closes a specific shell channel and aborts its read loop.
     pub async fn close_shell(
         &mut self,
         session_id: &str,
@@ -319,6 +338,7 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Opens a raw SSH channel suitable for SFTP subsystem use.
     pub async fn open_sftp_channel(
         &self,
         session_id: &str,
@@ -334,12 +354,14 @@ impl SessionManager {
             .map_err(|e| SshError::ChannelError(format!("Failed to open SFTP channel: {}", e)))
     }
 
+    /// Returns `true` if the session exists and its connection is alive.
     pub fn is_connected(&self, session_id: &str) -> bool {
         self.sessions
             .get(session_id)
             .is_some_and(|s| s.connection.is_connected())
     }
 
+    /// Returns a cloned handle to the underlying russh session, if the session exists.
     pub fn get_handle(
         &self,
         session_id: &str,
@@ -347,12 +369,14 @@ impl SessionManager {
         self.sessions.get(session_id)?.connection.handle().cloned()
     }
 
+    /// Returns the shared remote forward map for the given session.
     pub fn get_remote_forward_map(&self, session_id: &str) -> Option<RemoteForwardMap> {
         self.sessions
             .get(session_id)
             .map(|s| s.connection.remote_forwards.clone())
     }
 
+    /// Returns the IDs of all sessions with an active connection.
     pub fn connected_session_ids(&self) -> Vec<String> {
         self.sessions
             .iter()

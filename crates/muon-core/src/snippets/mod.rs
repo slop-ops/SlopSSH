@@ -1,16 +1,27 @@
+//! Reusable command snippets with JSON persistence.
+
 use serde::{Deserialize, Serialize};
 
+/// A saved command snippet that can be executed on remote sessions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Snippet {
+    /// Unique snippet identifier.
     pub id: String,
+    /// User-visible snippet name.
     pub name: String,
+    /// Shell command template.
     pub command: String,
+    /// Optional human-readable description.
     pub description: Option<String>,
 }
 
+/// Load/save helper for snippet collections.
 pub struct SnippetManager;
 
 impl SnippetManager {
+    /// Loads snippets from the configured `snippets.json` file.
+    ///
+    /// Returns an empty list when the file does not exist.
     pub fn load() -> anyhow::Result<Vec<Snippet>> {
         let path = crate::config::paths::snippets_file()?;
         if !path.exists() {
@@ -21,6 +32,7 @@ impl SnippetManager {
         Ok(snippets)
     }
 
+    /// Persists a snippet collection to the configured `snippets.json` file.
     pub fn save(snippets: &[Snippet]) -> anyhow::Result<()> {
         let path = crate::config::paths::snippets_file()?;
         let content = serde_json::to_string_pretty(snippets)?;

@@ -1,14 +1,21 @@
+//! System text-editor detection and invocation.
+
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
 
+/// Describes a detected text editor on the system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditorInfo {
+    /// Human-readable editor name.
     pub name: String,
+    /// Command used to launch the editor.
     pub command: String,
+    /// Absolute path to the editor binary, if found.
     pub path: Option<String>,
 }
 
+/// Scans the system for known text editors and returns those found on `$PATH`.
 pub fn detect_editors() -> Vec<EditorInfo> {
     let editors = [
         ("VS Code", "code"),
@@ -40,6 +47,11 @@ pub fn detect_editors() -> Vec<EditorInfo> {
     found
 }
 
+/// Resolves the best available editor command.
+///
+/// If `configured` is non-empty, tries it first (as a command name or absolute
+/// path). Otherwise falls back to `code`, `nvim`, `vim`, `nano`, and finally
+/// `vi`.
 pub fn resolve_editor(configured: &str) -> String {
     if !configured.is_empty() {
         if let Some(path) = which_command(configured) {
@@ -74,6 +86,7 @@ fn which_command(name: &str) -> Option<String> {
         })
 }
 
+/// Opens `file_path` in the resolved editor as a detached process.
 pub fn open_in_editor(editor_cmd: &str, file_path: &str) -> std::io::Result<()> {
     let resolved = resolve_editor(editor_cmd);
     Command::new(&resolved).arg(file_path).spawn()?;

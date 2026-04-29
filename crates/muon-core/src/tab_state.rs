@@ -1,22 +1,34 @@
+//! Persistent tab layout state saved between application sessions.
+
 use serde::{Deserialize, Serialize};
 
 use crate::config::paths;
 
+/// Describes a single open tab restored on startup.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SavedTab {
+    /// Session ID this tab is connected to.
     pub session_id: String,
+    /// Unique channel identifier within the session.
     pub channel_id: String,
+    /// Tab title displayed in the UI.
     pub title: String,
+    /// Whether this is a local terminal tab.
     pub is_local: bool,
 }
 
+/// Snapshot of all open tabs and the active tab ID.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct TabState {
+    /// Ordered list of saved tabs.
     pub tabs: Vec<SavedTab>,
+    /// Channel ID of the currently focused tab, if any.
     pub active_tab_id: Option<String>,
 }
 
 impl TabState {
+    /// Loads the tab state from disk, returning default state if the file
+    /// does not exist.
     pub fn load() -> anyhow::Result<Self> {
         let path = paths::tab_state_file()?;
         if !path.exists() {
@@ -27,6 +39,7 @@ impl TabState {
         Ok(state)
     }
 
+    /// Persists the current tab state to disk.
     pub fn save(&self) -> anyhow::Result<()> {
         let path = paths::tab_state_file()?;
         let content = serde_json::to_string_pretty(self)?;
@@ -34,6 +47,7 @@ impl TabState {
         Ok(())
     }
 
+    /// Removes the persisted tab state file from disk.
     pub fn clear() -> anyhow::Result<()> {
         let path = paths::tab_state_file()?;
         if path.exists() {

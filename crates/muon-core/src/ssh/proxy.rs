@@ -1,21 +1,34 @@
+//! HTTP CONNECT and SOCKS5 proxy support for SSH connections.
+
 use base64::Engine;
 use tokio::net::TcpStream;
 
+/// Supported proxy protocol types.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ProxyType {
+    /// No proxy in use.
     None,
+    /// HTTP CONNECT proxy.
     Http,
+    /// SOCKS5 proxy.
     Socks5,
 }
 
+/// Configuration for connecting through a proxy server.
 pub struct ProxyConfig {
+    /// The proxy protocol to use.
     pub proxy_type: ProxyType,
+    /// Proxy server hostname.
     pub host: String,
+    /// Proxy server port.
     pub port: u16,
+    /// Optional username for proxy authentication.
     pub username: Option<String>,
+    /// Optional password for proxy authentication.
     pub password: Option<String>,
 }
 
+/// Establishes a TCP connection to the target through the given proxy.
 pub async fn connect_via_proxy(
     target_host: &str,
     target_port: u16,
@@ -37,6 +50,7 @@ pub async fn connect_via_proxy(
     }
 }
 
+/// Performs the HTTP CONNECT handshake, optionally with Basic auth.
 async fn connect_http_proxy(
     stream: &mut TcpStream,
     target_host: &str,
@@ -73,6 +87,7 @@ async fn connect_http_proxy(
     }
 }
 
+/// Performs the SOCKS5 handshake including optional username/password auth.
 async fn connect_socks5_proxy(
     stream: &mut TcpStream,
     target_host: &str,

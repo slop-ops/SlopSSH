@@ -1,3 +1,5 @@
+//! SSH config file (`~/.ssh/config`) parsing and session import.
+
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -7,29 +9,44 @@ use super::folder::SessionFolder;
 use super::info::SessionInfo;
 use crate::session::AuthType;
 
+/// A single `Host` block parsed from an OpenSSH config file.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SshConfigHost {
+    /// The host alias or pattern from the `Host` directive.
     pub host_pattern: String,
+    /// Resolved hostname or IP address (`HostName`).
     pub host_name: Option<String>,
+    /// Port number.
     pub port: Option<u16>,
+    /// Login user.
     pub user: Option<String>,
+    /// Path to the identity (private key) file.
     pub identity_file: Option<String>,
+    /// `ProxyCommand` value.
     pub proxy_command: Option<String>,
+    /// `ProxyJump` value.
     pub proxy_jump: Option<String>,
+    /// Whether agent forwarding is enabled.
     pub forward_agent: Option<bool>,
+    /// Whether X11 forwarding is enabled.
     pub forward_x11: Option<bool>,
+    /// Remote command to execute on connect.
     pub remote_command: Option<String>,
+    /// Any unrecognized options captured as key/value pairs.
     pub extra_options: HashMap<String, String>,
 }
 
+/// Parser that converts OpenSSH config files into [`SessionInfo`] entries.
 pub struct SshConfigImporter;
 
 impl SshConfigImporter {
+    /// Parses an SSH config file from the given path.
     pub fn parse_file(path: &Path) -> anyhow::Result<Vec<SshConfigHost>> {
         let content = std::fs::read_to_string(path)?;
         Self::parse(&content)
     }
 
+    /// Parses the default `~/.ssh/config` file if it exists.
     pub fn parse_default() -> anyhow::Result<Vec<SshConfigHost>> {
         let home = dirs::home_dir()
             .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?;
@@ -41,6 +58,7 @@ impl SshConfigImporter {
         }
     }
 
+    /// Parses an SSH config from a raw string.
     pub fn parse(content: &str) -> anyhow::Result<Vec<SshConfigHost>> {
         let mut hosts = Vec::new();
         let mut current: Option<SshConfigHost> = None;
@@ -151,6 +169,9 @@ impl SshConfigImporter {
         Ok(hosts)
     }
 
+    /// Converts a parsed host block into a [`SessionInfo`].
+    ///
+    /// Returns `None` for wildcard patterns or entries without a valid host.
     pub fn to_session_info(host: &SshConfigHost) -> Option<SessionInfo> {
         let host_pattern = &host.host_pattern;
         if host_pattern.contains('*') || host_pattern.contains('?') {
@@ -182,6 +203,8 @@ impl SshConfigImporter {
         })
     }
 
+    /// Converts a slice of parsed hosts into a [`SessionFolder`] ready for
+    /// import into the session tree.
     pub fn import_to_folder(hosts: &[SshConfigHost]) -> SessionFolder {
         let mut folder = SessionFolder::new("SSH Config Import");
         for host in hosts {

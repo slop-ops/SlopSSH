@@ -1,3 +1,5 @@
+//! Async file transfer engine with SFTP upload/download and progress tracking.
+
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
@@ -12,12 +14,14 @@ use super::progress::{TransferProgress, TransferRequest, TransferStatus};
 
 const CHUNK_SIZE: usize = 32768;
 
+/// Manages concurrent file transfers with progress tracking and cancellation.
 pub struct TransferEngine {
     active_transfers: Arc<Mutex<HashMap<String, TransferProgress>>>,
     spawned_tasks: Mutex<HashMap<String, JoinHandle<()>>>,
 }
 
 impl TransferEngine {
+    /// Creates a new engine with no active transfers.
     pub fn new() -> Self {
         Self {
             active_transfers: Arc::new(Mutex::new(HashMap::new())),
@@ -25,16 +29,19 @@ impl TransferEngine {
         }
     }
 
+    /// Returns the progress of a specific transfer, if it exists.
     pub async fn get_progress(&self, transfer_id: &str) -> Option<TransferProgress> {
         let transfers = self.active_transfers.lock().await;
         transfers.get(transfer_id).cloned()
     }
 
+    /// Returns progress snapshots for all active and completed transfers.
     pub async fn list_progress(&self) -> Vec<TransferProgress> {
         let transfers = self.active_transfers.lock().await;
         transfers.values().cloned().collect()
     }
 
+    /// Marks a transfer as cancelled. Returns `false` if not cancellable.
     pub async fn cancel(&self, transfer_id: &str) -> bool {
         let mut transfers = self.active_transfers.lock().await;
         if let Some(p) = transfers.get_mut(transfer_id)
@@ -46,11 +53,13 @@ impl TransferEngine {
         false
     }
 
+    /// Removes a transfer from tracking entirely.
     pub async fn remove(&self, transfer_id: &str) {
         let mut transfers = self.active_transfers.lock().await;
         transfers.remove(transfer_id);
     }
 
+    /// Removes all completed, failed, and cancelled transfers from tracking.
     pub async fn clear_completed(&self) {
         let mut transfers = self.active_transfers.lock().await;
         transfers.retain(|_, p| {
@@ -58,6 +67,7 @@ impl TransferEngine {
         });
     }
 
+    /// Removes finished task handles to free resources.
     pub async fn cleanup_tasks(&self) {
         let mut tasks = self.spawned_tasks.lock().await;
         let mut to_remove = Vec::new();
@@ -71,6 +81,7 @@ impl TransferEngine {
         }
     }
 
+    /// Aborts all running transfer tasks.
     pub async fn abort_all(&self) {
         let mut tasks = self.spawned_tasks.lock().await;
         for (_, handle) in tasks.drain() {
@@ -78,6 +89,7 @@ impl TransferEngine {
         }
     }
 
+    /// Spawns an asynchronous upload task with progress callbacks.
     pub async fn spawn_upload(
         &self,
         request: TransferRequest,
@@ -139,6 +151,7 @@ impl TransferEngine {
         self.spawned_tasks.lock().await.insert(transfer_id, handle);
     }
 
+    /// Spawns an asynchronous download task with progress callbacks.
     pub async fn spawn_download(
         &self,
         request: TransferRequest,
@@ -201,6 +214,7 @@ impl TransferEngine {
     }
 }
 
+/// Streams a local file to the remote host via SFTP.
 async fn perform_upload(
     request: &TransferRequest,
     sftp: &Arc<Mutex<Option<SftpSession>>>,
@@ -305,6 +319,7 @@ async fn perform_upload(
     Ok(())
 }
 
+/// Streams a remote file to the local filesystem via SFTP.
 async fn perform_download(
     request: &TransferRequest,
     sftp: &Arc<Mutex<Option<SftpSession>>>,

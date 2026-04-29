@@ -1,13 +1,20 @@
+//! Recursive folder tree for organising saved sessions.
+
 use serde::{Deserialize, Serialize};
 
 use super::info::SessionInfo;
 
+/// A folder that can contain sub-folders and session items.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct SessionFolder {
+    /// Unique folder identifier (UUID).
     pub id: String,
+    /// User-visible folder name.
     pub name: String,
+    /// Child folders.
     pub folders: Vec<SessionFolder>,
+    /// Sessions stored directly in this folder.
     pub items: Vec<SessionInfo>,
 }
 
@@ -23,6 +30,7 @@ impl Default for SessionFolder {
 }
 
 impl SessionFolder {
+    /// Creates a new folder with the given name and a fresh UUID.
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),

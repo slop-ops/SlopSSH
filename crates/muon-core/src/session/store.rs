@@ -1,3 +1,5 @@
+//! Persistent session tree storage with backup rotation.
+
 use std::path::{Path, PathBuf};
 
 use super::folder::SessionFolder;
@@ -6,17 +8,22 @@ use crate::config::paths;
 
 const MAX_BACKUPS: usize = 5;
 
+/// Manages loading, saving, and mutating the session folder tree on disk.
 pub struct SessionStore {
     root: SessionFolder,
     path: Option<PathBuf>,
 }
 
 impl SessionStore {
+    /// Loads the session tree from the default path.
     pub fn load() -> anyhow::Result<Self> {
         let path = paths::sessions_file()?;
         Self::load_from(&path)
     }
 
+    /// Loads the session tree from an arbitrary file path.
+    ///
+    /// Returns an empty root folder when the file does not exist.
     pub fn load_from(path: &Path) -> anyhow::Result<Self> {
         if !path.exists() {
             return Ok(Self {
@@ -32,12 +39,15 @@ impl SessionStore {
         })
     }
 
+    /// Persists the session tree to the stored or default file path, rotating
+    /// backups before writing.
     pub fn save(&self) -> anyhow::Result<()> {
         let default_path = paths::sessions_file()?;
         let path = self.path.as_deref().unwrap_or(&default_path);
         self.save_to(path)
     }
 
+    /// Persists the session tree to an arbitrary file path with backup rotation.
     pub fn save_to(&self, path: &Path) -> anyhow::Result<()> {
         if let Some(parent) = path.parent()
             && !parent.exists()
@@ -52,14 +62,18 @@ impl SessionStore {
         Ok(())
     }
 
+    /// Returns an immutable reference to the root folder.
     pub fn root(&self) -> &SessionFolder {
         &self.root
     }
 
+    /// Returns a mutable reference to the root folder.
     pub fn root_mut(&mut self) -> &mut SessionFolder {
         &mut self.root
     }
 
+    /// Adds a session to the specified folder, or to the root if `folder_id`
+    /// is `None` or not found.
     pub fn add_session(&mut self, folder_id: Option<&str>, session: SessionInfo) {
         if let Some(fid) = folder_id
             && let Some(folder) = find_folder_mut(&mut self.root, fid)
@@ -70,6 +84,8 @@ impl SessionStore {
         self.root.items.push(session);
     }
 
+    /// Adds a child folder under the specified parent, or under the root if
+    /// `parent_id` is `None` or not found.
     pub fn add_folder(&mut self, parent_id: Option<&str>, folder: SessionFolder) {
         if let Some(pid) = parent_id
             && let Some(parent) = find_folder_mut(&mut self.root, pid)
@@ -87,6 +103,7 @@ impl From<SessionFolder> for SessionStore {
     }
 }
 
+/// Rotates up to `max_backups` numbered backup copies of `path`.
 fn rotate_backups(path: &Path, max_backups: usize) -> anyhow::Result<()> {
     let oldest = path.with_extension(format!("json.bak.{}", max_backups));
     if oldest.exists() {
@@ -104,6 +121,8 @@ fn rotate_backups(path: &Path, max_backups: usize) -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Recursively searches for a folder with the given `id` and returns a mutable
+/// reference to it.
 fn find_folder_mut<'a>(folder: &'a mut SessionFolder, id: &str) -> Option<&'a mut SessionFolder> {
     if folder.id == id {
         return Some(folder);

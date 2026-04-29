@@ -1,3 +1,5 @@
+//! SSH shell channel operations (PTY, read loop, resize).
+
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -7,11 +9,13 @@ use tokio::time::timeout;
 
 use super::connection::{ClientHandler, SshError};
 
+/// An interactive SSH shell channel with PTY support.
 pub struct ShellChannel {
     channel: Arc<Mutex<russh::Channel<russh::client::Msg>>>,
 }
 
 impl ShellChannel {
+    /// Opens a new shell channel with a PTY requesting the given terminal dimensions.
     pub async fn open(
         handle: &russh::client::Handle<ClientHandler>,
         cols: u16,
@@ -37,6 +41,7 @@ impl ShellChannel {
         })
     }
 
+    /// Opens a shell channel with both a PTY and X11 forwarding.
     pub async fn open_with_x11(
         handle: &russh::client::Handle<ClientHandler>,
         cols: u16,
@@ -74,6 +79,7 @@ impl ShellChannel {
         })
     }
 
+    /// Sends raw bytes to the shell channel.
     pub async fn write(&self, data: &[u8]) -> Result<(), SshError> {
         let ch = self.channel.lock().await;
         ch.data(data)
@@ -81,6 +87,7 @@ impl ShellChannel {
             .map_err(|e| SshError::ChannelError(e.to_string()))
     }
 
+    /// Resizes the remote PTY to the given dimensions.
     pub async fn resize(&self, cols: u16, rows: u16) -> Result<(), SshError> {
         let ch = self.channel.lock().await;
         ch.window_change(cols as u32, rows as u32, 0, 0)
@@ -88,6 +95,7 @@ impl ShellChannel {
             .map_err(|e| SshError::ChannelError(format!("Resize failed: {}", e)))
     }
 
+    /// Sends EOF on the channel.
     pub async fn close(&self) -> Result<(), SshError> {
         let ch = self.channel.lock().await;
         ch.eof()
@@ -95,6 +103,7 @@ impl ShellChannel {
             .map_err(|e| SshError::ChannelError(e.to_string()))
     }
 
+    /// Spawns a background task that reads channel output and calls `on_data` for each data message.
     pub fn spawn_read_loop<F>(&self, on_data: F) -> tokio::task::JoinHandle<()>
     where
         F: Fn(Vec<u8>) + Send + Sync + 'static,

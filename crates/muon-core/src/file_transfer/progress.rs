@@ -1,50 +1,82 @@
+//! Transfer progress types and status definitions.
+
 use serde::{Deserialize, Serialize};
 
+/// Direction of a file transfer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TransferDirection {
+    /// Uploading from local to remote.
     Upload,
+    /// Downloading from remote to local.
     Download,
 }
 
+/// Current status of a file transfer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum TransferStatus {
+    /// Waiting to start.
     Queued,
+    /// Actively transferring data.
     InProgress,
+    /// Transfer finished successfully.
     Completed,
+    /// Transfer failed with an error.
     Failed,
+    /// Transfer was cancelled by the user.
     Cancelled,
 }
 
+/// Strategy for handling file name conflicts during transfer.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum ConflictResolution {
+    /// Overwrite the existing file.
     Overwrite,
+    /// Skip the file without transferring.
     Skip,
+    /// Transfer with a renamed filename.
     Rename,
+    /// Ask the user what to do.
     Prompt,
 }
 
+/// Describes a requested file transfer operation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransferRequest {
+    /// Unique transfer identifier.
     pub id: String,
+    /// Associated SSH session identifier.
     pub session_id: String,
+    /// Upload or download direction.
     pub direction: TransferDirection,
+    /// Source file path.
     pub source_path: String,
+    /// Destination file path.
     pub dest_path: String,
+    /// Expected file size in bytes.
     pub file_size: u64,
+    /// How to handle name conflicts.
     pub conflict_resolution: ConflictResolution,
 }
 
+/// Tracks the real-time progress of a file transfer.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TransferProgress {
+    /// Transfer identifier.
     pub id: String,
+    /// Bytes transferred so far.
     pub bytes_transferred: u64,
+    /// Total bytes to transfer.
     pub total_bytes: u64,
+    /// Current transfer status.
     pub status: TransferStatus,
+    /// Error message if the transfer failed.
     pub error: Option<String>,
+    /// Current transfer speed in bytes per second.
     pub speed_bps: f64,
 }
 
 impl TransferProgress {
+    /// Creates a new progress tracker in `Queued` state.
     pub fn new(id: String, total_bytes: u64) -> Self {
         Self {
             id,
@@ -56,6 +88,7 @@ impl TransferProgress {
         }
     }
 
+    /// Returns the completion percentage (0–100).
     pub fn percent(&self) -> f64 {
         if self.total_bytes == 0 {
             return 100.0;

@@ -10,12 +10,15 @@
   import { t } from '$lib/utils/i18n'
   import { registerHandler, setEnabled as setShortcutsEnabled } from '$lib/utils/shortcuts'
   import { listen } from '@tauri-apps/api/event'
+  import * as api from '$lib/api/invoke'
+  import type { TabState, SavedTab } from '$lib/types'
 
   interface Tab {
     id: string
     sessionId: string
     channelId: string
     title: string
+    isLocal?: boolean
   }
 
   let showSidebar = $state(true)
@@ -26,6 +29,47 @@
   let activeView = $state('terminal')
   let activeSessionId = $state('')
   let theme = $state(getTheme())
+  let restoring = $state(true)
+
+  async function restoreTabState() {
+    try {
+      const state = await api.loadTabState() as TabState
+      if (state?.tabs?.length) {
+        const restored: Tab[] = state.tabs.map((st: SavedTab) => ({
+          id: crypto.randomUUID(),
+          sessionId: st.session_id,
+          channelId: st.channel_id,
+          title: st.title,
+          isLocal: st.is_local,
+        }))
+        tabs = restored
+        if (restored.length > 0) {
+          activeTabId = restored[0].id
+          activeSessionId = restored[0].sessionId
+        }
+      }
+    } catch {
+      // ignore restore errors
+    }
+    restoring = false
+  }
+
+  restoreTabState()
+
+  async function persistTabState() {
+    if (restoring) return
+    try {
+      const savedTabs: SavedTab[] = tabs.map((tab) => ({
+        session_id: tab.sessionId,
+        channel_id: tab.channelId,
+        title: tab.title,
+        is_local: tab.isLocal ?? false,
+      }))
+      await api.saveTabState({ tabs: savedTabs, active_tab_id: activeTabId || null })
+    } catch {
+      // ignore save errors
+    }
+  }
 
   function handleConnect(sessionId: string, name: string) {
     activeSessionId = sessionId
@@ -118,6 +162,9 @@
         activeSessionId = activeTab.sessionId
       }
     }
+    void tabs
+    void activeTabId
+    persistTabState()
   })
 
   $effect(() => {

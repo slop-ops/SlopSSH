@@ -9,6 +9,7 @@ pub mod sftp_cmds;
 pub mod snippet_cmds;
 pub mod ssh_cmds;
 pub mod system_cmds;
+pub mod tab_state_cmds;
 pub mod tools_cmds;
 pub mod transfer_cmds;
 
@@ -27,5 +28,6 @@ pub use ssh_cmds::*;
 pub use system_cmds::{
     check_for_updates, detect_editors, get_settings, get_version, open_in_editor, save_settings,
 };
+pub use tab_state_cmds::*;
 pub use tools_cmds::*;
 pub use transfer_cmds::*;

@@ -9,6 +9,7 @@ pub mod scripts;
 pub mod session;
 pub mod snippets;
 pub mod ssh;
+pub mod tab_state;
 pub mod tools;
 pub mod updater;
 pub mod utils;

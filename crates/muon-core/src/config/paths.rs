@@ -22,6 +22,10 @@ pub fn snippets_file() -> anyhow::Result<PathBuf> {
     Ok(config_dir()?.join("snippets.json"))
 }
 
+pub fn tab_state_file() -> anyhow::Result<PathBuf> {
+    Ok(config_dir()?.join("tab_state.json"))
+}
+
 pub fn log_dir() -> anyhow::Result<PathBuf> {
     let dir = dirs::data_local_dir()
         .ok_or_else(|| anyhow::anyhow!("Could not determine local data directory"))?;

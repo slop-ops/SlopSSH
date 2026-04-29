@@ -39,10 +39,10 @@ impl SessionStore {
     }
 
     pub fn save_to(&self, path: &Path) -> anyhow::Result<()> {
-        if let Some(parent) = path.parent() {
-            if !parent.exists() {
-                std::fs::create_dir_all(parent)?;
-            }
+        if let Some(parent) = path.parent()
+            && !parent.exists()
+        {
+            std::fs::create_dir_all(parent)?;
         }
         if path.exists() {
             rotate_backups(path, MAX_BACKUPS)?;
@@ -218,7 +218,10 @@ mod tests {
 
         for i in 0..6 {
             let root = SessionFolder::new(&format!("Root {}", i));
-            let store = SessionStore { root, path: Some(path.clone()) };
+            let store = SessionStore {
+                root,
+                path: Some(path.clone()),
+            };
             store.save().unwrap();
         }
 
@@ -245,7 +248,10 @@ mod tests {
         std::fs::write(&bak5, "should_be_removed").unwrap();
 
         let root = SessionFolder::new("Root");
-        let store = SessionStore { root, path: Some(path) };
+        let store = SessionStore {
+            root,
+            path: Some(path),
+        };
         store.save().unwrap();
 
         assert!(!bak5.exists(), "oldest backup should be rotated away");
@@ -261,7 +267,10 @@ mod tests {
 
         let mut root = SessionFolder::new("Root");
         root.items.push(make_session("s1"));
-        let store = SessionStore { root, path: Some(path.clone()) };
+        let store = SessionStore {
+            root,
+            path: Some(path.clone()),
+        };
         store.save().unwrap();
 
         let loaded = SessionStore::load_from(&path).unwrap();
@@ -280,12 +289,18 @@ mod tests {
 
         let mut root1 = SessionFolder::new("V1");
         root1.items.push(make_session("old"));
-        let store1 = SessionStore { root: root1, path: Some(path.clone()) };
+        let store1 = SessionStore {
+            root: root1,
+            path: Some(path.clone()),
+        };
         store1.save().unwrap();
 
         let mut root2 = SessionFolder::new("V2");
         root2.items.push(make_session("new"));
-        let store2 = SessionStore { root: root2, path: Some(path.clone()) };
+        let store2 = SessionStore {
+            root: root2,
+            path: Some(path.clone()),
+        };
         store2.save().unwrap();
 
         let bak1 = dir.join("sessions.json.bak.1");

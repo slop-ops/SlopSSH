@@ -362,3 +362,15 @@ export async function pluginShowNotification(
 ): Promise<void> {
   return invoke('plugin_show_notification', { pluginId, title, body })
 }
+
+export async function saveTabState(tabs: unknown): Promise<void> {
+  return invoke('save_tab_state', { tabs })
+}
+
+export async function loadTabState(): Promise<unknown> {
+  return invoke('load_tab_state')
+}
+
+export async function clearTabState(): Promise<void> {
+  return invoke('clear_tab_state')
+}

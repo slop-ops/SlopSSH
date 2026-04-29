@@ -182,3 +182,15 @@ export interface RemoteExecResult {
   stdout: string
   exitCode: number
 }
+
+export interface SavedTab {
+  session_id: string
+  channel_id: string
+  title: string
+  is_local: boolean
+}
+
+export interface TabState {
+  tabs: SavedTab[]
+  active_tab_id: string | null
+}

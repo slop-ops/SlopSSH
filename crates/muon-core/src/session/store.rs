@@ -1,28 +1,54 @@
+use std::path::{Path, PathBuf};
+
 use super::folder::SessionFolder;
 use super::info::SessionInfo;
 use crate::config::paths;
 
+const MAX_BACKUPS: usize = 5;
+
 pub struct SessionStore {
     root: SessionFolder,
+    path: Option<PathBuf>,
 }
 
 impl SessionStore {
     pub fn load() -> anyhow::Result<Self> {
         let path = paths::sessions_file()?;
+        Self::load_from(&path)
+    }
+
+    pub fn load_from(path: &Path) -> anyhow::Result<Self> {
         if !path.exists() {
             return Ok(Self {
                 root: SessionFolder::new("Root"),
+                path: Some(path.to_path_buf()),
             });
         }
-        let content = std::fs::read_to_string(&path)?;
+        let content = std::fs::read_to_string(path)?;
         let root: SessionFolder = serde_json::from_str(&content)?;
-        Ok(Self { root })
+        Ok(Self {
+            root,
+            path: Some(path.to_path_buf()),
+        })
     }
 
     pub fn save(&self) -> anyhow::Result<()> {
-        let path = paths::sessions_file()?;
+        let default_path = paths::sessions_file()?;
+        let path = self.path.as_deref().unwrap_or(&default_path);
+        self.save_to(path)
+    }
+
+    pub fn save_to(&self, path: &Path) -> anyhow::Result<()> {
+        if let Some(parent) = path.parent() {
+            if !parent.exists() {
+                std::fs::create_dir_all(parent)?;
+            }
+        }
+        if path.exists() {
+            rotate_backups(path, MAX_BACKUPS)?;
+        }
         let content = serde_json::to_string_pretty(&self.root)?;
-        std::fs::write(&path, content)?;
+        std::fs::write(path, content)?;
         Ok(())
     }
 
@@ -57,8 +83,25 @@ impl SessionStore {
 
 impl From<SessionFolder> for SessionStore {
     fn from(root: SessionFolder) -> Self {
-        Self { root }
+        Self { root, path: None }
     }
+}
+
+fn rotate_backups(path: &Path, max_backups: usize) -> anyhow::Result<()> {
+    let oldest = path.with_extension(format!("json.bak.{}", max_backups));
+    if oldest.exists() {
+        std::fs::remove_file(&oldest)?;
+    }
+    for i in (2..=max_backups).rev() {
+        let src = path.with_extension(format!("json.bak.{}", i - 1));
+        let dst = path.with_extension(format!("json.bak.{}", i));
+        if src.exists() {
+            std::fs::rename(&src, &dst)?;
+        }
+    }
+    let first = path.with_extension("json.bak.1");
+    std::fs::copy(path, &first)?;
+    Ok(())
 }
 
 fn find_folder_mut<'a>(folder: &'a mut SessionFolder, id: &str) -> Option<&'a mut SessionFolder> {
@@ -164,5 +207,92 @@ mod tests {
         assert_eq!(session.proxy_type, crate::session::ProxyType::None);
         assert!(!session.x11_forwarding);
         assert_eq!(session.encoding, "utf-8");
+    }
+
+    #[test]
+    fn test_backup_rotation() {
+        let dir = std::env::temp_dir().join("muon_test_backup_rotation");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sessions.json");
+
+        for i in 0..6 {
+            let root = SessionFolder::new(&format!("Root {}", i));
+            let store = SessionStore { root, path: Some(path.clone()) };
+            store.save().unwrap();
+        }
+
+        assert!(path.exists());
+        for i in 1..=5 {
+            let bak = dir.join(format!("sessions.json.bak.{}", i));
+            assert!(bak.exists(), "backup {} should exist", i);
+        }
+        let bak6 = dir.join("sessions.json.bak.6");
+        assert!(!bak6.exists(), "backup 6 should not exist");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_backup_rotation_removes_oldest() {
+        let dir = std::env::temp_dir().join("muon_test_backup_oldest");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sessions.json");
+
+        std::fs::write(&path, "marker_old").unwrap();
+        let bak5 = dir.join("sessions.json.bak.5");
+        std::fs::write(&bak5, "should_be_removed").unwrap();
+
+        let root = SessionFolder::new("Root");
+        let store = SessionStore { root, path: Some(path) };
+        store.save().unwrap();
+
+        assert!(!bak5.exists(), "oldest backup should be rotated away");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_save_and_load_roundtrip() {
+        let dir = std::env::temp_dir().join("muon_test_roundtrip");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sessions.json");
+
+        let mut root = SessionFolder::new("Root");
+        root.items.push(make_session("s1"));
+        let store = SessionStore { root, path: Some(path.clone()) };
+        store.save().unwrap();
+
+        let loaded = SessionStore::load_from(&path).unwrap();
+        assert_eq!(loaded.root().items.len(), 1);
+        assert_eq!(loaded.root().items[0].name, "s1");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn test_backup_content_preserved() {
+        let dir = std::env::temp_dir().join("muon_test_backup_content");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("sessions.json");
+
+        let mut root1 = SessionFolder::new("V1");
+        root1.items.push(make_session("old"));
+        let store1 = SessionStore { root: root1, path: Some(path.clone()) };
+        store1.save().unwrap();
+
+        let mut root2 = SessionFolder::new("V2");
+        root2.items.push(make_session("new"));
+        let store2 = SessionStore { root: root2, path: Some(path.clone()) };
+        store2.save().unwrap();
+
+        let bak1 = dir.join("sessions.json.bak.1");
+        let bak_content = std::fs::read_to_string(&bak1).unwrap();
+        assert!(bak_content.contains("V1"));
+        assert!(bak_content.contains("old"));
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

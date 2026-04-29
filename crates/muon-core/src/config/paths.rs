@@ -1,6 +1,25 @@
 use std::path::PathBuf;
 
+fn portable_marker() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let dir = exe.parent()?;
+    let marker = dir.join("portable.marker");
+    if marker.exists() {
+        Some(dir.to_path_buf())
+    } else {
+        None
+    }
+}
+
 pub fn config_dir() -> anyhow::Result<PathBuf> {
+    if let Some(portable_dir) = portable_marker() {
+        let dir = portable_dir.join("config");
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        tracing::info!(path = %dir.display(), "Using portable config directory");
+        return Ok(dir);
+    }
     let dir = dirs::config_dir()
         .ok_or_else(|| anyhow::anyhow!("Could not determine config directory"))?;
     let dir = dir.join("muon-ssh");
@@ -27,6 +46,13 @@ pub fn tab_state_file() -> anyhow::Result<PathBuf> {
 }
 
 pub fn log_dir() -> anyhow::Result<PathBuf> {
+    if let Some(portable_dir) = portable_marker() {
+        let dir = portable_dir.join("logs");
+        if !dir.exists() {
+            std::fs::create_dir_all(&dir)?;
+        }
+        return Ok(dir);
+    }
     let dir = dirs::data_local_dir()
         .ok_or_else(|| anyhow::anyhow!("Could not determine local data directory"))?;
     let dir = dir.join("muon-ssh").join("logs");
@@ -36,6 +62,10 @@ pub fn log_dir() -> anyhow::Result<PathBuf> {
     Ok(dir)
 }
 
+pub fn is_portable() -> bool {
+    portable_marker().is_some()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -43,7 +73,9 @@ mod tests {
     #[test]
     fn test_config_dir_returns_valid_path() {
         let dir = config_dir().unwrap();
-        assert!(dir.to_string_lossy().contains("muon-ssh"));
+        assert!(
+            dir.to_string_lossy().contains("muon-ssh") || dir.to_string_lossy().contains("config")
+        );
     }
 
     #[test]
@@ -94,8 +126,9 @@ mod tests {
     #[test]
     fn test_log_dir_returns_valid_path() {
         let dir = log_dir().unwrap();
-        assert!(dir.to_string_lossy().contains("muon-ssh"));
-        assert!(dir.to_string_lossy().contains("logs"));
+        assert!(
+            dir.to_string_lossy().contains("muon-ssh") || dir.to_string_lossy().contains("logs")
+        );
     }
 
     #[test]
@@ -109,5 +142,10 @@ mod tests {
         let dir1 = config_dir().unwrap();
         let dir2 = config_dir().unwrap();
         assert_eq!(dir1, dir2);
+    }
+
+    #[test]
+    fn test_is_portable_returns_false_in_test_env() {
+        assert!(!is_portable());
     }
 }

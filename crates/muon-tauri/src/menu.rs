@@ -132,7 +132,7 @@ pub fn create_tray(app: &AppHandle) -> Result<(), tauri::Error> {
 
     let tray_menu = Menu::with_items(app, &[&show, &quit])?;
 
-    TrayIconBuilder::new()
+    TrayIconBuilder::with_id("main")
         .icon(app.default_window_icon().cloned().unwrap_or_else(|| {
             tauri::image::Image::from_bytes(include_bytes!("../icons/32x32.png")).unwrap_or_else(
                 |_| {

@@ -27,7 +27,7 @@ pub use snippet_cmds::{create_snippet, delete_snippet, list_snippets, update_sni
 pub use ssh_cmds::*;
 pub use system_cmds::{
     check_for_updates, detect_editors, download_update, get_settings, get_version, open_in_editor,
-    save_settings,
+    save_settings, update_tray_tooltip,
 };
 pub use tab_state_cmds::*;
 pub use tools_cmds::*;

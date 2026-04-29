@@ -77,6 +77,7 @@
     const tabId = crypto.randomUUID()
     tabs = [...tabs, { id: tabId, sessionId, channelId, title: name }]
     activeTabId = tabId
+    api.updateTrayTooltip()
   }
 
   function toggleSidebar() {
@@ -153,6 +154,7 @@
     if (tabs.length === 0) {
       activeSessionId = ''
     }
+    api.updateTrayTooltip()
   }
 
   $effect(() => {

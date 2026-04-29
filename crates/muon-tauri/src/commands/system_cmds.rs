@@ -79,3 +79,41 @@ pub async fn download_update(update_info: serde_json::Value) -> Result<serde_jso
         "size": std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0),
     }))
 }
+
+#[tauri::command]
+pub async fn update_tray_tooltip(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let ssh_count = {
+        let mgr = state.ssh_manager.lock().await;
+        mgr.connected_session_ids().len()
+    };
+    let transfer_count = {
+        let transfers = state.transfer_engine.list_progress().await;
+        transfers
+            .iter()
+            .filter(|t| t.status == muon_core::file_transfer::progress::TransferStatus::InProgress)
+            .count()
+    };
+    let mut parts = vec!["Muon SSH".to_string()];
+    if ssh_count > 0 {
+        parts.push(format!(
+            "{} active session{}",
+            ssh_count,
+            if ssh_count > 1 { "s" } else { "" }
+        ));
+    }
+    if transfer_count > 0 {
+        parts.push(format!(
+            "{} transfer{}",
+            transfer_count,
+            if transfer_count > 1 { "s" } else { "" }
+        ));
+    }
+    let tooltip = parts.join(" | ");
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_tooltip(Some(&tooltip));
+    }
+    Ok(())
+}

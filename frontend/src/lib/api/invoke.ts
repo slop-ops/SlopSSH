@@ -382,3 +382,7 @@ export async function checkForUpdates(): Promise<unknown> {
 export async function downloadUpdate(updateInfo: unknown): Promise<unknown> {
   return invoke('download_update', { updateInfo })
 }
+
+export async function updateTrayTooltip(): Promise<void> {
+  return invoke('update_tray_tooltip')
+}

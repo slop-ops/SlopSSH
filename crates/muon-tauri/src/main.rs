@@ -22,6 +22,7 @@ use commands::{
     sftp_write_file, ssh_close_shell, ssh_connect, ssh_disconnect, ssh_open_shell,
     ssh_resize_shell, ssh_write_shell, transfer_cancel, transfer_clear_completed,
     transfer_download, transfer_list, transfer_upload, update_session, update_snippet,
+    update_tray_tooltip,
 };
 use state::AppState;
 
@@ -146,6 +147,7 @@ pub fn run() {
             get_version,
             check_for_updates,
             download_update,
+            update_tray_tooltip,
             plugin_list,
             plugin_discover,
             plugin_set_enabled,

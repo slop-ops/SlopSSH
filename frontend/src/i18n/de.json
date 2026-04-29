@@ -64,7 +64,8 @@
     "transfers": "Übertragungen",
     "clear": "Leeren",
     "uploading": "Hochladen...",
-    "downloading": "Herunterladen..."
+    "downloading": "Herunterladen...",
+    "fileTooLarge": "Datei zu groß zum Bearbeiten (max. 10 MB)"
   },
   "tools": {
     "processes": "Prozesse",

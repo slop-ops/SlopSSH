@@ -20,6 +20,8 @@
   let modified = $state(false)
   let fileName = $derived(filePath.split('/').pop() || 'file')
 
+  const MAX_FILE_SIZE = 10 * 1024 * 1024
+
   $effect(() => {
     loadFile()
   })
@@ -28,6 +30,14 @@
     loading = true
     error = ''
     try {
+      const stat = await api.sftpStat(sessionId, filePath) as unknown as { attributes: { size: number } } | null
+      const fileSize = stat?.attributes?.size ?? 0
+      if (fileSize > MAX_FILE_SIZE) {
+        const sizeMB = (fileSize / (1024 * 1024)).toFixed(1)
+        error = `${t('files.fileTooLarge') || 'File too large to edit'} (${sizeMB} MB)`
+        loading = false
+        return
+      }
       const base64 = await api.sftpReadFile(sessionId, filePath)
       const decoded = atob(base64)
       content = decoded

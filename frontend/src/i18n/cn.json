@@ -64,7 +64,8 @@
     "transfers": "传输",
     "clear": "清除",
     "uploading": "上传中...",
-    "downloading": "下载中..."
+    "downloading": "下载中...",
+    "fileTooLarge": "文件过大，无法编辑（最大 10 MB）"
   },
   "tools": {
     "processes": "进程",

@@ -97,7 +97,8 @@
     "saving": "Saving...",
     "saveCtrl": "Save (Ctrl+S)",
     "modified": "Modified",
-    "unsaved": "Unsaved changes. Discard and close?"
+    "unsaved": "Unsaved changes. Discard and close?",
+    "fileTooLarge": "File too large to edit (max 10 MB)"
   },
   "tools": {
     "processes": "Processes",

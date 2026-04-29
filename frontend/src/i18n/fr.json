@@ -64,7 +64,8 @@
     "transfers": "Transferts",
     "clear": "Effacer",
     "uploading": "Téléversement...",
-    "downloading": "Téléchargement..."
+    "downloading": "Téléchargement...",
+    "fileTooLarge": "Fichier trop volumineux pour l'édition (max 10 Mo)"
   },
   "tools": {
     "processes": "Processus",

@@ -64,7 +64,8 @@
     "transfers": "Transferências",
     "clear": "Limpar",
     "uploading": "Enviando...",
-    "downloading": "Baixando..."
+    "downloading": "Baixando...",
+    "fileTooLarge": "Arquivo muito grande para editar (máx. 10 MB)"
   },
   "tools": {
     "processes": "Processos",

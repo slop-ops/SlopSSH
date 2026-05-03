@@ -91,6 +91,9 @@ jobs:
         working-directory: frontend
         run: npm ci
 
+      - name: Install tauri-cli
+        run: cargo install tauri-cli --version "^2"
+
       - name: Build Tauri app
         working-directory: crates/slopssh-tauri
         run: cargo tauri build
@@ -127,6 +130,9 @@ jobs:
       - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
+
+      - name: Install tauri-cli
+        run: cargo install tauri-cli --version "^2"
 
       - name: Build Tauri app
         working-directory: crates/slopssh-tauri

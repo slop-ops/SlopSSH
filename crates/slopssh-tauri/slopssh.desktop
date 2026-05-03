@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=SlopSSH
+Comment=Modern SSH client
+Exec=slopssh
+Icon=slopssh
+Type=Application
+Categories=Development;Network;RemoteAccess;
+Keywords=ssh;terminal;sftp;remote;
+StartupNotify=true

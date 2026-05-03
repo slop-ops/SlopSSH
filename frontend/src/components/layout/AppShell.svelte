@@ -418,14 +418,14 @@
 <SettingsDialog bind:open={showSettings} />
 
 {#if showAbout}
-  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) showAbout = false }} role="dialog" aria-modal="true" aria-label={t('about.title')}>
+  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) showAbout = false }} onkeydown={(e) => { if (e.key === 'Escape') showAbout = false }} role="dialog" aria-modal="true" aria-label={t('about.title')} tabindex={-1}>
     <div class="about-dialog" role="document">
       <div class="about-header">
         <h3>{t('about.title')}</h3>
         <button class="close-btn" onclick={() => (showAbout = false)} aria-label={t('common.close')}>x</button>
       </div>
       <div class="about-body">
-        <p class="about-name">Muon SSH</p>
+        <p class="about-name">SlopSSH</p>
         <p class="about-version">{t('about.version')}: {appVersion}</p>
         <p class="about-desc">{t('about.description')}</p>
       </div>

@@ -16,12 +16,12 @@ export function toggleTheme() {
 }
 
 export function initTheme() {
-  const saved = localStorage.getItem('muon-theme')
+  const saved = localStorage.getItem('slopssh-theme')
   setTheme(saved || 'dark')
 }
 
 export function persistTheme(theme: string) {
-  localStorage.setItem('muon-theme', theme)
+  localStorage.setItem('slopssh-theme', theme)
 }
 
 let currentSettings = $state<{ font_family: string; font_size: number; terminal_scrollback: number; terminal_copy_on_select: boolean }>({

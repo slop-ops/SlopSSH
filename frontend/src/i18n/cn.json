@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Muon SSH",
+    "title": "SlopSSH",
     "noActiveSession": "没有活动会话",
     "connectHint": "从侧边栏连接到会话以开始使用",
     "localTerminal": "本地",
@@ -170,7 +170,7 @@
     "success": "成功"
   },
   "about": {
-    "title": "关于 Muon SSH",
+    "title": "关于 SlopSSH",
     "version": "版本",
     "checkUpdates": "检查更新",
     "checking": "检查中...",

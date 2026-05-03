@@ -1,6 +1,6 @@
-# Muon SSH — Rust/Tauri Rewrite
+# SlopSSH
 
-A modern, cross-platform SSH/SCP/SFTP client built with **Rust**, **Tauri 2**, and **Svelte 5**.
+A modern SSH/SCP/SFTP client built with **Rust**, **Tauri 2**, and **Svelte 5**.
 
 ## Features
 
@@ -13,7 +13,7 @@ A modern, cross-platform SSH/SCP/SFTP client built with **Rust**, **Tauri 2**, a
 - **Remote Tools** — Process viewer, log viewer, disk analyzer, search, system info
 - **SSH Key Manager** — Generate, deploy, and manage SSH keys
 - **Connection Pool** — Reuse SSH connections for SFTP and background operations
-- **Credential Store** — OS-native keyring integration (macOS Keychain, Windows Credential Manager, Linux Secret Service)
+- **Credential Store** — OS-native keyring integration (Windows Credential Manager, Linux Secret Service)
 - **Plugin System** — WASM-based sandboxed plugins with capability whitelisting
 - **7 Languages** — English, Spanish, Russian, French, German, Portuguese, Chinese
 - **Dark/Light Themes** — Configurable themes with terminal color palettes
@@ -22,46 +22,87 @@ A modern, cross-platform SSH/SCP/SFTP client built with **Rust**, **Tauri 2**, a
 ## Architecture
 
 ```
-muon-ssh/
+SlopSSH/
 ├── crates/
-│   ├── muon-core/        # Pure Rust library (SSH engine, sessions, config)
-│   ├── muon-tauri/       # Tauri app binary (IPC commands, menus, tray)
-│   └── muon-plugins/     # Example WASM plugins
-├── frontend/             # Svelte 5 + xterm.js UI
-├── scripts/              # Bundled remote shell scripts
-└── .github/workflows/    # CI/CD
+│   ├── slopssh-core/        # Pure Rust library (SSH engine, sessions, config)
+│   ├── slopssh-tauri/       # Tauri app binary (IPC commands, menus, tray)
+│   └── slopssh-plugins/     # Example WASM plugins
+├── frontend/                # Svelte 5 + xterm.js UI
+├── scripts/                 # Bundled remote shell scripts
+└── .github/workflows/       # CI/CD
 ```
 
-**Key principle:** All business logic lives in `muon-core`. The Tauri layer is a thin IPC bridge. The Svelte frontend handles all UI.
+**Key principle:** All business logic lives in `slopssh-core`. The Tauri layer is a thin IPC bridge. The Svelte frontend handles all UI.
 
 ## Prerequisites
 
 - **Rust** 1.85+ (edition 2024)
 - **Node.js** 20+
 - **Tauri 2 CLI**: `cargo install tauri-cli --version "^2"`
-- **System deps** (Linux): `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libappindicator3-dev`
 
-## Build & Run
+### Linux system dependencies
 
 ```bash
-# Development (hot reload)
-cd crates/muon-tauri && cargo tauri dev
-
-# Production build
-cd crates/muon-tauri && cargo tauri build
-
-# Frontend only
-cd frontend && npm run dev
+sudo apt-get install -y \
+  libwebkit2gtk-4.1-dev \
+  libappindicator3-dev \
+  librsvg2-dev \
+  patchelf \
+  libssl-dev \
+  libgtk-3-dev \
+  libayatana-appindicator3-dev
 ```
+
+### Windows
+
+No additional system dependencies required beyond Rust and Node.js.
+
+## Building from Source
+
+### Linux
+
+```bash
+# 1. Clone the repository
+git clone https://github.com/slop-ops/SlopSSH.git
+cd SlopSSH
+
+# 2. Install frontend dependencies
+cd frontend && npm install && cd ..
+
+# 3. Build production binaries
+cd crates/slopssh-tauri && cargo tauri build
+```
+
+Output artifacts:
+- `crates/slopssh-tauri/target/release/bundle/deb/slopssh_0.1.0_amd64.deb` — Debian package
+- `crates/slopssh-tauri/target/release/bundle/appimage/slopssh_0.1.0_amd64.AppImage` — AppImage
+
+### Windows
+
+```powershell
+# 1. Clone the repository
+git clone https://github.com/slop-ops/SlopSSH.git
+cd SlopSSH
+
+# 2. Install frontend dependencies
+cd frontend && npm install && cd ..
+
+# 3. Build production binaries
+cd crates\slopssh-tauri && cargo tauri build
+```
+
+Output artifacts:
+- `crates\slopssh-tauri\target\release\bundle\nsis\SlopSSH_0.1.0_x64-setup.exe` — NSIS installer
+- `crates\slopssh-tauri\target\release\bundle\msi\SlopSSH_0.1.0_x64_en-US.msi` — MSI installer
 
 ## Development
 
 ```bash
+# Development mode (hot reload)
+cd crates/slopssh-tauri && cargo tauri dev
+
 # Run Rust tests
 cargo test --workspace
-
-# Run with output
-cargo test --workspace -- --nocapture
 
 # Lint
 cargo clippy --workspace --all-targets -- -D warnings
@@ -73,6 +114,16 @@ cd frontend && npm run check
 cd frontend && npm run test
 cd frontend && npm run test:e2e
 ```
+
+## Release Process
+
+1. Update the version in `Cargo.toml` and `crates/slopssh-tauri/tauri.conf.json`
+2. Commit the version bump
+3. Create and push a git tag: `git tag v0.1.0 && git push origin v0.1.0`
+4. The GitHub Actions release workflow will automatically:
+   - Run all tests (Rust + frontend)
+   - Build Linux (`.deb` + `.AppImage`) and Windows (`.exe` + `.msi`) artifacts
+   - Create a GitHub Release with all artifacts attached
 
 ## Project Structure
 
@@ -90,7 +141,7 @@ cd frontend && npm run test:e2e
 
 ## Configuration
 
-Config lives in `~/.config/muon-ssh/` (XDG on Linux):
+Config lives in `~/.config/slopssh/` (XDG on Linux) or `%APPDATA%\slopssh\` (Windows):
 
 | File | Purpose |
 |------|---------|
@@ -103,7 +154,7 @@ Config lives in `~/.config/muon-ssh/` (XDG on Linux):
 
 ## Session File Format
 
-`.muon` files are JSON containing a `SessionInfo` struct:
+`.slopssh` files are JSON containing a `SessionInfo` struct:
 
 ```json
 {
@@ -119,8 +170,8 @@ Config lives in `~/.config/muon-ssh/` (XDG on Linux):
 
 ## Plugins
 
-See [crates/muon-plugins/README.md](crates/muon-plugins/README.md) for the plugin API.
+See [crates/slopssh-plugins/README.md](crates/slopssh-plugins/README.md) for the plugin API.
 
 ## License
 
-Apache-2.0
+GPL-3.0

@@ -28,7 +28,7 @@ const REQUIRED_COLORS = [
 describe('terminal themes', () => {
   describe('darkTheme', () => {
     it('has a name', () => {
-      expect(darkTheme.name).toBe('Muon Dark')
+      expect(darkTheme.name).toBe('SlopSSH Dark')
     })
 
     it('has all required color properties', () => {
@@ -57,7 +57,7 @@ describe('terminal themes', () => {
 
   describe('lightTheme', () => {
     it('has a name', () => {
-      expect(lightTheme.name).toBe('Muon Light')
+      expect(lightTheme.name).toBe('SlopSSH Light')
     })
 
     it('has all required color properties', () => {

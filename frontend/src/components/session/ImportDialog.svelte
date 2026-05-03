@@ -36,8 +36,8 @@
   let { onClose }: { onClose: () => void } = $props()
 </script>
 
-<div class="dialog-overlay" onclick={onClose}>
-  <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Import SSH config">
+<div class="dialog-overlay" onclick={onClose} onkeydown={(e) => { if (e.key === 'Escape') onClose() }} role="none">
+  <div class="dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Import SSH config" tabindex={-1}>
     <div class="dialog-header">
       <h2>{t('session.importSshConfig')}</h2>
       <button class="close-btn" onclick={onClose}>&times;</button>

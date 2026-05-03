@@ -59,7 +59,7 @@
               onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') activeTabId = tab.id }}
             >
               <span class="tab-title">{tab.title}</span>
-              <span class="tab-close" role="button" tabindex={-1} aria-label="Close tab" onclick={(e: Event) => { e.stopPropagation(); closeTab(tab.id) }}>x</span>
+              <span class="tab-close" role="button" tabindex={-1} aria-label="Close tab" onclick={(e: Event) => { e.stopPropagation(); closeTab(tab.id) }} onkeydown={(e: KeyboardEvent) => { if (e.key === 'Enter') { e.stopPropagation(); closeTab(tab.id) } }}>x</span>
             </div>
           {/each}
         </div>

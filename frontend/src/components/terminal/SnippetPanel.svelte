@@ -117,7 +117,7 @@
   <div class="snippet-list">
     {#each filtered as snippet (snippet.id)}
       <div class="snippet-item">
-        <div class="snippet-info" onclick={() => onSend(snippet.command)}>
+        <div class="snippet-info" role="button" tabindex={0} onclick={() => onSend(snippet.command)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') onSend(snippet.command) }}>
           <span class="snippet-name">{snippet.name}</span>
           <span class="snippet-cmd">{snippet.command}</span>
         </div>

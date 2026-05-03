@@ -1,4 +1,4 @@
-# Contributing to Muon SSH
+# Contributing to SlopSSH
 
 ## Development Setup
 
@@ -24,8 +24,8 @@
 - No comments unless explicitly requested
 
 ### Architecture
-- All business logic in `muon-core` — no Tauri/UI dependencies
-- `muon-tauri` is a thin IPC bridge — no business logic
+- All business logic in `slopssh-core` — no Tauri/UI dependencies
+- `slopssh-tauri` is a thin IPC bridge — no business logic
 - Frontend communicates exclusively via Tauri `invoke()` and events
 
 ## Testing
@@ -64,10 +64,10 @@ Use conventional commit format:
 
 ## Adding New Features
 
-1. Implement core logic in `crates/muon-core/src/`
-2. Add Tauri IPC command in `crates/muon-tauri/src/commands/`
+1. Implement core logic in `crates/slopssh-core/src/`
+2. Add Tauri IPC command in `crates/slopssh-tauri/src/commands/`
 3. Register command in `main.rs` invoke handler
 4. Add frontend API wrapper in `frontend/src/lib/api/invoke.ts`
 5. Build UI component
 6. Add tests
-7. Update PROGRESS.md
+7. Update documentation

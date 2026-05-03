@@ -295,6 +295,7 @@
       e.preventDefault()
       contextMenu = { x: e.clientX, y: e.clientY, entry: null }
     }}
+    role="application"
   >
   <div class="address-bar">
     {#if editingPath}
@@ -302,7 +303,7 @@
         <input type="text" bind:value={pathInput} />
       </form>
     {:else}
-      <div class="breadcrumbs" onclick={() => (editingPath = true)} role="navigation">
+      <div class="breadcrumbs" onclick={() => (editingPath = true)} onkeydown={(e) => { if (e.key === 'Enter') editingPath = true }} role="button" tabindex={0}>
         {#each getBreadcrumbs() as part, i}
           {#if i > 0}
             <span class="separator">/</span>

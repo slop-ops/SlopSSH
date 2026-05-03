@@ -1,5 +1,5 @@
 export const darkTheme = {
-  name: 'Muon Dark',
+  name: 'SlopSSH Dark',
   foreground: '#e0e0e0',
   background: '#1a1a2e',
   cursor: '#e0e0e0',
@@ -24,7 +24,7 @@ export const darkTheme = {
 }
 
 export const lightTheme = {
-  name: 'Muon Light',
+  name: 'SlopSSH Light',
   foreground: '#1a1a2e',
   background: '#f5f5f5',
   cursor: '#1a1a2e',

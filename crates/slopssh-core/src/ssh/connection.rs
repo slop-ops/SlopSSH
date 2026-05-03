@@ -240,10 +240,10 @@ async fn forward_channel_tcp(
         tokio::select! {
             channel_data = channel.wait() => {
                 match channel_data {
-                    Some(ChannelMsg::Data { data }) => {
-                        if tcp_write.write_all(&data).await.is_err() {
-                            break;
-                        }
+                    Some(ChannelMsg::Data { data })
+                        if tcp_write.write_all(&data).await.is_err() =>
+                    {
+                        break;
                     }
                     Some(ChannelMsg::Eof) | None => break,
                     _ => {}

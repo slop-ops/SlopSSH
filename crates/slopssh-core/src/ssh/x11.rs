@@ -86,10 +86,10 @@ impl X11Forwarder {
                 tokio::select! {
                     channel_data = channel.wait() => {
                         match channel_data {
-                            Some(ChannelMsg::Data { data }) => {
-                                if unix_stream.write_all(&data).await.is_err() {
-                                    break;
-                                }
+                            Some(ChannelMsg::Data { data })
+                                if unix_stream.write_all(&data).await.is_err() =>
+                            {
+                                break;
                             }
                             Some(ChannelMsg::Eof) | None => break,
                             _ => {}

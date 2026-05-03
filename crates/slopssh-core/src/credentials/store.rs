@@ -12,30 +12,29 @@ pub trait CredentialBackend: Send + Sync {
     fn delete(&self, key: &str) -> anyhow::Result<()>;
 }
 
-/// Credential backend backed by the OS keyring via the `keyring` crate.
 pub struct KeyringBackend;
 
 impl CredentialBackend for KeyringBackend {
     fn save(&self, key: &str, value: &str) -> anyhow::Result<()> {
-        let entry = keyring::Entry::new("slopssh", key)?;
+        let entry = keyring_core::Entry::new("slopssh", key)?;
         entry.set_password(value)?;
         Ok(())
     }
 
     fn get(&self, key: &str) -> anyhow::Result<Option<String>> {
-        let entry = keyring::Entry::new("slopssh", key)?;
+        let entry = keyring_core::Entry::new("slopssh", key)?;
         match entry.get_password() {
             Ok(val) => Ok(Some(val)),
-            Err(keyring::Error::NoEntry) => Ok(None),
+            Err(keyring_core::Error::NoEntry) => Ok(None),
             Err(e) => Err(anyhow::anyhow!("Keyring error: {}", e)),
         }
     }
 
     fn delete(&self, key: &str) -> anyhow::Result<()> {
-        let entry = keyring::Entry::new("slopssh", key)?;
+        let entry = keyring_core::Entry::new("slopssh", key)?;
         match entry.delete_credential() {
             Ok(()) => Ok(()),
-            Err(keyring::Error::NoEntry) => Ok(()),
+            Err(keyring_core::Error::NoEntry) => Ok(()),
             Err(e) => Err(anyhow::anyhow!("Keyring error: {}", e)),
         }
     }
@@ -132,17 +131,14 @@ impl CredentialStore {
     /// Creates a store backed by the OS keyring, falling back to file-based
     /// storage if the keyring is unavailable.
     pub fn new_keyring_with_fallback() -> Self {
-        match keyring::Entry::new("slopssh", "__test__") {
-            Ok(_) => {
-                tracing::info!("Using OS keyring for credential storage");
-                Self::new_keyring()
-            }
-            Err(_) => {
-                tracing::warn!(
-                    "OS keyring unavailable, falling back to encrypted file-based storage"
-                );
-                Self::new_file()
-            }
+        if keyring::use_native_store(false).is_ok() {
+            tracing::info!("Using OS keyring for credential storage");
+            Self::new_keyring()
+        } else {
+            tracing::warn!(
+                "OS keyring unavailable, falling back to encrypted file-based storage"
+            );
+            Self::new_file()
         }
     }
 

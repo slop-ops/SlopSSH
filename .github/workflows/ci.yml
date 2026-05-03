@@ -95,9 +95,13 @@ jobs:
       - name: Install tauri-cli
         run: cargo install tauri-cli --version "^2"
 
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
       - name: Build Tauri app
         working-directory: crates/slopssh-tauri
-        run: cargo tauri build
+        run: cargo tauri build --config '{"build":{"beforeBuildCommand":""}}'
 
   build-windows:
     name: Build Windows
@@ -127,6 +131,10 @@ jobs:
       - name: Install tauri-cli
         run: cargo install tauri-cli --version "^2"
 
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+
       - name: Build Tauri app
         working-directory: crates/slopssh-tauri
-        run: cargo tauri build
+        run: cargo tauri build --config '{\"build\":{\"beforeBuildCommand\":\"\"}}'

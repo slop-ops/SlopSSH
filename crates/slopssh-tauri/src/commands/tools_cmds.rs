@@ -105,7 +105,10 @@ pub async fn archive_extract(
             .ok_or_else(|| "Not connected".to_string())?
     };
 
-    let mkdir_cmd = format!("mkdir -p {}", slopssh_core::utils::shell_escape(&target_dir));
+    let mkdir_cmd = format!(
+        "mkdir -p {}",
+        slopssh_core::utils::shell_escape(&target_dir)
+    );
     let _ = slopssh_core::tools::remote_exec::RemoteExecutor::execute(&handle, &mkdir_cmd, 10)
         .await
         .map_err(|e| e.to_string())?;

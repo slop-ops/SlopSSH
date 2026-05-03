@@ -9,7 +9,8 @@ pub async fn import_ssh_config(path: Option<String>) -> Result<serde_json::Value
         slopssh_core::session::import::SshConfigImporter::parse_file(std::path::Path::new(p))
             .map_err(|e| e.to_string())?
     } else {
-        slopssh_core::session::import::SshConfigImporter::parse_default().map_err(|e| e.to_string())?
+        slopssh_core::session::import::SshConfigImporter::parse_default()
+            .map_err(|e| e.to_string())?
     };
 
     let sessions: Vec<serde_json::Value> = hosts
@@ -33,7 +34,8 @@ pub async fn import_ssh_config_to_folder(
         slopssh_core::session::import::SshConfigImporter::parse_file(std::path::Path::new(p))
             .map_err(|e| e.to_string())?
     } else {
-        slopssh_core::session::import::SshConfigImporter::parse_default().map_err(|e| e.to_string())?
+        slopssh_core::session::import::SshConfigImporter::parse_default()
+            .map_err(|e| e.to_string())?
     };
 
     let folder = slopssh_core::session::import::SshConfigImporter::import_to_folder(&hosts);

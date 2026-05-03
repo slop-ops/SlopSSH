@@ -135,9 +135,7 @@ impl CredentialStore {
             tracing::info!("Using OS keyring for credential storage");
             Self::new_keyring()
         } else {
-            tracing::warn!(
-                "OS keyring unavailable, falling back to encrypted file-based storage"
-            );
+            tracing::warn!("OS keyring unavailable, falling back to encrypted file-based storage");
             Self::new_file()
         }
     }

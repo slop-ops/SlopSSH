@@ -93,7 +93,9 @@ pub async fn update_tray_tooltip(
         let transfers = state.transfer_engine.list_progress().await;
         transfers
             .iter()
-            .filter(|t| t.status == slopssh_core::file_transfer::progress::TransferStatus::InProgress)
+            .filter(|t| {
+                t.status == slopssh_core::file_transfer::progress::TransferStatus::InProgress
+            })
             .count()
     };
     let mut parts = vec!["SlopSSH".to_string()];

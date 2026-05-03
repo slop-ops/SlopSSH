@@ -43,8 +43,5 @@ fn init_stderr_only(level: &str) {
         .with_writer(std::io::stderr)
         .init();
 
-    tracing::info!(
-        "SlopSSH logging initialized (level={}, stderr only)",
-        level
-    );
+    tracing::info!("SlopSSH logging initialized (level={}, stderr only)", level);
 }

@@ -76,7 +76,7 @@
 
 {#if transfers.length > 0}
   <div class="transfer-queue" class:collapsed={!expanded}>
-    <div class="header" onclick={() => (expanded = !expanded)} aria-label="Toggle transfers">
+    <div class="header" role="button" tabindex={0} onclick={() => (expanded = !expanded)} onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') expanded = !expanded }} aria-label="Toggle transfers">
       <span class="title">
         {t('files.transfers')}
         {#if activeCount > 0}

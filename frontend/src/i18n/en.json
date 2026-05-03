@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Muon SSH",
+    "title": "SlopSSH",
     "noActiveSession": "No active session",
     "connectHint": "Connect to a session from the sidebar to get started",
     "noTerminalSessions": "No terminal sessions",
@@ -229,7 +229,7 @@
     "detectedEditors": "Detected Editors",
     "noEditors": "No editors detected on this system.",
     "loadingPlugins": "Loading plugins...",
-    "noPlugins": "No plugins found. Place .wasm files in ~/.config/muon-ssh/plugins/",
+    "noPlugins": "No plugins found. Place .wasm files in ~/.config/slopssh/plugins/",
     "rescan": "Rescan",
     "capabilities": "Capabilities",
     "pluginSettings": "Plugin Settings",
@@ -255,7 +255,7 @@
     "success": "Success"
   },
   "about": {
-    "title": "About Muon SSH",
+    "title": "About SlopSSH",
     "version": "Version",
     "checkUpdates": "Check for Updates",
     "checking": "Checking...",

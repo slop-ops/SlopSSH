@@ -16,7 +16,7 @@
   let error = $state('')
   let showGenerate = $state(false)
   let genAlgorithm = $state('ed25519')
-  let genName = $state('id_muon')
+  let genName = $state('id_slopssh')
   let genPassphrase = $state('')
   let genPath = $state('')
   let generating = $state(false)
@@ -62,7 +62,7 @@
       const path = genPath || `${homeDir}/${genName}`
       await api.generateKeyPair(genAlgorithm, path, genPassphrase || undefined)
       showGenerate = false
-      genName = 'id_muon'
+      genName = 'id_slopssh'
       genPassphrase = ''
       genPath = ''
       successMsg = t('tools.keyGenerated')
@@ -166,8 +166,8 @@
   {/if}
 
   {#if showGenerate}
-    <div class="dialog-overlay" onclick={() => (showGenerate = false)}>
-      <div class="dialog" onclick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Generate SSH key pair">
+    <div class="dialog-overlay" onclick={() => (showGenerate = false)} onkeydown={(e) => { if (e.key === 'Escape') showGenerate = false }} role="none">
+      <div class="dialog" onclick={(e) => e.stopPropagation()} onkeydown={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="Generate SSH key pair" tabindex={-1}>
         <h3>{t('tools.generateTitle')}</h3>
 
         <div class="form-group">
@@ -181,12 +181,12 @@
 
         <div class="form-group">
           <label for="gen-name">{t('tools.keyName')}</label>
-          <input id="gen-name" type="text" bind:value={genName} placeholder="id_muon" />
+          <input id="gen-name" type="text" bind:value={genName} placeholder="id_slopssh" />
         </div>
 
         <div class="form-group">
           <label for="gen-path">{t('tools.fullPath')}</label>
-          <input id="gen-path" type="text" bind:value={genPath} placeholder="~/.ssh/id_muon" />
+          <input id="gen-path" type="text" bind:value={genPath} placeholder="~/.ssh/id_slopssh" />
         </div>
 
         <div class="form-group">

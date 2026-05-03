@@ -5,5 +5,12 @@
 *.swp
 *.swo
 .vite/
-crates/muon-plugins/*/target/
-crates/muon-plugins/*/Cargo.lock
+crates/slopssh-plugins/*/target/
+crates/slopssh-plugins/*/Cargo.lock
+AGENTS.md
+ARCHITECTURE.md
+PROGRESS.md
+RELEASE-PLAN.md
+REPORT.md
+SKILLS.md
+crates/slopssh-tauri/gen/

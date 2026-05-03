@@ -2,8 +2,8 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PLUGINS_DIR="$SCRIPT_DIR/../crates/muon-plugins"
-OUTPUT_DIR="$HOME/.config/muon-ssh/plugins"
+PLUGINS_DIR="$SCRIPT_DIR/../crates/slopssh-plugins"
+OUTPUT_DIR="$HOME/.config/slopssh/plugins"
 
 mkdir -p "$OUTPUT_DIR"
 

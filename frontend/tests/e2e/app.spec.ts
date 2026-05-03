@@ -9,7 +9,7 @@ test.describe('App Shell', () => {
 
   test('should have correct page title', async ({ page }) => {
     await page.goto('/')
-    await expect(page).toHaveTitle(/Muon/)
+    await expect(page).toHaveTitle(/SlopSSH/)
   })
 
   test('should show sidebar with session list', async ({ page }) => {

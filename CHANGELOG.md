@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Muon SSH (Rust/Tauri rewrite) will be documented in this file.
+All notable changes to SlopSSH (Rust/Tauri rewrite) will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
@@ -38,8 +38,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Documentation
 
-- Added `///` doc comments to all public items in `muon-core` (300+ items)
-- Added `//!` module-level documentation to all modules in `muon-core` (30+ modules)
+- Added `///` doc comments to all public items in `slopssh-core` (300+ items)
+- Added `//!` module-level documentation to all modules in `slopssh-core` (30+ modules)
 - Added `ARCHITECTURE.md` describing data flow, IPC model, plugin system, SSH lifecycle
 
 ### Tests
@@ -53,7 +53,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
-- Initial release of Muon SSH Rust/Tauri rewrite
+- Initial release of SlopSSH Rust/Tauri rewrite
 - SSH engine with russh (password, pubkey, keyboard-interactive auth)
 - SFTP file browser with upload/download
 - Terminal emulator with xterm.js

@@ -1,9 +1,0 @@
-[Desktop Entry]
-Name=Muon SSH
-Comment=Modern SSH client
-Exec=muon-ssh
-Icon=muon-ssh
-Type=Application
-Categories=Development;Network;RemoteAccess;
-Keywords=ssh;terminal;sftp;remote;
-StartupNotify=true

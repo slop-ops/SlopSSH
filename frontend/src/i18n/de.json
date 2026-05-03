@@ -1,6 +1,6 @@
 {
   "app": {
-    "title": "Muon SSH",
+    "title": "SlopSSH",
     "noActiveSession": "Keine aktive Sitzung",
     "connectHint": "Verbinden Sie sich über die Seitenleiste mit einer Sitzung, um zu beginnen",
     "localTerminal": "Lokal",
@@ -170,7 +170,7 @@
     "success": "Erfolg"
   },
   "about": {
-    "title": "Über Muon SSH",
+    "title": "Über SlopSSH",
     "version": "Version",
     "checkUpdates": "Nach Updates suchen",
     "checking": "Suche...",

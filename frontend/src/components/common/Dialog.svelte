@@ -70,7 +70,7 @@
 <svelte:window onkeydown={handleKeydown} />
 
 {#if open}
-  <div class="backdrop" onclick={handleBackdrop} role="dialog" aria-modal="true">
+  <div class="backdrop" onclick={handleBackdrop} onkeydown={(e) => { if (e.key === 'Escape') close() }} role="dialog" aria-modal="true" tabindex={-1}>
     <div class="dialog" style:max-width={width} bind:this={dialogEl}>
       {#if title}
         <div class="dialog-header">

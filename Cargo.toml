@@ -1,8 +1,8 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/muon-core",
-    "crates/muon-tauri",
+    "crates/slopssh-core",
+    "crates/slopssh-tauri",
 ]
 
 [workspace.package]

@@ -47,8 +47,8 @@
 
 <svelte:window onkeydown={handleKeydown} />
 
-<div class="overlay" onclick={onclose} role="presentation">
-  <div class="dialog" onclick={(e: Event) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="New session">
+<div class="overlay" onclick={onclose} onkeydown={(e) => { if (e.key === 'Escape') onclose() }} role="button" tabindex={0}>
+  <div class="dialog" onclick={(e: Event) => e.stopPropagation()} onkeydown={(e: KeyboardEvent) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="New session" tabindex={-1}>
     <div class="dialog-header">
       <h2>{t('session.newSession')}</h2>
       <button class="close-btn" onclick={onclose}>x</button>

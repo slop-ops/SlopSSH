@@ -158,7 +158,7 @@
 </script>
 
 {#if open && settings}
-  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) open = false }} role="dialog" aria-modal="true" aria-label={t('settings.title')}>
+  <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) open = false }} onkeydown={(e) => { if (e.key === 'Escape') open = false }} role="dialog" aria-modal="true" aria-label={t('settings.title')} tabindex={-1}>
     <div class="dialog" role="document">
       <div class="dialog-header">
         <h3>{t('settings.title')}</h3>

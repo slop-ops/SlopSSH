@@ -174,4 +174,4 @@ See [crates/slopssh-plugins/README.md](crates/slopssh-plugins/README.md) for the
 
 ## License
 
-Apache-2.0
+GPL-3.0

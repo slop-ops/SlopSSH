@@ -6,7 +6,7 @@
   import ToolsPanel from '../tools/ToolsPanel.svelte'
   import NewSessionDialog from '../session/NewSessionDialog.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
-  import { getTheme, toggleTheme } from '$lib/stores/theme'
+  import { getTheme, toggleTheme } from '$lib/stores/theme.svelte'
   import { t } from '$lib/utils/i18n'
   import { registerHandler, setEnabled as setShortcutsEnabled } from '$lib/utils/shortcuts'
   import { listen } from '@tauri-apps/api/event'

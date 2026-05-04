@@ -5,7 +5,7 @@
   import { WebglAddon } from '@xterm/addon-webgl'
   import { listen } from '@tauri-apps/api/event'
   import { darkTheme, lightTheme } from '$lib/terminal/themes'
-  import { getTheme, getTerminalSettings } from '$lib/stores/theme'
+  import { getTheme, getTerminalSettings } from '$lib/stores/theme.svelte'
   import * as api from '$lib/api/invoke'
   import '@xterm/xterm/css/xterm.css'
 

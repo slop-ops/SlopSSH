@@ -184,6 +184,9 @@ jobs:
           name: windows-artifacts
           path: artifacts/windows
 
+      - name: List downloaded artifacts
+        run: find artifacts -type f
+
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
@@ -192,7 +195,7 @@ jobs:
           prerelease: false
           generate_release_notes: true
           files: |
-            artifacts/linux/*.deb
-            artifacts/linux/*.AppImage
-            artifacts/windows/*.exe
-            artifacts/windows/*.msi
+            artifacts/linux/**/*.deb
+            artifacts/linux/**/*.AppImage
+            artifacts/windows/**/*.exe
+            artifacts/windows/**/*.msi

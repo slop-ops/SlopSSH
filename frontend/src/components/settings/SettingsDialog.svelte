@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte'
   import * as api from '$lib/api/invoke'
-  import { setTheme, persistTheme, setTerminalSettings } from '$lib/stores/theme'
+  import { setTheme, persistTheme, setTerminalSettings } from '$lib/stores/theme.svelte'
   import { loadLocale, t } from '$lib/utils/i18n'
   import type { Settings, EditorInfo, PluginInfo } from '$lib/types'
 

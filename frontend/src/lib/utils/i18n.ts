@@ -1,12 +1,14 @@
+import en from '../../i18n/en.json'
+
 type TranslationMap = Record<string, Record<string, string>>
 
 const RTL_LOCALES = new Set(['ar', 'he', 'fa', 'ur'])
 
-const translations: Record<string, TranslationMap> = {}
+const translations: Record<string, TranslationMap> = { en: en as unknown as TranslationMap }
 
 let currentLocale = 'en'
 
-const loadedLocales = new Set<string>()
+const loadedLocales = new Set<string>(['en'])
 
 export function setLocale(locale: string) {
   currentLocale = locale
@@ -85,5 +87,3 @@ export function useTranslations() {
   }
   return { t: tFn, locale: currentLocale }
 }
-
-loadLocale('en')

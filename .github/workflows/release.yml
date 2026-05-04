@@ -100,12 +100,19 @@ jobs:
 
       - name: Build Tauri app
         working-directory: crates/slopssh-tauri
-        run: cargo tauri build --config '{"build":{"beforeBuildCommand":""}}'
+        run: |
+          for i in 1 2 3; do
+            cargo tauri build --config '{"build":{"beforeBuildCommand":""}}' && break
+            echo "Build attempt $i failed, retrying..."
+            rm -rf target/release/bundle/appimage
+            sleep 5
+          done
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-artifacts
+          if-no-files-found: error
           path: |
             crates/slopssh-tauri/target/release/bundle/deb/*.deb
             crates/slopssh-tauri/target/release/bundle/appimage/*.AppImage

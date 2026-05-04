@@ -114,8 +114,8 @@ jobs:
           name: linux-artifacts
           if-no-files-found: error
           path: |
-            crates/slopssh-tauri/target/release/bundle/deb/*.deb
-            crates/slopssh-tauri/target/release/bundle/appimage/*.AppImage
+            target/release/bundle/deb/*.deb
+            target/release/bundle/appimage/*.AppImage
 
   build-windows:
     name: Build Windows
@@ -159,8 +159,8 @@ jobs:
         with:
           name: windows-artifacts
           path: |
-            crates/slopssh-tauri/target/release/bundle/nsis/*.exe
-            crates/slopssh-tauri/target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
+            target/release/bundle/msi/*.msi
 
   release:
     name: Create GitHub Release

@@ -144,7 +144,8 @@ jobs:
 
       - name: Build Tauri app
         working-directory: crates/slopssh-tauri
-        run: cargo tauri build --config '{\"build\":{\"beforeBuildCommand\":\"\"}}'
+        shell: bash
+        run: cargo tauri build --config '{"build":{"beforeBuildCommand":""}}'
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v7

@@ -93,6 +93,7 @@ pub struct ClientHandler {
     /// Shared map for remote (-R) port forwarding routes.
     pub remote_forwards: RemoteForwardMap,
     /// X11 display used for X11 forwarding.
+    #[cfg(unix)]
     pub x11_display: Option<Arc<super::x11::X11Display>>,
     /// Shared host key check result populated during `check_server_key`.
     pub host_key_check: Arc<tokio::sync::Mutex<HostKeyCheckResult>>,
@@ -106,6 +107,7 @@ impl ClientHandler {
             port,
             host_key_status: HostKeyStatus::Unknown,
             remote_forwards: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            #[cfg(unix)]
             x11_display: None,
             host_key_check: Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default())),
         }
@@ -122,12 +124,13 @@ impl ClientHandler {
             port,
             host_key_status: HostKeyStatus::Unknown,
             remote_forwards,
+            #[cfg(unix)]
             x11_display: None,
             host_key_check: Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default())),
         }
     }
 
-    /// Creates a handler with remote forwards and X11 forwarding enabled.
+    #[cfg(unix)]
     pub fn with_x11(
         host: String,
         port: u16,
@@ -211,6 +214,7 @@ impl client::Handler for ClientHandler {
         Ok(())
     }
 
+    #[cfg(unix)]
     async fn server_channel_open_x11(
         &mut self,
         channel: Channel<client::Msg>,
@@ -275,6 +279,7 @@ pub struct SshConnection {
     pub(crate) session_info: SessionInfo,
     pub(crate) connected: bool,
     pub(crate) remote_forwards: RemoteForwardMap,
+    #[cfg(unix)]
     #[allow(dead_code)]
     pub(crate) x11_display: Option<Arc<super::x11::X11Display>>,
     pub(crate) host_key_check: Arc<tokio::sync::Mutex<HostKeyCheckResult>>,
@@ -324,6 +329,7 @@ impl SshConnection {
             ..Default::default()
         };
 
+        #[cfg(unix)]
         let x11_display = if session_info.x11_forwarding {
             super::x11::X11Display::from_env().map(Arc::new)
         } else {
@@ -332,6 +338,7 @@ impl SshConnection {
 
         let host_key_check = Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default()));
 
+        #[cfg(unix)]
         let handler = if let Some(ref display) = x11_display {
             let mut h = ClientHandler::with_x11(
                 session_info.host.clone(),
@@ -342,6 +349,16 @@ impl SshConnection {
             h.host_key_check = host_key_check.clone();
             h
         } else {
+            let mut h = ClientHandler::with_remote_forwards(
+                session_info.host.clone(),
+                session_info.port,
+                remote_forwards.clone(),
+            );
+            h.host_key_check = host_key_check.clone();
+            h
+        };
+        #[cfg(not(unix))]
+        let handler = {
             let mut h = ClientHandler::with_remote_forwards(
                 session_info.host.clone(),
                 session_info.port,
@@ -439,6 +456,7 @@ impl SshConnection {
             session_info,
             connected: true,
             remote_forwards,
+            #[cfg(unix)]
             x11_display,
             host_key_check,
         })
@@ -474,6 +492,7 @@ impl SshConnection {
             ..Default::default()
         };
 
+        #[cfg(unix)]
         let x11_display = if session_info.x11_forwarding {
             super::x11::X11Display::from_env().map(Arc::new)
         } else {
@@ -482,6 +501,7 @@ impl SshConnection {
 
         let host_key_check = Arc::new(tokio::sync::Mutex::new(HostKeyCheckResult::default()));
 
+        #[cfg(unix)]
         let handler = if let Some(ref display) = x11_display {
             let mut h = ClientHandler::with_x11(
                 session_info.host.clone(),
@@ -492,6 +512,16 @@ impl SshConnection {
             h.host_key_check = host_key_check.clone();
             h
         } else {
+            let mut h = ClientHandler::with_remote_forwards(
+                session_info.host.clone(),
+                session_info.port,
+                remote_forwards.clone(),
+            );
+            h.host_key_check = host_key_check.clone();
+            h
+        };
+        #[cfg(not(unix))]
+        let handler = {
             let mut h = ClientHandler::with_remote_forwards(
                 session_info.host.clone(),
                 session_info.port,
@@ -578,6 +608,7 @@ impl SshConnection {
             session_info,
             connected: true,
             remote_forwards,
+            #[cfg(unix)]
             x11_display,
             host_key_check,
         })

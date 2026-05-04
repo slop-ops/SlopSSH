@@ -9,4 +9,5 @@ pub mod key_manager;
 pub mod port_forward;
 pub mod proxy;
 pub mod session_manager;
+#[cfg(unix)]
 pub mod x11;

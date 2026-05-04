@@ -41,7 +41,7 @@ impl ShellChannel {
         })
     }
 
-    /// Opens a shell channel with both a PTY and X11 forwarding.
+    #[cfg(unix)]
     pub async fn open_with_x11(
         handle: &russh::client::Handle<ClientHandler>,
         cols: u16,

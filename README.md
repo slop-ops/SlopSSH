@@ -2,6 +2,8 @@
 
 A modern SSH/SCP/SFTP client built with **Rust**, **Tauri 2**, and **Svelte 5**.
 
+Its still in development fase and some features do not work, sorry about that.
+
 ## Features
 
 - **SSH Terminal** — Full xterm.js terminal with 256-color support, themes, and copy/paste

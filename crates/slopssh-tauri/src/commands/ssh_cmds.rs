@@ -88,12 +88,12 @@ pub async fn ssh_connect(
         .await
         .map_err(|e| e.to_string())?;
 
-    if save_password.unwrap_or(false) {
-        if let Some(ref pw) = password {
-            let store = state.credential_store.lock().await;
-            if let Err(e) = store.save_credential(&session_id, "password", pw) {
-                tracing::warn!(session_id = %session_id, error = %e, "Failed to save password to credential store");
-            }
+    if save_password.unwrap_or(false)
+        && let Some(ref pw) = password
+    {
+        let store = state.credential_store.lock().await;
+        if let Err(e) = store.save_credential(&session_id, "password", pw) {
+            tracing::warn!(session_id = %session_id, error = %e, "Failed to save password to credential store");
         }
     }
 

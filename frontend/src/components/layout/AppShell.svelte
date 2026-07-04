@@ -37,6 +37,10 @@
   let selectedSessionId = $state('')
   let sidebarSessions = $state<SessionFolder | null>(null)
 
+  let connectedSessionIds = $derived(
+    [...new Set(tabs.filter((t) => !t.isLocal && t.sessionId).map((t) => t.sessionId))]
+  )
+
   async function restoreTabState() {
     try {
       const state = await api.loadTabState()
@@ -79,11 +83,24 @@
 
   function handleConnect(sessionId: string, name: string) {
     activeSessionId = sessionId
+    activeView = 'terminal'
     const channelId = crypto.randomUUID()
     const tabId = crypto.randomUUID()
     tabs = [...tabs, { id: tabId, sessionId, channelId, title: name }]
     activeTabId = tabId
     api.updateTrayTooltip()
+  }
+
+  async function handleDisconnectSession(sessionId: string) {
+    try {
+      await api.sshDisconnect(sessionId)
+    } catch {
+      // session may already be disconnected
+    }
+    const tabsToClose = tabs.filter((t) => t.sessionId === sessionId && !t.isLocal)
+    for (const tab of tabsToClose) {
+      closeTab(tab.id)
+    }
   }
 
   function toggleSidebar() {
@@ -100,6 +117,7 @@
     const tabId = crypto.randomUUID()
     tabs = [...tabs, { id: tabId, sessionId: '', channelId, title: t('app.localTerminal'), isLocal: true }]
     activeTabId = tabId
+    activeView = 'terminal'
   }
 
   function findSessionInTree(folder: SessionFolder, id: string): SessionInfo | null {
@@ -171,12 +189,20 @@
   }
 
   function closeTab(tabId: string) {
+    const closedTab = tabs.find((t) => t.id === tabId)
     tabs = tabs.filter((t) => t.id !== tabId)
     if (activeTabId === tabId) {
       activeTabId = tabs.length > 0 ? tabs[tabs.length - 1].id : ''
     }
-    if (tabs.length === 0) {
-      activeSessionId = ''
+    if (closedTab && closedTab.sessionId && !closedTab.isLocal) {
+      const stillConnected = tabs.some((t) => t.sessionId === closedTab.sessionId && !t.isLocal)
+      if (!stillConnected) {
+        const remainingSessions = [...new Set(tabs.filter((t) => !t.isLocal && t.sessionId).map((t) => t.sessionId))]
+        activeSessionId = remainingSessions.length > 0 ? remainingSessions[remainingSessions.length - 1] : ''
+        if (!activeSessionId) {
+          activeView = 'terminal'
+        }
+      }
     }
     api.updateTrayTooltip()
   }
@@ -184,7 +210,7 @@
   $effect(() => {
     if (tabs.length > 0) {
       const activeTab = tabs.find((t) => t.id === activeTabId)
-      if (activeTab) {
+      if (activeTab && !activeTab.isLocal && activeTab.sessionId) {
         activeSessionId = activeTab.sessionId
       }
     }
@@ -252,14 +278,10 @@
           showSettings = !showSettings
           break
         case 'connect':
-          if (selectedSessionId) {
-            try {
-              const sessions = await api.listSessions()
-              const session = findSessionInTree(sessions, selectedSessionId)
-              if (session) await api.sshConnect(session.id)
-              handleConnect(session!.id, session!.name || session!.host)
-            } catch (e) {
-              console.error('Connect failed:', e)
+          if (selectedSessionId && sidebarSessions) {
+            const session = findSessionInTree(sidebarSessions, selectedSessionId)
+            if (session) {
+              handleConnect(session.id, session.name || session.host)
             }
           } else {
             showNewSession = true
@@ -269,6 +291,10 @@
           if (activeSessionId) {
             try {
               await api.sshDisconnect(activeSessionId)
+              const tabsToClose = tabs.filter((t) => t.sessionId === activeSessionId && !t.isLocal)
+              for (const tab of tabsToClose) {
+                closeTab(tab.id)
+              }
             } catch (e) {
               console.error('Disconnect failed:', e)
             }
@@ -281,6 +307,7 @@
               try {
                 const { id, last_connected, ...rest } = session
                 await api.createSession({ ...rest, name: rest.name + ' (copy)' })
+                sidebarSessions = await api.listSessions()
               } catch (e) {
                 console.error('Duplicate failed:', e)
               }
@@ -291,6 +318,7 @@
           if (selectedSessionId) {
             try {
               await api.deleteSession(selectedSessionId)
+              sidebarSessions = await api.listSessions()
             } catch (e) {
               console.error('Delete failed:', e)
             }
@@ -362,7 +390,7 @@
   <div class="app-shell" role="application" aria-label={t('app.title')}>
   {#if showSidebar}
     <aside class="sidebar" role="navigation" aria-label={t('sidebar.sessionList')}>
-      <Sidebar onConnect={handleConnect} onNewSession={() => (showNewSession = true)} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} />
+      <Sidebar onConnect={handleConnect} onDisconnect={handleDisconnectSession} onNewSession={() => (showNewSession = true)} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} {tabs} {connectedSessionIds} />
     </aside>
   {/if}
   <main class="content" role="main">

@@ -4,24 +4,36 @@
   import { t } from '$lib/utils/i18n'
   import type { SessionFolder, SessionInfo } from '$lib/types'
 
+  interface Tab {
+    id: string
+    sessionId: string
+    channelId: string
+    title: string
+    isLocal?: boolean
+  }
+
   let {
     onConnect,
+    onDisconnect,
     onNewSession,
     showImport = $bindable(false),
     selectedSessionId = $bindable(''),
     sessions: sessions = $bindable<SessionFolder | null>(null),
+    tabs = [],
+    connectedSessionIds = [],
   }: {
     onConnect: (id: string, name: string) => void
+    onDisconnect: (sessionId: string) => void
     onNewSession: () => void
     showImport?: boolean
     selectedSessionId?: string
     sessions?: SessionFolder | null
+    tabs?: Tab[]
+    connectedSessionIds?: string[]
   } = $props()
 
-  let password = $state('')
   let connectingId = $state('')
   let error = $state('')
-  let editingId = $state<string | null>(null)
 
   $effect(() => {
     loadSessions()
@@ -40,8 +52,7 @@
     connectingId = id
     error = ''
     try {
-      await api.sshConnect(id, password || undefined)
-      password = ''
+      await api.sshConnect(id)
       onConnect?.(id, name)
     } catch (e) {
       error = String(e)
@@ -57,6 +68,27 @@
     } catch (e) {
       error = String(e)
     }
+  }
+
+  function getSessionName(sessionId: string): string {
+    if (!sessions) return sessionId
+    const found = findSessionInTree(sessions, sessionId)
+    return found?.name || found?.host || sessionId
+  }
+
+  function findSessionInTree(folder: SessionFolder, id: string): SessionInfo | null {
+    for (const item of folder.items) {
+      if (item.id === id) return item
+    }
+    for (const sub of folder.folders) {
+      const found = findSessionInTree(sub, id)
+      if (found) return found
+    }
+    return null
+  }
+
+  function getTabCount(sessionId: string): number {
+    return tabs.filter((t) => t.sessionId === sessionId && !t.isLocal).length
   }
 
   interface FlatItem {
@@ -85,66 +117,70 @@
 </script>
 
 <div class="sidebar-content">
-  <div class="header">
-    <h2>{t('sidebar.sessions')}</h2>
-    <div class="header-actions">
-      <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')} aria-label="Import SSH config">&#8595;</button>
-      <button class="add-btn" onclick={onNewSession} aria-label="Add session">+</button>
-    </div>
-  </div>
-
-  {#if error}
-    <div class="error">{error}</div>
-  {/if}
-
-  {#if sessions}
-    {@const flatItems = flattenSessions(sessions)}
-    {#if flatItems.length === 0}
-      <div class="empty">
-        <p>{t('sidebar.noSessions')}</p>
-        <button class="empty-add" onclick={onNewSession}>{t('sidebar.addSession')}</button>
-      </div>
-    {:else}
-      {#each flatItems as { item, depth }}
-        {#if item.isFolder}
-          <div class="folder" style:padding-left="{depth * 12 + 12}px">
-            <span class="folder-icon">{'{'}{'}'}</span>
-            <span class="folder-name">{item.name}</span>
-          </div>
-        {:else}
-          <div class="session-item" style:padding-left="{depth * 12 + 12}px">
-            <button class="session-info" onclick={() => connect(item.id, item.name || item.host)}>
-              <span class="session-name">{item.name || item.host}</span>
-              <span class="session-host">{item.username}@{item.host}:{item.port}</span>
-              {#if connectingId === item.id}
-                <span class="connecting">{t('sidebar.connecting')}</span>
-              {/if}
-            </button>
-            <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }} aria-label="Delete session">
-              x
-            </button>
-          </div>
-        {/if}
+  {#if connectedSessionIds.length > 0}
+    <div class="section">
+      <h2 class="section-title">{t('sidebar.activeSessions')}</h2>
+      {#each connectedSessionIds as sessionId}
+        <div class="active-session" class:selected={selectedSessionId === sessionId}>
+          <button class="active-session-info" onclick={() => { selectedSessionId = sessionId }}>
+            <span class="active-dot"></span>
+            <span class="active-name">{getSessionName(sessionId)}</span>
+            <span class="active-tabs">{getTabCount(sessionId)}</span>
+          </button>
+          <button class="disconnect-btn" onclick={() => onDisconnect(sessionId)} title={t('sidebar.disconnect')} aria-label="Disconnect session">
+            &#x2715;
+          </button>
+        </div>
       {/each}
-    {/if}
-  {:else}
-    <div class="loading">{t('sidebar.loading')}</div>
+    </div>
   {/if}
 
-  <div class="password-section">
-    <label for="password">{t('sidebar.password')}</label>
-    <input
-      id="password"
-      type="password"
-      bind:value={password}
-      placeholder={t('sidebar.enterPassword')}
-      onkeydown={(e) => {
-        if (e.key === 'Enter') {
-          const firstItem = sessions?.items?.[0]
-          if (firstItem) connect(firstItem.id, firstItem.name || firstItem.host)
-        }
-      }}
-    />
+  <div class="section">
+    <div class="header">
+      <h2>{t('sidebar.sessions')}</h2>
+      <div class="header-actions">
+        <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')} aria-label="Import SSH config">&#8595;</button>
+        <button class="add-btn" onclick={onNewSession} aria-label="Add session">+</button>
+      </div>
+    </div>
+
+    {#if error}
+      <div class="error">{error}</div>
+    {/if}
+
+    {#if sessions}
+      {@const flatItems = flattenSessions(sessions)}
+      {#if flatItems.length === 0}
+        <div class="empty">
+          <p>{t('sidebar.noSessions')}</p>
+          <button class="empty-add" onclick={onNewSession}>{t('sidebar.addSession')}</button>
+        </div>
+      {:else}
+        {#each flatItems as { item, depth }}
+          {#if item.isFolder}
+            <div class="folder" style:padding-left="{depth * 12 + 12}px">
+              <span class="folder-icon">{'{'}{'}'}</span>
+              <span class="folder-name">{item.name}</span>
+            </div>
+          {:else}
+            <div class="session-item" style:padding-left="{depth * 12 + 12}px" class:selected={selectedSessionId === item.id} class:connected={connectedSessionIds.includes(item.id)}>
+              <button class="session-info" onclick={() => { selectedSessionId = item.id; connect(item.id, item.name || item.host) }}>
+                <span class="session-name">{item.name || item.host}</span>
+                <span class="session-host">{item.username}@{item.host}:{item.port}</span>
+                {#if connectingId === item.id}
+                  <span class="connecting">{t('sidebar.connecting')}</span>
+                {/if}
+              </button>
+              <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }} aria-label="Delete session">
+                x
+              </button>
+            </div>
+          {/if}
+        {/each}
+      {/if}
+    {:else}
+      <div class="loading">{t('sidebar.loading')}</div>
+    {/if}
   </div>
 </div>
 
@@ -158,6 +194,21 @@
     display: flex;
     flex-direction: column;
     height: 100%;
+    overflow-y: auto;
+  }
+
+  .section {
+    margin-bottom: 8px;
+  }
+
+  .section-title {
+    margin: 0 0 6px 0;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 600;
+    padding: 0 4px;
   }
 
   .header {
@@ -220,6 +271,81 @@
     color: var(--text-primary);
   }
 
+  .active-session {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-radius: 6px;
+    margin-bottom: 2px;
+    transition: background 0.15s;
+  }
+
+  .active-session:hover {
+    background: var(--bg-hover);
+  }
+
+  .active-session.selected {
+    background: var(--bg-active);
+  }
+
+  .active-session-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    cursor: pointer;
+    flex: 1;
+    min-width: 0;
+  }
+
+  .active-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    flex-shrink: 0;
+  }
+
+  .active-name {
+    color: var(--text-primary);
+    font-size: 13px;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    flex: 1;
+  }
+
+  .active-tabs {
+    font-size: 10px;
+    color: var(--text-tertiary);
+    background: var(--bg-hover);
+    padding: 1px 6px;
+    border-radius: 10px;
+    flex-shrink: 0;
+  }
+
+  .disconnect-btn {
+    background: none;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 4px 8px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s;
+  }
+
+  .active-session:hover .disconnect-btn {
+    opacity: 1;
+  }
+
+  .disconnect-btn:hover {
+    color: var(--error);
+    background: var(--error-bg);
+  }
+
   .session-item {
     display: flex;
     align-items: center;
@@ -231,6 +357,14 @@
 
   .session-item:hover {
     background: var(--bg-hover);
+  }
+
+  .session-item.selected {
+    background: var(--bg-active);
+  }
+
+  .session-item.connected {
+    opacity: 0.5;
   }
 
   .session-info {
@@ -333,38 +467,5 @@
     border-radius: 6px;
     font-size: 12px;
     margin-bottom: 8px;
-  }
-
-  .password-section {
-    margin-top: auto;
-    padding-top: 12px;
-    border-top: 1px solid var(--border-primary);
-  }
-
-  .password-section label {
-    display: block;
-    font-size: 11px;
-    color: var(--text-tertiary);
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 4px;
-  }
-
-  .password-section input {
-    width: 100%;
-    box-sizing: border-box;
-    background: var(--bg-input);
-    border: 1px solid var(--border-primary);
-    border-radius: 6px;
-    padding: 6px 10px;
-    color: var(--text-primary);
-    font-size: 13px;
-    font-family: inherit;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-
-  .password-section input:focus {
-    border-color: var(--border-active);
   }
 </style>

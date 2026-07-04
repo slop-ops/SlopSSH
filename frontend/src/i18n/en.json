@@ -9,13 +9,17 @@
     "newTab": "Tab {count}"
   },
   "sidebar": {
-    "sessions": "Sessions",
+    "sessions": "Saved Hosts",
+    "activeSessions": "Active Sessions",
+    "sessionList": "Session list",
     "noSessions": "No sessions configured",
     "addSession": "+ Add Session",
     "password": "Password",
     "enterPassword": "Enter password...",
     "connecting": "Connecting...",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "disconnect": "Disconnect",
+    "importSshConfig": "Import SSH Config"
   },
   "toolbar": {
     "newSession": "+ New Session",

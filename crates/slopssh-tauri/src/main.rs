@@ -20,8 +20,7 @@ use commands::{
     save_tab_state, sftp_connect, sftp_disconnect, sftp_download_sudo, sftp_home, sftp_list_dir,
     sftp_mkdir, sftp_read_file, sftp_remove, sftp_rename, sftp_stat, sftp_upload_sudo,
     sftp_write_file, ssh_close_shell, ssh_connect, ssh_disconnect, ssh_is_connected,
-    ssh_open_shell,
-    ssh_resize_shell, ssh_write_shell, transfer_cancel, transfer_clear_completed,
+    ssh_open_shell, ssh_resize_shell, ssh_write_shell, transfer_cancel, transfer_clear_completed,
     transfer_download, transfer_list, transfer_upload, update_session, update_snippet,
     update_tray_tooltip,
 };

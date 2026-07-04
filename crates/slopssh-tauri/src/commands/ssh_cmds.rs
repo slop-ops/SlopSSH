@@ -46,10 +46,14 @@ pub async fn ssh_connect(
             })?;
             let passphrase = if let Some(ref pk) = session_info.passphrase_key {
                 let store = state.credential_store.lock().await;
-                store.get_credential(pk, "passphrase").map_err(|e| e.to_string())?
+                store
+                    .get_credential(pk, "passphrase")
+                    .map_err(|e| e.to_string())?
             } else {
                 let store = state.credential_store.lock().await;
-                store.get_credential(&session_id, "passphrase").map_err(|e| e.to_string())?
+                store
+                    .get_credential(&session_id, "passphrase")
+                    .map_err(|e| e.to_string())?
             };
             slopssh_core::ssh::auth::AuthMethod::PublicKey {
                 key_path,
@@ -97,7 +101,10 @@ pub async fn ssh_connect(
 }
 
 #[tauri::command]
-pub async fn ssh_is_connected(state: State<'_, AppState>, session_id: String) -> Result<bool, String> {
+pub async fn ssh_is_connected(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> Result<bool, String> {
     let ssh_manager = state.ssh_manager.lock().await;
     Ok(ssh_manager.get_handle(&session_id).is_some())
 }

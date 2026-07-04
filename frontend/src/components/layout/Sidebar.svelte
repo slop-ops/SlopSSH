@@ -22,6 +22,7 @@
     sessions: sessions = $bindable<SessionFolder | null>(null),
     tabs = [],
     connectedSessionIds = [],
+    collapsed = false,
   }: {
     onConnect: (id: string, name: string) => void
     onDisconnect: (sessionId: string) => void
@@ -31,6 +32,7 @@
     sessions?: SessionFolder | null
     tabs?: Tab[]
     connectedSessionIds?: string[]
+    collapsed?: boolean
   } = $props()
 
   let connectingId = $state('')
@@ -118,6 +120,15 @@
     return tabs.filter((t) => t.sessionId === sessionId && !t.isLocal).length
   }
 
+  function getSessionInitials(sessionId: string): string {
+    const name = getSessionName(sessionId)
+    const parts = name.split(/[\s._-]+/)
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[1][0]).toUpperCase()
+    }
+    return name.slice(0, 2).toUpperCase()
+  }
+
   interface FlatItem {
     id: string
     name: string
@@ -143,72 +154,88 @@
   }
 </script>
 
-<div class="sidebar-content">
-  {#if connectedSessionIds.length > 0}
+<div class="sidebar-content" class:collapsed>
+  {#if collapsed}
+    <div class="collapsed-items">
+      {#if connectedSessionIds.length > 0}
+        {#each connectedSessionIds as sessionId}
+          <button class="collapsed-item active" class:selected={selectedSessionId === sessionId} onclick={() => { selectedSessionId = sessionId }} title={getSessionName(sessionId)}>
+            <span class="collapsed-dot"></span>
+          </button>
+        {/each}
+        <div class="collapsed-divider"></div>
+      {/if}
+      <button class="collapsed-item" onclick={onNewSession} title={t('sidebar.addSession')}>
+        <span class="collapsed-icon">+</span>
+      </button>
+    </div>
+  {:else}
+    {#if connectedSessionIds.length > 0}
+      <div class="section">
+        <h2 class="section-title">{t('sidebar.activeSessions')}</h2>
+        {#each connectedSessionIds as sessionId}
+          <div class="active-session" class:selected={selectedSessionId === sessionId}>
+            <button class="active-session-info" onclick={() => { selectedSessionId = sessionId }}>
+              <span class="active-dot"></span>
+              <span class="active-name">{getSessionName(sessionId)}</span>
+              <span class="active-tabs">{getTabCount(sessionId)}</span>
+            </button>
+            <button class="disconnect-btn" onclick={() => onDisconnect(sessionId)} title={t('sidebar.disconnect')} aria-label="Disconnect session">
+              &#x2715;
+            </button>
+          </div>
+        {/each}
+      </div>
+    {/if}
+
     <div class="section">
-      <h2 class="section-title">{t('sidebar.activeSessions')}</h2>
-      {#each connectedSessionIds as sessionId}
-        <div class="active-session" class:selected={selectedSessionId === sessionId}>
-          <button class="active-session-info" onclick={() => { selectedSessionId = sessionId }}>
-            <span class="active-dot"></span>
-            <span class="active-name">{getSessionName(sessionId)}</span>
-            <span class="active-tabs">{getTabCount(sessionId)}</span>
-          </button>
-          <button class="disconnect-btn" onclick={() => onDisconnect(sessionId)} title={t('sidebar.disconnect')} aria-label="Disconnect session">
-            &#x2715;
-          </button>
+      <div class="header">
+        <h2>{t('sidebar.sessions')}</h2>
+        <div class="header-actions">
+          <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')} aria-label="Import SSH config">&#8595;</button>
+          <button class="add-btn" onclick={onNewSession} aria-label="Add session">+</button>
         </div>
-      {/each}
+      </div>
+
+      {#if error}
+        <div class="error">{error}</div>
+      {/if}
+
+      {#if sessions}
+        {@const flatItems = flattenSessions(sessions)}
+        {#if flatItems.length === 0}
+          <div class="empty">
+            <p>{t('sidebar.noSessions')}</p>
+            <button class="empty-add" onclick={onNewSession}>{t('sidebar.addSession')}</button>
+          </div>
+        {:else}
+          {#each flatItems as { item, depth }}
+            {#if item.isFolder}
+              <div class="folder" style:padding-left="{depth * 12 + 12}px">
+                <span class="folder-icon">{'{'}{'}'}</span>
+                <span class="folder-name">{item.name}</span>
+              </div>
+            {:else}
+              <div class="session-item" style:padding-left="{depth * 12 + 12}px" class:selected={selectedSessionId === item.id} class:connected={connectedSessionIds.includes(item.id)}>
+                <button class="session-info" onclick={() => { selectedSessionId = item.id; connect(item.id, item.name || item.host) }}>
+                  <span class="session-name">{item.name || item.host}</span>
+                  <span class="session-host">{item.username}@{item.host}:{item.port}</span>
+                  {#if connectingId === item.id}
+                    <span class="connecting">{t('sidebar.connecting')}</span>
+                  {/if}
+                </button>
+                <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }} aria-label="Delete session">
+                  x
+                </button>
+              </div>
+            {/if}
+          {/each}
+        {/if}
+      {:else}
+        <div class="loading">{t('sidebar.loading')}</div>
+      {/if}
     </div>
   {/if}
-
-  <div class="section">
-    <div class="header">
-      <h2>{t('sidebar.sessions')}</h2>
-      <div class="header-actions">
-        <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')} aria-label="Import SSH config">&#8595;</button>
-        <button class="add-btn" onclick={onNewSession} aria-label="Add session">+</button>
-      </div>
-    </div>
-
-    {#if error}
-      <div class="error">{error}</div>
-    {/if}
-
-    {#if sessions}
-      {@const flatItems = flattenSessions(sessions)}
-      {#if flatItems.length === 0}
-        <div class="empty">
-          <p>{t('sidebar.noSessions')}</p>
-          <button class="empty-add" onclick={onNewSession}>{t('sidebar.addSession')}</button>
-        </div>
-      {:else}
-        {#each flatItems as { item, depth }}
-          {#if item.isFolder}
-            <div class="folder" style:padding-left="{depth * 12 + 12}px">
-              <span class="folder-icon">{'{'}{'}'}</span>
-              <span class="folder-name">{item.name}</span>
-            </div>
-          {:else}
-            <div class="session-item" style:padding-left="{depth * 12 + 12}px" class:selected={selectedSessionId === item.id} class:connected={connectedSessionIds.includes(item.id)}>
-              <button class="session-info" onclick={() => { selectedSessionId = item.id; connect(item.id, item.name || item.host) }}>
-                <span class="session-name">{item.name || item.host}</span>
-                <span class="session-host">{item.username}@{item.host}:{item.port}</span>
-                {#if connectingId === item.id}
-                  <span class="connecting">{t('sidebar.connecting')}</span>
-                {/if}
-              </button>
-              <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }} aria-label="Delete session">
-                x
-              </button>
-            </div>
-          {/if}
-        {/each}
-      {/if}
-    {:else}
-      <div class="loading">{t('sidebar.loading')}</div>
-    {/if}
-  </div>
 </div>
 
 {#if showImport}
@@ -230,6 +257,62 @@
     flex-direction: column;
     height: 100%;
     overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  .sidebar-content.collapsed {
+    padding: 8px 4px;
+    align-items: center;
+  }
+
+  .collapsed-items {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding-top: 4px;
+  }
+
+  .collapsed-item {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s;
+    position: relative;
+  }
+
+  .collapsed-item:hover {
+    background: var(--bg-hover);
+  }
+
+  .collapsed-item.selected {
+    background: var(--bg-active);
+  }
+
+  .collapsed-item.active .collapsed-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--success);
+  }
+
+  .collapsed-icon {
+    color: var(--text-secondary);
+    font-size: 16px;
+    font-weight: 600;
+  }
+
+  .collapsed-divider {
+    width: 24px;
+    height: 1px;
+    background: var(--border-primary);
+    margin: 4px 0;
   }
 
   .section {

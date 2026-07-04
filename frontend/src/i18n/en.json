@@ -29,6 +29,8 @@
     "settings": "Settings",
     "hideSidebar": "Hide sidebar",
     "showSidebar": "Show sidebar",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar",
     "switchToLight": "Switch to light theme",
     "switchToDark": "Switch to dark theme",
     "openSettings": "Open settings"
@@ -78,7 +80,12 @@
     "reconnecting": "Reconnecting...",
     "openLocal": "Open local terminal",
     "noMatches": "No matches",
-    "noSnippets": "No snippets yet"
+    "noSnippets": "No snippets yet",
+    "noSplit": "No split",
+    "splitVertical": "Split vertically",
+    "splitHorizontal": "Split horizontally",
+    "splitSecondary": "Secondary pane",
+    "splitHint": "Select a tab to open here"
   },
   "files": {
     "addressBar": "Path",

@@ -220,7 +220,7 @@ Key = `${sessionId}:${toolId}`
 
 ---
 
-## Sprint 5: UI Polish (Issues 3, 4, 5)
+## Sprint 5: UI Polish (Issues 3, 4, 5) ✅ COMPLETED
 
 **Goal**: Sidebar minimize, dark theme fixes, split session.
 
@@ -304,10 +304,10 @@ Sprint 4 (Terminal)  ✅ COMPLETED
   ├── 4.3 Fix UTF-8 ✅
   └── 4.4 Shell cleanup ✅
 
-Sprint 5 (UI Polish)  ← Depends on Sprint 1
-  ├── 5.1 Sidebar collapse
-  ├── 5.2 Dark theme
-  └── 5.3 Split session
+Sprint 5 (UI Polish)  ✅ COMPLETED
+  ├── 5.1 Sidebar collapse ✅
+  ├── 5.2 Dark theme ✅
+  └── 5.3 Split session ✅
 
 Sprint 6 (Cleanup)  ← After all others
   ├── 6.1 Tab restore

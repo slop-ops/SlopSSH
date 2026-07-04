@@ -22,6 +22,7 @@
   }
 
   let showSidebar = $state(true)
+  let sidebarCollapsed = $state(false)
   let tabs: Tab[] = $state([])
   let activeTabId = $state('')
   let showNewSession = $state(false)
@@ -36,6 +37,9 @@
   let appVersion = $state('')
   let selectedSessionId = $state('')
   let sidebarSessions = $state<SessionFolder | null>(null)
+  let splitMode = $state<'none' | 'horizontal' | 'vertical'>('none')
+  let splitActivePane = $state<'primary' | 'secondary'>('primary')
+  let splitTabId = $state('')
 
   let connectedSessionIds = $derived(
     [...new Set(tabs.filter((t) => !t.isLocal && t.sessionId).map((t) => t.sessionId))]
@@ -389,15 +393,20 @@
 
   <div class="app-shell" role="application" aria-label={t('app.title')}>
   {#if showSidebar}
-    <aside class="sidebar" role="navigation" aria-label={t('sidebar.sessionList')}>
-      <Sidebar onConnect={handleConnect} onDisconnect={handleDisconnectSession} onNewSession={() => (showNewSession = true)} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} {tabs} {connectedSessionIds} />
+    <aside class="sidebar" class:collapsed={sidebarCollapsed} role="navigation" aria-label={t('sidebar.sessionList')}>
+      <Sidebar onConnect={handleConnect} onDisconnect={handleDisconnectSession} onNewSession={() => (showNewSession = true)} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} {tabs} {connectedSessionIds} collapsed={sidebarCollapsed} />
     </aside>
   {/if}
   <main class="content" role="main">
     <div class="toolbar" role="toolbar" aria-label={t('toolbar.mainToolbar')}>
-      <button class="toolbar-btn" onclick={toggleSidebar} aria-label={showSidebar ? t('toolbar.hideSidebar') : t('toolbar.showSidebar')} aria-expanded={showSidebar}>
-        {showSidebar ? '<' : '>'}
+      <button class="toolbar-btn" onclick={() => { sidebarCollapsed = !sidebarCollapsed; if (!showSidebar) showSidebar = true }} aria-label={sidebarCollapsed ? t('toolbar.expandSidebar') : t('toolbar.collapseSidebar')}>
+        {sidebarCollapsed ? '&#9654;' : '&#9664;'}
       </button>
+      {#if !sidebarCollapsed}
+        <button class="toolbar-btn" onclick={toggleSidebar} aria-label={showSidebar ? t('toolbar.hideSidebar') : t('toolbar.showSidebar')} aria-expanded={showSidebar}>
+          {showSidebar ? '&#9664;' : '&#9654;'}
+        </button>
+      {/if}
       <button class="toolbar-btn" onclick={() => (showNewSession = true)} aria-label={t('toolbar.newSession')}>{t('toolbar.newSession')}</button>
       {#if activeSessionId}
         <div class="toolbar-separator" role="separator"></div>
@@ -418,7 +427,27 @@
     {#if activeSessionId}
       <div class="main-views">
         <div class="view" class:hidden={activeView !== 'terminal'} role="tabpanel" aria-label={t('toolbar.terminal')}>
-          <TerminalHolder bind:tabs bind:activeTabId />
+          <div class="terminal-controls">
+            <button class="split-btn" class:active={splitMode === 'none'} onclick={() => (splitMode = 'none')} title={t('terminal.noSplit')}>&#9638;</button>
+            <button class="split-btn" class:active={splitMode === 'vertical'} onclick={() => (splitMode = 'vertical')} title={t('terminal.splitVertical')}>&#9553;</button>
+            <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => (splitMode = 'horizontal')} title={t('terminal.splitHorizontal')}>&#9552;</button>
+          </div>
+          {#if splitMode === 'none'}
+            <TerminalHolder bind:tabs bind:activeTabId />
+          {:else}
+            <div class="split-container" class:horizontal={splitMode === 'horizontal'} class:vertical={splitMode === 'vertical'}>
+              <div class="split-pane" class:active-pane={splitActivePane === 'primary'} onclick={() => (splitActivePane = 'primary')}>
+                <TerminalHolder bind:tabs bind:activeTabId />
+              </div>
+              <div class="split-divider"></div>
+              <div class="split-pane" class:active-pane={splitActivePane === 'secondary'} onclick={() => (splitActivePane = 'secondary')}>
+                <div class="split-empty">
+                  <p>{t('terminal.splitSecondary')}</p>
+                  <p class="hint">{t('terminal.splitHint')}</p>
+                </div>
+              </div>
+            </div>
+          {/if}
         </div>
         <div class="view" class:hidden={activeView !== 'files'} role="tabpanel" aria-label={t('toolbar.fileBrowser')}>
           <div class="files-layout">
@@ -476,11 +505,17 @@
 
   .sidebar {
     width: 260px;
-    min-width: 200px;
+    min-width: 48px;
     border-right: 1px solid var(--border-primary);
     overflow-y: auto;
+    overflow-x: hidden;
     background: var(--bg-secondary);
     flex-shrink: 0;
+    transition: width 0.2s ease;
+  }
+
+  .sidebar.collapsed {
+    width: 48px;
   }
 
   .content {
@@ -552,6 +587,104 @@
 
   .view.hidden {
     display: none;
+  }
+
+  .terminal-controls {
+    display: flex;
+    gap: 2px;
+    padding: 4px 8px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-primary);
+    flex-shrink: 0;
+  }
+
+  .split-btn {
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    color: var(--text-tertiary);
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .split-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .split-btn.active {
+    background: var(--accent-bg);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .split-container {
+    display: flex;
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .split-container.vertical {
+    flex-direction: row;
+  }
+
+  .split-container.horizontal {
+    flex-direction: column;
+  }
+
+  .split-pane {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .split-pane.active-pane {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+
+  .split-divider {
+    flex-shrink: 0;
+    background: var(--border-primary);
+  }
+
+  .split-container.vertical .split-divider {
+    width: 3px;
+    cursor: col-resize;
+  }
+
+  .split-container.horizontal .split-divider {
+    height: 3px;
+    cursor: row-resize;
+  }
+
+  .split-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--text-secondary);
+    gap: 8px;
+    background: var(--bg-primary);
+  }
+
+  .split-empty p {
+    margin: 0;
+    font-size: 13px;
+  }
+
+  .split-empty .hint {
+    font-size: 11px;
+    color: var(--text-tertiary);
   }
 
   .files-layout {

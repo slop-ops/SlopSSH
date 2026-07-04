@@ -55,6 +55,10 @@ export async function sshDisconnect(sessionId: string): Promise<void> {
   return invoke('ssh_disconnect', { sessionId })
 }
 
+export async function sshIsConnected(sessionId: string): Promise<boolean> {
+  return invoke<boolean>('ssh_is_connected', { sessionId })
+}
+
 export async function sshOpenShell(sessionId: string, channelId: string, cols: number, rows: number): Promise<void> {
   return invoke('ssh_open_shell', { sessionId, channelId, cols, rows })
 }

@@ -14,10 +14,12 @@
     sessionId,
     channelId = crypto.randomUUID(),
     onSendSnippet,
+    onDisconnect,
   }: {
     sessionId: string
     channelId?: string
     onSendSnippet?: (handler: (cmd: string) => void) => void
+    onDisconnect?: () => void
   } = $props()
 
   let terminalEl: HTMLDivElement | undefined = $state()
@@ -145,6 +147,7 @@
     disconnected = true
     error = msg
     terminal?.writeln(`\r\n\x1b[31m--- Disconnected: ${msg}\x1b[0m`)
+    onDisconnect?.()
   }
 
   async function reconnect() {

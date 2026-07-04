@@ -40,6 +40,7 @@
   let splitMode = $state<'none' | 'horizontal' | 'vertical'>('none')
   let splitActivePane = $state<'primary' | 'secondary'>('primary')
   let splitTabId = $state('')
+  let disconnectedSessionIds = $state<Set<string>>(new Set())
 
   let connectedSessionIds = $derived(
     [...new Set(tabs.filter((t) => !t.isLocal && t.sessionId).map((t) => t.sessionId))]
@@ -49,17 +50,38 @@
     try {
       const state = await api.loadTabState()
       if (state?.tabs?.length) {
-        const restored: Tab[] = state.tabs.map((st: SavedTab) => ({
-          id: crypto.randomUUID(),
-          sessionId: st.session_id,
-          channelId: st.channel_id,
-          title: st.title,
-          isLocal: st.is_local,
-        }))
-        tabs = restored
-        if (restored.length > 0) {
-          activeTabId = restored[0].id
-          activeSessionId = restored[0].sessionId
+        const validTabs: Tab[] = []
+        for (const st of state.tabs) {
+          if (st.is_local) {
+            validTabs.push({
+              id: crypto.randomUUID(),
+              sessionId: st.session_id,
+              channelId: st.channel_id,
+              title: st.title,
+              isLocal: true,
+            })
+          } else if (st.session_id) {
+            try {
+              const connected = await api.sshIsConnected(st.session_id)
+              if (connected) {
+                validTabs.push({
+                  id: crypto.randomUUID(),
+                  sessionId: st.session_id,
+                  channelId: crypto.randomUUID(),
+                  title: st.title,
+                })
+              }
+            } catch {
+              // session not connected, skip
+            }
+          }
+        }
+        tabs = validTabs
+        if (validTabs.length > 0) {
+          const prevActive = state.active_tab_id
+          const match = prevActive ? validTabs.find((t) => t.sessionId === prevActive) : null
+          activeTabId = match ? match.id : validTabs[0].id
+          activeSessionId = (match || validTabs[0]).sessionId
         }
       }
     } catch {
@@ -88,6 +110,8 @@
   function handleConnect(sessionId: string, name: string) {
     activeSessionId = sessionId
     activeView = 'terminal'
+    disconnectedSessionIds.delete(sessionId)
+    disconnectedSessionIds = disconnectedSessionIds
     const channelId = crypto.randomUUID()
     const tabId = crypto.randomUUID()
     tabs = [...tabs, { id: tabId, sessionId, channelId, title: name }]
@@ -101,10 +125,17 @@
     } catch {
       // session may already be disconnected
     }
+    disconnectedSessionIds.delete(sessionId)
+    disconnectedSessionIds = disconnectedSessionIds
     const tabsToClose = tabs.filter((t) => t.sessionId === sessionId && !t.isLocal)
     for (const tab of tabsToClose) {
       closeTab(tab.id)
     }
+  }
+
+  function handleSessionDisconnect(sessionId: string) {
+    disconnectedSessionIds.add(sessionId)
+    disconnectedSessionIds = disconnectedSessionIds
   }
 
   function toggleSidebar() {
@@ -394,7 +425,7 @@
   <div class="app-shell" role="application" aria-label={t('app.title')}>
   {#if showSidebar}
     <aside class="sidebar" class:collapsed={sidebarCollapsed} role="navigation" aria-label={t('sidebar.sessionList')}>
-      <Sidebar onConnect={handleConnect} onDisconnect={handleDisconnectSession} onNewSession={() => (showNewSession = true)} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} {tabs} {connectedSessionIds} collapsed={sidebarCollapsed} />
+      <Sidebar onConnect={handleConnect} onDisconnect={handleDisconnectSession} onNewSession={() => (showNewSession = true)} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} {tabs} {connectedSessionIds} {disconnectedSessionIds} collapsed={sidebarCollapsed} />
     </aside>
   {/if}
   <main class="content" role="main">
@@ -433,11 +464,11 @@
             <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => (splitMode = 'horizontal')} title={t('terminal.splitHorizontal')}>&#9552;</button>
           </div>
           {#if splitMode === 'none'}
-            <TerminalHolder bind:tabs bind:activeTabId />
+            <TerminalHolder bind:tabs bind:activeTabId onSessionDisconnect={handleSessionDisconnect} />
           {:else}
             <div class="split-container" class:horizontal={splitMode === 'horizontal'} class:vertical={splitMode === 'vertical'}>
               <div class="split-pane" class:active-pane={splitActivePane === 'primary'} onclick={() => (splitActivePane = 'primary')}>
-                <TerminalHolder bind:tabs bind:activeTabId />
+                <TerminalHolder bind:tabs bind:activeTabId onSessionDisconnect={handleSessionDisconnect} />
               </div>
               <div class="split-divider"></div>
               <div class="split-pane" class:active-pane={splitActivePane === 'secondary'} onclick={() => (splitActivePane = 'secondary')}>

@@ -12,7 +12,7 @@
     isLocal?: boolean
   }
 
-  let { tabs = $bindable(), activeTabId = $bindable() }: { tabs: Tab[]; activeTabId: string } = $props()
+  let { tabs = $bindable(), activeTabId = $bindable(), onSessionDisconnect }: { tabs: Tab[]; activeTabId: string; onSessionDisconnect?: (sessionId: string) => void } = $props()
 
   let showSnippets = $state(false)
   let snippetHandlers: Map<string, (cmd: string) => void> = $state(new Map())
@@ -86,6 +86,7 @@
                 sessionId={tab.sessionId}
                 channelId={tab.channelId}
                 onSendSnippet={(handler) => registerSnippetHandler(tab.id, handler)}
+                onDisconnect={() => onSessionDisconnect?.(tab.sessionId)}
               />
             {/if}
           </div>

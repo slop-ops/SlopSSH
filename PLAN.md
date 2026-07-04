@@ -252,7 +252,7 @@ Key = `${sessionId}:${toolId}`
 
 ---
 
-## Sprint 6: Remaining Fixes & Cleanup
+## Sprint 6: Remaining Fixes & Cleanup ✅ COMPLETED
 
 ### 6.1 Fix Tab State Restore
 
@@ -309,10 +309,10 @@ Sprint 5 (UI Polish)  ✅ COMPLETED
   ├── 5.2 Dark theme ✅
   └── 5.3 Split session ✅
 
-Sprint 6 (Cleanup)  ← After all others
-  ├── 6.1 Tab restore
-  ├── 6.2 Password persistence
-  └── 6.3 Error handling
+Sprint 6 (Cleanup)  ✅ COMPLETED
+  ├── 6.1 Tab restore ✅
+  ├── 6.2 Password persistence ✅
+  └── 6.3 Error handling ✅
 ```
 
 ## Key Files to Modify

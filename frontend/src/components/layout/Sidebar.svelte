@@ -22,6 +22,7 @@
     sessions: sessions = $bindable<SessionFolder | null>(null),
     tabs = [],
     connectedSessionIds = [],
+    disconnectedSessionIds = new Set(),
     collapsed = false,
   }: {
     onConnect: (id: string, name: string) => void
@@ -32,6 +33,7 @@
     sessions?: SessionFolder | null
     tabs?: Tab[]
     connectedSessionIds?: string[]
+    disconnectedSessionIds?: Set<string>
     collapsed?: boolean
   } = $props()
 
@@ -171,22 +173,22 @@
     </div>
   {:else}
     {#if connectedSessionIds.length > 0}
-      <div class="section">
-        <h2 class="section-title">{t('sidebar.activeSessions')}</h2>
-        {#each connectedSessionIds as sessionId}
-          <div class="active-session" class:selected={selectedSessionId === sessionId}>
-            <button class="active-session-info" onclick={() => { selectedSessionId = sessionId }}>
-              <span class="active-dot"></span>
-              <span class="active-name">{getSessionName(sessionId)}</span>
-              <span class="active-tabs">{getTabCount(sessionId)}</span>
-            </button>
-            <button class="disconnect-btn" onclick={() => onDisconnect(sessionId)} title={t('sidebar.disconnect')} aria-label="Disconnect session">
-              &#x2715;
-            </button>
-          </div>
-        {/each}
-      </div>
-    {/if}
+    <div class="section">
+      <h2 class="section-title">{t('sidebar.activeSessions')}</h2>
+      {#each connectedSessionIds as sessionId}
+        <div class="active-session" class:selected={selectedSessionId === sessionId} class:disconnected={disconnectedSessionIds.has(sessionId)}>
+          <button class="active-session-info" onclick={() => { selectedSessionId = sessionId }}>
+            <span class="active-dot" class:error={disconnectedSessionIds.has(sessionId)}></span>
+            <span class="active-name">{getSessionName(sessionId)}</span>
+            <span class="active-tabs">{getTabCount(sessionId)}</span>
+          </button>
+          <button class="disconnect-btn" onclick={() => onDisconnect(sessionId)} title={t('sidebar.disconnect')} aria-label="Disconnect session">
+            &#x2715;
+          </button>
+        </div>
+      {/each}
+    </div>
+  {/if}
 
     <div class="section">
       <div class="header">
@@ -422,6 +424,14 @@
     border-radius: 50%;
     background: var(--success);
     flex-shrink: 0;
+  }
+
+  .active-dot.error {
+    background: var(--error);
+  }
+
+  .active-session.disconnected {
+    opacity: 0.6;
   }
 
   .active-name {

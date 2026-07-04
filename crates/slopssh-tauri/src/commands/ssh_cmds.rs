@@ -97,6 +97,12 @@ pub async fn ssh_connect(
 }
 
 #[tauri::command]
+pub async fn ssh_is_connected(state: State<'_, AppState>, session_id: String) -> Result<bool, String> {
+    let ssh_manager = state.ssh_manager.lock().await;
+    Ok(ssh_manager.get_handle(&session_id).is_some())
+}
+
+#[tauri::command]
 pub async fn accept_host_key(state: State<'_, AppState>, session_id: String) -> Result<(), String> {
     tracing::info!(session_id = %session_id, "accept_host_key");
     let mut ssh_manager = state.ssh_manager.lock().await;

@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import { getCached, setCache } from '$lib/utils/toolCache'
 
   interface ProcessEntry {
     pid: string
@@ -27,10 +28,18 @@
   let sortDir = $state<'asc' | 'desc'>('asc')
 
   $effect(() => {
-    refresh()
+    if (sessionId) {
+      const cached = getCached<ProcessEntry[]>(`${sessionId}:processes`)
+      if (cached) {
+        processes = cached
+      } else {
+        refresh()
+      }
+    }
   })
 
   async function refresh() {
+    if (!sessionId) return
     loading = true
     error = ''
     try {
@@ -40,6 +49,7 @@
         15,
       )
       processes = parsePsOutput(result.stdout)
+      setCache(`${sessionId}:processes`, processes)
     } catch (e) {
       error = String(e)
       processes = []

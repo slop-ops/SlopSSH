@@ -1,12 +1,11 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import { getCached, setCache } from '$lib/utils/toolCache'
 
   interface PortEntry {
     proto: string
     state: string
-    recvQ: string
-    sendQ: string
     local: string
     port: string
     process: string
@@ -20,10 +19,18 @@
   let filter = $state('')
 
   $effect(() => {
-    refresh()
+    if (sessionId) {
+      const cached = getCached<PortEntry[]>(`${sessionId}:ports`)
+      if (cached) {
+        ports = cached
+      } else {
+        refresh()
+      }
+    }
   })
 
   async function refresh() {
+    if (!sessionId) return
     loading = true
     error = ''
     try {
@@ -33,6 +40,7 @@
         15,
       )
       ports = parsePorts(result.stdout)
+      setCache(`${sessionId}:ports`, ports)
     } catch (e) {
       error = String(e)
       ports = []
@@ -42,28 +50,40 @@
   }
 
   function parsePorts(output: string): PortEntry[] {
-    return output
-      .split('\n')
-      .filter((l: string) => l.trim())
-      .slice(1)
-      .map((line: string) => {
+    const lines = output.split('\n').filter((l: string) => l.trim())
+    if (lines.length === 0) return []
+
+    const header = lines[0]
+    const isSs = header.includes('State') || header.includes('Recv-Q')
+
+    if (isSs) {
+      return lines.slice(1).map((line: string) => {
         const parts = line.trim().split(/\s+/)
-        if (parts.length >= 4) {
-          const local = parts[3] || ''
-          const portMatch = local.match(/:(\d+)$/)
-          return {
-            proto: parts[0] || '',
-            state: parts[1] || '',
-            recvQ: parts[2] || '0',
-            sendQ: parts[3] ? '' : '0',
-            local: local,
-            port: portMatch ? portMatch[1] : '',
-            process: parts.slice(5).join(' ') || '-',
-          }
+        const local = parts[3] || ''
+        const portMatch = local.match(/:(\d+)$/)
+        const processPart = parts.slice(4).join(' ') || '-'
+        return {
+          proto: parts[0] || '',
+          state: parts[1] || '',
+          local,
+          port: portMatch ? portMatch[1] : '',
+          process: processPart,
         }
-        return null
       })
-      .filter((p): p is PortEntry => p !== null)
+    }
+
+    return lines.slice(1).map((line: string) => {
+      const parts = line.trim().split(/\s+/)
+      const local = parts[3] || ''
+      const portMatch = local.match(/:(\d+)$/)
+      return {
+        proto: parts[0] || '',
+        state: parts[5] || '',
+        local,
+        port: portMatch ? portMatch[1] : '',
+        process: parts.slice(6).join(' ') || '-',
+      }
+    })
   }
 
   let filtered = $derived(

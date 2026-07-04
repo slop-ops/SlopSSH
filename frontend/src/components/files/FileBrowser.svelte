@@ -35,6 +35,11 @@
     loading = true
     error = ''
     try {
+      try {
+        await api.sftpConnect(sessionId)
+      } catch {
+        // already connected, ignore
+      }
       const home = await api.sftpHome(sessionId)
       currentPath = home
       pathInput = home

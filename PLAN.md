@@ -125,7 +125,7 @@ Sidebar layout:
 
 ---
 
-## Sprint 3: SFTP Auto-Connect & Tool Fixes (Issues 8, 9, 10)
+## Sprint 3: SFTP Auto-Connect & Tool Fixes (Issues 8, 9, 10) ✅ COMPLETED
 
 **Goal**: Fix Files panel, make tools work, add caching.
 
@@ -292,11 +292,11 @@ Sprint 2 (Password & Credentials)  ✅ COMPLETED
   ├── 2.3 Password modal dialog ✅
   └── 2.4 Fix password_key semantics ✅
 
-Sprint 3 (SFTP & Tools)  ← Independent of Sprint 1/2
-  ├── 3.1 Auto-connect SFTP
-  ├── 3.2 Fix remoteExec
-  ├── 3.3 Tool caching
-  └── 3.4 Fix port parsing
+Sprint 3 (SFTP & Tools)  ✅ COMPLETED
+  ├── 3.1 Auto-connect SFTP ✅
+  ├── 3.2 Fix remoteExec ✅
+  ├── 3.3 Tool caching ✅
+  └── 3.4 Fix port parsing ✅
 
 Sprint 4 (Terminal)  ← Mostly independent
   ├── 4.1 Fix tab display

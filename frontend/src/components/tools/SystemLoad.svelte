@@ -26,6 +26,7 @@
   }
 
   async function sample() {
+    if (!sessionId) return
     try {
       const result = await api.remoteExec(
         sessionId,

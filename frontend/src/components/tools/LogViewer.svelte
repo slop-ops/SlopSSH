@@ -20,7 +20,7 @@
   })
 
   async function loadLog() {
-    if (!logPath.trim()) return
+    if (!logPath.trim() || !sessionId) return
     loading = true
     error = ''
     try {

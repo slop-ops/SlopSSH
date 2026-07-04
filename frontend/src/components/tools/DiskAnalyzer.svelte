@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import { getCached, setCache } from '$lib/utils/toolCache'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -13,13 +14,20 @@
   let loading = $state(false)
   let error = $state('')
   let scanPath = $state('/')
-  let sortBy = $state<'size'>('size')
 
   $effect(() => {
-    scan()
+    if (sessionId) {
+      const cached = getCached<DiskEntry[]>(`${sessionId}:disk:${scanPath}`)
+      if (cached) {
+        diskUsage = cached
+      } else {
+        scan()
+      }
+    }
   })
 
   async function scan() {
+    if (!sessionId) return
     loading = true
     error = ''
     try {
@@ -39,6 +47,7 @@
           return null
         })
         .filter((d): d is DiskEntry => d !== null)
+      setCache(`${sessionId}:disk:${scanPath}`, diskUsage)
     } catch (e) {
       error = String(e)
       diskUsage = []

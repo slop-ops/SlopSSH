@@ -13,7 +13,7 @@
   let maxResults = $state(100)
 
   async function searchFiles() {
-    if (!pattern.trim()) return
+    if (!pattern.trim() || !sessionId) return
     loading = true
     error = ''
     results = []

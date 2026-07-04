@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import { getCached, setCache } from '$lib/utils/toolCache'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -9,10 +10,18 @@
   let error = $state('')
 
   $effect(() => {
-    loadInfo()
+    if (sessionId) {
+      const cached = getCached<string>(`${sessionId}:sysinfo`)
+      if (cached) {
+        sysInfo = cached
+      } else {
+        loadInfo()
+      }
+    }
   })
 
   async function loadInfo() {
+    if (!sessionId) return
     loading = true
     error = ''
     try {
@@ -22,6 +31,7 @@
         15,
       )
       sysInfo = result.stdout
+      setCache(`${sessionId}:sysinfo`, sysInfo)
     } catch (e) {
       error = String(e)
     } finally {

@@ -70,7 +70,15 @@
       </div>
       <div class="tab-content">
         {#each tabs as tab (tab.id)}
-          <div class="terminal-panel" style:display={activeTabId === tab.id ? 'contents' : 'none'}>
+          <div
+            class="terminal-panel"
+            class:active={activeTabId === tab.id}
+            style:visibility={activeTabId === tab.id ? 'visible' : 'hidden'}
+            style:position={activeTabId === tab.id ? 'relative' : 'absolute'}
+            style:inset={activeTabId === tab.id ? '' : '0'}
+            style:height={activeTabId === tab.id ? '100%' : '0'}
+            style:overflow={activeTabId === tab.id ? 'visible' : 'hidden'}
+          >
             {#if tab.isLocal}
               <LocalTerminal channelId={tab.channelId} />
             {:else}
@@ -211,6 +219,11 @@
 
   .terminal-panel {
     height: 100%;
+    width: 100%;
+  }
+
+  .terminal-panel:not(.active) {
+    pointer-events: none;
   }
 
   .empty {

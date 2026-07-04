@@ -29,6 +29,24 @@
    let unlisten: (() => void) | undefined = $state()
    let contextmenuHandler: ((e: MouseEvent) => void) | undefined = $state()
 
+  function encodeBase64(str: string): string {
+    const bytes = new TextEncoder().encode(str)
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary)
+  }
+
+  function decodeBase64(b64: string): string {
+    const binary = atob(b64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return new TextDecoder().decode(bytes)
+  }
+
   function getTerminalOpts() {
     const settings = getTerminalSettings()
     const theme = getTheme() === 'light' ? lightTheme : darkTheme
@@ -64,7 +82,7 @@
     terminal.onData(async (data: string) => {
       if (!connected) return
       try {
-        const encoded = btoa(data)
+        const encoded = encodeBase64(data)
         await api.sshWriteShell(sessionId, channelId, encoded)
       } catch (e) {
         handleDisconnect(String(e))
@@ -90,7 +108,7 @@
       e.preventDefault()
       navigator.clipboard.readText().then((text) => {
         if (text && connected) {
-          const encoded = btoa(text)
+          const encoded = encodeBase64(text)
           api.sshWriteShell(sessionId, channelId, encoded).catch(console.error)
         }
       }).catch(() => {})
@@ -98,7 +116,7 @@
     terminalEl.addEventListener('contextmenu', contextmenuHandler)
 
     unlisten = await listen<string>(`terminal-output-${channelId}`, (event) => {
-      const decoded = atob(event.payload)
+      const decoded = decodeBase64(event.payload)
       terminal?.write(decoded)
     })
 
@@ -118,7 +136,7 @@
 
   function sendCommand(cmd: string) {
     if (!connected || !terminal) return
-    const encoded = btoa(cmd + '\n')
+    const encoded = encodeBase64(cmd + '\n')
     api.sshWriteShell(sessionId, channelId, encoded).catch(console.error)
   }
 
@@ -145,6 +163,7 @@
   }
 
   function handleResize() {
+    if (!terminalEl || terminalEl.offsetParent === null) return
     fitAddon?.fit()
   }
 
@@ -154,6 +173,7 @@
     if (contextmenuHandler && terminalEl) {
       terminalEl.removeEventListener('contextmenu', contextmenuHandler)
     }
+    api.sshCloseShell(sessionId, channelId).catch(() => {})
     terminal?.dispose()
   })
 

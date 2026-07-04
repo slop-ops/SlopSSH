@@ -171,7 +171,7 @@ Key = `${sessionId}:${toolId}`
 
 ---
 
-## Sprint 4: Terminal Fixes (Issues 6, 11)
+## Sprint 4: Terminal Fixes (Issues 6, 11) ✅ COMPLETED
 
 **Goal**: Fix terminal visual bugs on tab switch.
 
@@ -298,11 +298,11 @@ Sprint 3 (SFTP & Tools)  ✅ COMPLETED
   ├── 3.3 Tool caching ✅
   └── 3.4 Fix port parsing ✅
 
-Sprint 4 (Terminal)  ← Mostly independent
-  ├── 4.1 Fix tab display
-  ├── 4.2 Fix resize on switch
-  ├── 4.3 Fix UTF-8
-  └── 4.4 Shell cleanup
+Sprint 4 (Terminal)  ✅ COMPLETED
+  ├── 4.1 Fix tab display ✅
+  ├── 4.2 Fix resize on switch ✅
+  ├── 4.3 Fix UTF-8 ✅
+  └── 4.4 Shell cleanup ✅
 
 Sprint 5 (UI Polish)  ← Depends on Sprint 1
   ├── 5.1 Sidebar collapse

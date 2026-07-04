@@ -23,15 +23,20 @@
     saving = true
     error = ''
     try {
-      await api.createSession({
+      const sessionId = await api.createSession({
         name: name.trim() || host.trim(),
         host: host.trim(),
         port,
         username: username.trim(),
         auth_type: authType,
-        password_key: authType === 'password' && password ? password : undefined,
         private_key_path: authType === 'public_key' && keyPath ? keyPath : undefined,
       })
+      if (authType === 'password' && password) {
+        await api.credentialSave(sessionId, 'password', password)
+      }
+      if (authType === 'public_key' && keyPath) {
+        await api.credentialSave(sessionId, 'private_key_path', keyPath)
+      }
       onclose()
     } catch (e) {
       error = String(e)

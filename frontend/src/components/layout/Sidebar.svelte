@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import ImportDialog from '$components/session/ImportDialog.svelte'
+  import PasswordDialog from '$components/session/PasswordDialog.svelte'
   import { t } from '$lib/utils/i18n'
   import type { SessionFolder, SessionInfo } from '$lib/types'
 
@@ -34,6 +35,7 @@
 
   let connectingId = $state('')
   let error = $state('')
+  let passwordDialogSession = $state<{ id: string; name: string } | null>(null)
 
   $effect(() => {
     loadSessions()
@@ -55,10 +57,35 @@
       await api.sshConnect(id)
       onConnect?.(id, name)
     } catch (e) {
+      const msg = String(e)
+      if (msg.includes('password_required')) {
+        passwordDialogSession = { id, name }
+      } else {
+        error = msg
+      }
+    } finally {
+      connectingId = ''
+    }
+  }
+
+  async function handlePasswordSubmit(password: string, save: boolean) {
+    if (!passwordDialogSession) return
+    const { id, name } = passwordDialogSession
+    passwordDialogSession = null
+    connectingId = id
+    error = ''
+    try {
+      await api.sshConnect(id, password, save)
+      onConnect?.(id, name)
+    } catch (e) {
       error = String(e)
     } finally {
       connectingId = ''
     }
+  }
+
+  function handlePasswordCancel() {
+    passwordDialogSession = null
   }
 
   async function deleteSession(id: string) {
@@ -186,6 +213,14 @@
 
 {#if showImport}
   <ImportDialog onClose={async () => { showImport = false; await loadSessions() }} />
+{/if}
+
+{#if passwordDialogSession}
+  <PasswordDialog
+    sessionName={passwordDialogSession.name}
+    onsubmit={handlePasswordSubmit}
+    oncancel={handlePasswordCancel}
+  />
 {/if}
 
 <style>

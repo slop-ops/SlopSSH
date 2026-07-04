@@ -8,6 +8,7 @@ pub async fn ssh_connect(
     state: State<'_, AppState>,
     session_id: String,
     password: Option<String>,
+    save_password: Option<bool>,
 ) -> Result<serde_json::Value, String> {
     tracing::info!(session_id = %session_id, "ssh_connect");
 
@@ -25,8 +26,15 @@ pub async fn ssh_connect(
 
     let auth = match session_info.auth_type {
         slopssh_core::session::AuthType::Password => {
-            let p = password
-                .ok_or_else(|| format!("Password required for session '{}'", session_id))?;
+            let p = if let Some(ref pw) = password {
+                pw.clone()
+            } else {
+                let store = state.credential_store.lock().await;
+                store
+                    .get_credential(&session_id, "password")
+                    .map_err(|e| e.to_string())?
+                    .ok_or_else(|| "password_required".to_string())?
+            };
             slopssh_core::ssh::auth::AuthMethod::Password { password: p }
         }
         slopssh_core::session::AuthType::PublicKey => {
@@ -36,14 +44,29 @@ pub async fn ssh_connect(
                     session_id
                 )
             })?;
+            let passphrase = if let Some(ref pk) = session_info.passphrase_key {
+                let store = state.credential_store.lock().await;
+                store.get_credential(pk, "passphrase").map_err(|e| e.to_string())?
+            } else {
+                let store = state.credential_store.lock().await;
+                store.get_credential(&session_id, "passphrase").map_err(|e| e.to_string())?
+            };
             slopssh_core::ssh::auth::AuthMethod::PublicKey {
                 key_path,
-                passphrase: session_info.passphrase_key.clone(),
+                passphrase,
             }
         }
         slopssh_core::session::AuthType::KeyboardInteractive => {
-            let responses = password.map(|p| vec![p]).unwrap_or_default();
-            slopssh_core::ssh::auth::AuthMethod::KeyboardInteractive { responses }
+            let p = if let Some(ref pw) = password {
+                pw.clone()
+            } else {
+                let store = state.credential_store.lock().await;
+                store
+                    .get_credential(&session_id, "password")
+                    .map_err(|e| e.to_string())?
+                    .ok_or_else(|| "password_required".to_string())?
+            };
+            slopssh_core::ssh::auth::AuthMethod::KeyboardInteractive { responses: vec![p] }
         }
         slopssh_core::session::AuthType::None => slopssh_core::ssh::auth::AuthMethod::None,
     };
@@ -60,6 +83,15 @@ pub async fn ssh_connect(
         .connect(session_info, auth, enable_compression, &jump_credentials)
         .await
         .map_err(|e| e.to_string())?;
+
+    if save_password.unwrap_or(false) {
+        if let Some(ref pw) = password {
+            let store = state.credential_store.lock().await;
+            if let Err(e) = store.save_credential(&session_id, "password", pw) {
+                tracing::warn!(session_id = %session_id, error = %e, "Failed to save password to credential store");
+            }
+        }
+    }
 
     serde_json::to_value(&result).map_err(|e| e.to_string())
 }

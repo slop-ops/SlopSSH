@@ -87,7 +87,7 @@ Sidebar layout:
 
 ---
 
-## Sprint 2: Password & Credential Flow (Issues 1, 2)
+## Sprint 2: Password & Credential Flow (Issues 1, 2) ✅ COMPLETED
 
 **Goal**: Save passwords properly and show password prompt as a modal.
 
@@ -286,11 +286,11 @@ Sprint 1 (Critical Architecture)  ✅ COMPLETED
   ├── 1.3 Fix snippets ✅
   └── 1.4 Fix session menu ✅
 
-Sprint 2 (Password & Credentials)  ← Depends on Sprint 1 sidebar redesign
-  ├── 2.1 Save password on create
-  ├── 2.2 Load password on connect
-  ├── 2.3 Password modal dialog
-  └── 2.4 Fix password_key semantics
+Sprint 2 (Password & Credentials)  ✅ COMPLETED
+  ├── 2.1 Save password on create ✅
+  ├── 2.2 Load password on connect ✅
+  ├── 2.3 Password modal dialog ✅
+  └── 2.4 Fix password_key semantics ✅
 
 Sprint 3 (SFTP & Tools)  ← Independent of Sprint 1/2
   ├── 3.1 Auto-connect SFTP

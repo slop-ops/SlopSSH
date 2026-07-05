@@ -2,17 +2,15 @@
 
 A modern SSH/SCP/SFTP client built with **Rust**, **Tauri 2**, and **Svelte 5**.
 
-Its still in development fase and some features do not work, sorry about that.
-
 ## Features
 
-- **SSH Terminal** — Full xterm.js terminal with 256-color support, themes, and copy/paste
+- **SSH Terminal** — Full xterm.js terminal with 256-color support, WebGL rendering with DOM fallback, themes, and copy/paste
 - **Dual-pane File Browser** — SFTP file browser with drag-and-drop transfers
 - **Port Forwarding** — Local (-L) and remote (-R) port forwarding
 - **X11 Forwarding** — X11 display forwarding support
 - **Multi-hop SSH** — Jump host tunneling with credential management
 - **Proxy Support** — HTTP CONNECT and SOCKS5 proxy
-- **Remote Tools** — Process viewer, log viewer, disk analyzer, search, system info
+- **Remote Tools** — Process viewer, log viewer, disk analyzer, search, system info, system load monitoring with graphs
 - **SSH Key Manager** — Generate, deploy, and manage SSH keys
 - **Connection Pool** — Reuse SSH connections for SFTP and background operations
 - **Credential Store** — OS-native keyring integration (Windows Credential Manager, Linux Secret Service)
@@ -20,6 +18,11 @@ Its still in development fase and some features do not work, sorry about that.
 - **7 Languages** — English, Spanish, Russian, French, German, Portuguese, Chinese
 - **Dark/Light Themes** — Configurable themes with terminal color palettes
 - **Auto-updater** — GitHub releases-based update checking
+- **Split Terminal** — Vertical and horizontal split with resizable panes
+- **Per-Session Workspace** — Each session has its own terminal tabs, file browser, and tools
+- **Sidebar Folders** — Organize sessions into collapsible folders with drag-and-drop
+- **Command Snippets** — Save and send frequently used commands
+- **Tool Caching** — Cached results for faster tool switching
 
 ## Architecture
 
@@ -76,8 +79,8 @@ cd crates/slopssh-tauri && cargo tauri build
 ```
 
 Output artifacts:
-- `crates/slopssh-tauri/target/release/bundle/deb/slopssh_0.1.0_amd64.deb` — Debian package
-- `crates/slopssh-tauri/target/release/bundle/appimage/slopssh_0.1.0_amd64.AppImage` — AppImage
+- `crates/slopssh-tauri/target/release/bundle/deb/slopssh_0.3.0_amd64.deb` — Debian package
+- `crates/slopssh-tauri/target/release/bundle/appimage/slopssh_0.3.0_amd64.AppImage` — AppImage
 
 ### Windows
 
@@ -94,8 +97,8 @@ cd crates\slopssh-tauri && cargo tauri build
 ```
 
 Output artifacts:
-- `crates\slopssh-tauri\target\release\bundle\nsis\SlopSSH_0.1.0_x64-setup.exe` — NSIS installer
-- `crates\slopssh-tauri\target\release\bundle\msi\SlopSSH_0.1.0_x64_en-US.msi` — MSI installer
+- `crates\slopssh-tauri\target\release\bundle\nsis\SlopSSH_0.3.0_x64-setup.exe` — NSIS installer
+- `crates\slopssh-tauri\target\release\bundle\msi\SlopSSH_0.3.0_x64_en-US.msi` — MSI installer
 
 ## Development
 
@@ -113,15 +116,13 @@ cargo fmt --check
 # Frontend
 cd frontend && npm run build
 cd frontend && npm run check
-cd frontend && npm run test
-cd frontend && npm run test:e2e
 ```
 
 ## Release Process
 
-1. Update the version in `Cargo.toml` and `crates/slopssh-tauri/tauri.conf.json`
+1. Update the version in `Cargo.toml`, `crates/slopssh-tauri/tauri.conf.json`, and `frontend/package.json`
 2. Commit the version bump
-3. Create and push a git tag: `git tag v0.1.0 && git push origin v0.1.0`
+3. Create and push a git tag: `git tag v0.3.0 && git push origin v0.3.0`
 4. The GitHub Actions release workflow will automatically:
    - Run all tests (Rust + frontend)
    - Build Linux (`.deb` + `.AppImage`) and Windows (`.exe` + `.msi`) artifacts
@@ -151,6 +152,7 @@ Config lives in `~/.config/slopssh/` (XDG on Linux) or `%APPDATA%\slopssh\` (Win
 | `sessions.json` | Saved sessions tree |
 | `snippets.json` | Command snippets |
 | `window_bounds.json` | Window position/size |
+| `tab_state.json` | Open tabs and workspace state |
 | `plugins/` | WASM plugin files |
 | `plugin_settings.json` | Per-plugin settings |
 

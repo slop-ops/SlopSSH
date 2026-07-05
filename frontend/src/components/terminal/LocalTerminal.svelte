@@ -85,7 +85,9 @@
         webglAddon.dispose()
       })
       terminal.loadAddon(webglAddon)
-    } catch {}
+    } catch {
+      console.warn('WebGL addon failed, falling back to DOM renderer')
+    }
 
     // Custom keyboard shortcuts
     terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {

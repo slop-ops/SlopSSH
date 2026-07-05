@@ -22,6 +22,29 @@
   let unlisten: (() => void) | undefined = $state()
   let contextmenuHandler: ((e: MouseEvent) => void) | undefined = $state()
 
+  // Write batching for performance
+  let writeQueue: string[] = []
+  let writeScheduled = false
+
+  function scheduleWrite(data: string) {
+    writeQueue.push(data)
+    if (!writeScheduled) {
+      writeScheduled = true
+      requestAnimationFrame(flushWrites)
+    }
+  }
+
+  function flushWrites() {
+    if (writeQueue.length > 0 && terminal) {
+      const batch = writeQueue.join('')
+      writeQueue = []
+      writeScheduled = false
+      terminal.write(batch)
+    } else {
+      writeScheduled = false
+    }
+  }
+
   function encodeBase64(str: string): string {
     const bytes = new TextEncoder().encode(str)
     let binary = ''
@@ -64,6 +87,25 @@
       terminal.loadAddon(webglAddon)
     } catch {}
 
+    // Custom keyboard shortcuts
+    terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      // Ctrl+Backspace → delete last word (sends Ctrl+W)
+      if (e.ctrlKey && e.key === 'Backspace') {
+        if (e.type === 'keydown') {
+          terminal?.write('\x17')
+        }
+        return false
+      }
+      // Ctrl+Delete → delete word forward
+      if (e.ctrlKey && e.key === 'Delete') {
+        if (e.type === 'keydown') {
+          terminal?.write('\x1b[3;5~')
+        }
+        return false
+      }
+      return true
+    })
+
     terminal.open(terminalEl)
     fitAddon.fit()
 
@@ -105,7 +147,7 @@
 
     unlisten = await listen<string>(`terminal-output-${channelId}`, (event) => {
       const decoded = decodeBase64(event.payload)
-      terminal?.write(decoded)
+      scheduleWrite(decoded)
     })
 
     const { cols, rows } = terminal
@@ -140,6 +182,14 @@
       return () => observer.disconnect()
     }
   })
+
+  // Reactive theme switching
+  $effect(() => {
+    const themeName = getTheme()
+    if (terminal) {
+      terminal.options.theme = themeName === 'light' ? lightTheme : darkTheme
+    }
+  })
 </script>
 
 <div class="terminal-wrapper">
@@ -160,6 +210,5 @@
     flex: 1;
     min-height: 0;
     overflow: hidden;
-  }
   }
 </style>

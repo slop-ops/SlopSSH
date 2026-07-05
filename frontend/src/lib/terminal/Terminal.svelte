@@ -28,8 +28,31 @@
   let connected = $state(false)
   let disconnected = $state(false)
   let error = $state('')
-   let unlisten: (() => void) | undefined = $state()
-   let contextmenuHandler: ((e: MouseEvent) => void) | undefined = $state()
+  let unlisten: (() => void) | undefined = $state()
+  let contextmenuHandler: ((e: MouseEvent) => void) | undefined = $state()
+
+  // Write batching for performance
+  let writeQueue: string[] = []
+  let writeScheduled = false
+
+  function scheduleWrite(data: string) {
+    writeQueue.push(data)
+    if (!writeScheduled) {
+      writeScheduled = true
+      requestAnimationFrame(flushWrites)
+    }
+  }
+
+  function flushWrites() {
+    if (writeQueue.length > 0 && terminal) {
+      const batch = writeQueue.join('')
+      writeQueue = []
+      writeScheduled = false
+      terminal.write(batch)
+    } else {
+      writeScheduled = false
+    }
+  }
 
   function encodeBase64(str: string): string {
     const bytes = new TextEncoder().encode(str)
@@ -75,8 +98,26 @@
         webglAddon.dispose()
       })
       terminal.loadAddon(webglAddon)
-    } catch {
-    }
+    } catch {}
+
+    // Custom keyboard shortcuts
+    terminal.attachCustomKeyEventHandler((e: KeyboardEvent) => {
+      // Ctrl+Backspace → delete last word (sends Ctrl+W which most shells interpret)
+      if (e.ctrlKey && e.key === 'Backspace') {
+        if (e.type === 'keydown') {
+          terminal?.write('\x17')
+        }
+        return false
+      }
+      // Ctrl+Delete → delete word forward (sends Alt+D)
+      if (e.ctrlKey && e.key === 'Delete') {
+        if (e.type === 'keydown') {
+          terminal?.write('\x1b[3;5~')
+        }
+        return false
+      }
+      return true
+    })
 
     terminal.open(terminalEl)
     fitAddon.fit()
@@ -119,7 +160,7 @@
 
     unlisten = await listen<string>(`terminal-output-${channelId}`, (event) => {
       const decoded = decodeBase64(event.payload)
-      terminal?.write(decoded)
+      scheduleWrite(decoded)
     })
 
     const { cols, rows } = terminal
@@ -180,11 +221,20 @@
     terminal?.dispose()
   })
 
+  // ResizeObserver for fit
   $effect(() => {
     if (terminalEl && terminal) {
       const observer = new ResizeObserver(handleResize)
       observer.observe(terminalEl)
       return () => observer.disconnect()
+    }
+  })
+
+  // Reactive theme switching
+  $effect(() => {
+    const themeName = getTheme()
+    if (terminal) {
+      terminal.options.theme = themeName === 'light' ? lightTheme : darkTheme
     }
   })
 </script>

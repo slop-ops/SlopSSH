@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import { getCached, setCache } from '$lib/utils/toolCache'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -12,6 +13,17 @@
   let lineCount = $state(200)
   let autoRefresh = $state(false)
   let refreshInterval: ReturnType<typeof setInterval> | undefined
+
+  $effect(() => {
+    if (sessionId) {
+      const cached = getCached<{ path: string; lines: string[]; count: number }>(`${sessionId}:log`)
+      if (cached) {
+        logPath = cached.path
+        lines = cached.lines
+        lineCount = cached.count
+      }
+    }
+  })
 
   $effect(() => {
     return () => {
@@ -33,6 +45,8 @@
       if (result.exitCode !== 0 && lines.length <= 1) {
         error = result.stdout
         lines = []
+      } else {
+        setCache(`${sessionId}:log`, { path: logPath, lines, count: lineCount })
       }
     } catch (e) {
       error = String(e)

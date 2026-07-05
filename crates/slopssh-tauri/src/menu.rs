@@ -102,13 +102,7 @@ pub fn create_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
 
     Menu::with_items(
         app,
-        &[
-            &file_menu,
-            &edit_menu,
-            &view_menu,
-            &tools_menu,
-            &help_menu,
-        ],
+        &[&file_menu, &edit_menu, &view_menu, &tools_menu, &help_menu],
     )
 }
 

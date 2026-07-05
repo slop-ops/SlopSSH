@@ -171,6 +171,8 @@
     "stop": "Stop",
     "reset": "Reset",
     "clickStart": "Click \"Start Monitoring\" to track CPU, memory, and swap usage",
+    "networkIO": "Network I/O",
+    "diskIO": "Disk I/O",
     "clickRefresh": "Click Refresh to load system info",
     "localPort": "Local",
     "remotePort": "Remote",

@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import { getCached, setCache } from '$lib/utils/toolCache'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -11,6 +12,19 @@
   let loading = $state(false)
   let error = $state('')
   let maxResults = $state(100)
+
+  $effect(() => {
+    if (sessionId) {
+      const cached = getCached<{ dir: string; pattern: string; content: string; results: string[]; max: number }>(`${sessionId}:search`)
+      if (cached) {
+        searchDir = cached.dir
+        pattern = cached.pattern
+        contentFilter = cached.content
+        results = cached.results
+        maxResults = cached.max
+      }
+    }
+  })
 
   async function searchFiles() {
     if (!pattern.trim() || !sessionId) return
@@ -28,6 +42,8 @@
       results = result.stdout.split('\n').filter((l: string) => l.trim())
       if (results.length === 0 && result.exitCode !== 0) {
         error = t('tools.noResults')
+      } else {
+        setCache(`${sessionId}:search`, { dir: searchDir, pattern, content: contentFilter, results, max: maxResults })
       }
     } catch (e) {
       error = String(e)

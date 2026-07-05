@@ -11,6 +11,7 @@
   import { registerHandler, setEnabled as setShortcutsEnabled } from '$lib/utils/shortcuts'
   import { listen } from '@tauri-apps/api/event'
   import * as api from '$lib/api/invoke'
+  import { clearSessionCache } from '$lib/utils/toolCache'
   import type { TabState, SavedTab, SessionInfo, SessionFolder } from '$lib/types'
 
   interface Tab {
@@ -125,6 +126,7 @@
     } catch {
       // session may already be disconnected
     }
+    clearSessionCache(sessionId)
     disconnectedSessionIds.delete(sessionId)
     disconnectedSessionIds = disconnectedSessionIds
     const tabsToClose = tabs.filter((t) => t.sessionId === sessionId && !t.isLocal)
@@ -327,6 +329,7 @@
           if (activeSessionId) {
             try {
               await api.sshDisconnect(activeSessionId)
+              clearSessionCache(activeSessionId)
               const tabsToClose = tabs.filter((t) => t.sessionId === activeSessionId && !t.isLocal)
               for (const tab of tabsToClose) {
                 closeTab(tab.id)

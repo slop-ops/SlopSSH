@@ -1,7 +1,7 @@
 //! Execute commands on a remote SSH server and collect output.
 
 use russh::ChannelMsg;
-use tokio::time::{Duration, timeout};
+use tokio::time::{Duration, Instant, timeout};
 
 use crate::ssh::connection::{ClientHandler, SshError};
 
@@ -28,10 +28,15 @@ impl RemoteExecutor {
         let mut stdout = Vec::new();
         let mut exit_code: i32 = -1;
 
-        let deadline = Duration::from_secs(timeout_secs);
+        let deadline = Instant::now() + Duration::from_secs(timeout_secs);
 
         loop {
-            let result = timeout(deadline, channel.wait()).await;
+            let remaining = deadline.saturating_duration_since(Instant::now());
+            if remaining.is_zero() {
+                return Err(SshError::Timeout);
+            }
+
+            let result = timeout(remaining, channel.wait()).await;
             match result {
                 Ok(Some(ChannelMsg::Data { data })) => {
                     stdout.extend_from_slice(&data);

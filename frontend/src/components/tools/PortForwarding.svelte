@@ -1,6 +1,7 @@
 <script lang="ts">
   import { portForwardStart, portForwardStop, portForwardList } from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import { getCached, setCache } from '$lib/utils/toolCache'
 
   let { sessionId }: { sessionId: string } = $props()
 
@@ -13,9 +14,21 @@
   let error = $state('')
   let success = $state('')
 
+  $effect(() => {
+    if (sessionId) {
+      const cached = getCached<string[]>(`${sessionId}:forwards`)
+      if (cached) {
+        forwards = cached
+      } else {
+        refresh()
+      }
+    }
+  })
+
   async function refresh() {
     try {
       forwards = await portForwardList()
+      setCache(`${sessionId}:forwards`, forwards)
     } catch (e) {
       error = String(e)
     }
@@ -53,10 +66,6 @@
       error = String(e)
     }
   }
-
-  $effect(() => {
-    refresh()
-  })
 </script>
 
 <div class="port-forward-panel">

@@ -37,7 +37,7 @@
       const result = await api.remoteExec(
         sessionId,
         `ss -tlnp 2>/dev/null || netstat -tlnp 2>/dev/null`,
-        15,
+        5,
       )
       ports = parsePorts(result.stdout)
       setCache(`${sessionId}:ports`, ports)
@@ -53,37 +53,45 @@
     const lines = output.split('\n').filter((l: string) => l.trim())
     if (lines.length === 0) return []
 
-    const header = lines[0]
-    const isSs = header.includes('State') || header.includes('Recv-Q')
+    const entries: PortEntry[] = []
+    let isSs = false
 
-    if (isSs) {
-      return lines.slice(1).map((line: string) => {
-        const parts = line.trim().split(/\s+/)
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+      if (trimmed.startsWith('Netid') || trimmed.startsWith('Proto') || trimmed.startsWith('Active')) {
+        isSs = trimmed.startsWith('Netid') || trimmed.startsWith('Recv-Q')
+        continue
+      }
+      if (trimmed.startsWith('warning') || trimmed.startsWith('Error') || trimmed.startsWith('not available')) continue
+
+      const parts = trimmed.split(/\s+/)
+      if (parts.length < 4) continue
+
+      if (isSs) {
         const local = parts[3] || ''
         const portMatch = local.match(/:(\d+)$/)
-        const processPart = parts.slice(4).join(' ') || '-'
-        return {
+        entries.push({
           proto: parts[0] || '',
           state: parts[1] || '',
           local,
           port: portMatch ? portMatch[1] : '',
-          process: processPart,
-        }
-      })
+          process: parts.slice(4).join(' ') || '-',
+        })
+      } else {
+        const local = parts[3] || ''
+        const portMatch = local.match(/:(\d+)$/)
+        entries.push({
+          proto: parts[0] || '',
+          state: parts[5] || '',
+          local,
+          port: portMatch ? portMatch[1] : '',
+          process: parts.slice(6).join(' ') || '-',
+        })
+      }
     }
 
-    return lines.slice(1).map((line: string) => {
-      const parts = line.trim().split(/\s+/)
-      const local = parts[3] || ''
-      const portMatch = local.match(/:(\d+)$/)
-      return {
-        proto: parts[0] || '',
-        state: parts[5] || '',
-        local,
-        port: portMatch ? portMatch[1] : '',
-        process: parts.slice(6).join(' ') || '-',
-      }
-    })
+    return entries
   }
 
   let filtered = $derived(

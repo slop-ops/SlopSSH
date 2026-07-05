@@ -41,6 +41,10 @@
   let splitMode = $state<'none' | 'horizontal' | 'vertical'>('none')
   let splitActivePane = $state<'primary' | 'secondary'>('primary')
   let splitTabId = $state('')
+  let splitTabs: Tab[] = $state([])
+  let splitActiveTabId = $state('')
+  let splitRatio = $state(50)
+  let isDragging = $state(false)
   let disconnectedSessionIds = $state<Set<string>>(new Set())
 
   let connectedSessionIds = $derived(
@@ -133,6 +137,10 @@
     for (const tab of tabsToClose) {
       closeTab(tab.id)
     }
+    const splitTabsToClose = splitTabs.filter((t) => t.sessionId === sessionId && !t.isLocal)
+    for (const tab of splitTabsToClose) {
+      closeSplitTab(tab.id)
+    }
   }
 
   function handleSessionDisconnect(sessionId: string) {
@@ -156,6 +164,58 @@
     tabs = [...tabs, { id: tabId, sessionId: '', channelId, title: t('app.localTerminal'), isLocal: true }]
     activeTabId = tabId
     activeView = 'terminal'
+  }
+
+  function openNewTerminal() {
+    if (!activeSessionId) return
+    const channelId = crypto.randomUUID()
+    const tabId = crypto.randomUUID()
+    const tabNum = tabs.filter((t) => t.sessionId === activeSessionId).length + 1
+    const newTab: Tab = { id: tabId, sessionId: activeSessionId, channelId, title: `Terminal ${tabNum}` }
+    if (splitActivePane === 'secondary' && splitMode !== 'none') {
+      splitTabs = [...splitTabs, newTab]
+      splitActiveTabId = tabId
+    } else {
+      tabs = [...tabs, newTab]
+      activeTabId = tabId
+    }
+    activeView = 'terminal'
+  }
+
+  function activateSplitMode(mode: 'vertical' | 'horizontal') {
+    splitMode = mode
+    if (splitTabs.length === 0 && activeSessionId) {
+      const channelId = crypto.randomUUID()
+      const tabId = crypto.randomUUID()
+      splitTabs = [{ id: tabId, sessionId: activeSessionId, channelId, title: 'Terminal 2' }]
+      splitActiveTabId = tabId
+    }
+  }
+
+  function handleSplitDividerMouseDown(e: MouseEvent) {
+    isDragging = true
+    const container = (e.currentTarget as HTMLElement).parentElement
+    if (!container) return
+
+    const rect = container.getBoundingClientRect()
+    const isVert = splitMode === 'vertical'
+
+    function onMouseMove(ev: MouseEvent) {
+      const pos = isVert ? ev.clientX - rect.left : ev.clientY - rect.top
+      const size = isVert ? rect.width : rect.height
+      let ratio = (pos / size) * 100
+      ratio = Math.max(20, Math.min(80, ratio))
+      splitRatio = ratio
+    }
+
+    function onMouseUp() {
+      isDragging = false
+      window.removeEventListener('mousemove', onMouseMove)
+      window.removeEventListener('mouseup', onMouseUp)
+    }
+
+    window.addEventListener('mousemove', onMouseMove)
+    window.addEventListener('mouseup', onMouseUp)
   }
 
   function findSessionInTree(folder: SessionFolder, id: string): SessionInfo | null {
@@ -243,6 +303,16 @@
       }
     }
     api.updateTrayTooltip()
+  }
+
+  function closeSplitTab(tabId: string) {
+    splitTabs = splitTabs.filter((t) => t.id !== tabId)
+    if (splitActiveTabId === tabId) {
+      splitActiveTabId = splitTabs.length > 0 ? splitTabs[splitTabs.length - 1].id : ''
+    }
+    if (splitTabs.length === 0) {
+      splitMode = 'none'
+    }
   }
 
   $effect(() => {
@@ -463,23 +533,31 @@
       <div class="main-views">
         <div class="view" class:hidden={activeView !== 'terminal'} role="tabpanel" aria-label={t('toolbar.terminal')}>
           <div class="terminal-controls">
-            <button class="split-btn" class:active={splitMode === 'none'} onclick={() => (splitMode = 'none')} title={t('terminal.noSplit')}>{'\u2593'}</button>
-            <button class="split-btn" class:active={splitMode === 'vertical'} onclick={() => (splitMode = 'vertical')} title={t('terminal.splitVertical')}>{'\u2551'}</button>
-            <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => (splitMode = 'horizontal')} title={t('terminal.splitHorizontal')}>{'\u2550'}</button>
+            <button class="new-terminal-btn" onclick={openNewTerminal} title={t('terminal.newTerminal')} aria-label="New terminal tab">+</button>
+            <div class="split-group">
+              <button class="split-btn" class:active={splitMode === 'none'} onclick={() => (splitMode = 'none')} title={t('terminal.noSplit')}>{'\u2593'}</button>
+              <button class="split-btn" class:active={splitMode === 'vertical'} onclick={() => activateSplitMode('vertical')} title={t('terminal.splitVertical')}>{'\u2551'}</button>
+              <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => activateSplitMode('horizontal')} title={t('terminal.splitHorizontal')}>{'\u2550'}</button>
+            </div>
           </div>
           {#if splitMode === 'none'}
             <TerminalHolder bind:tabs bind:activeTabId onSessionDisconnect={handleSessionDisconnect} />
           {:else}
             <div class="split-container" class:horizontal={splitMode === 'horizontal'} class:vertical={splitMode === 'vertical'}>
-              <div class="split-pane" class:active-pane={splitActivePane === 'primary'} onclick={() => (splitActivePane = 'primary')}>
+              <div class="split-pane" class:active-pane={splitActivePane === 'primary'} style:flex="0 0 {splitRatio}%" onclick={() => (splitActivePane = 'primary')}>
                 <TerminalHolder bind:tabs bind:activeTabId onSessionDisconnect={handleSessionDisconnect} />
               </div>
-              <div class="split-divider"></div>
-              <div class="split-pane" class:active-pane={splitActivePane === 'secondary'} onclick={() => (splitActivePane = 'secondary')}>
-                <div class="split-empty">
-                  <p>{t('terminal.splitSecondary')}</p>
-                  <p class="hint">{t('terminal.splitHint')}</p>
-                </div>
+              <!-- svelte-ignore a11y_no_static_element_interactions -->
+              <div class="split-divider" class:dragging={isDragging} onmousedown={handleSplitDividerMouseDown}></div>
+              <div class="split-pane" class:active-pane={splitActivePane === 'secondary'} style:flex="1" onclick={() => (splitActivePane = 'secondary')}>
+                {#if splitTabs.length > 0}
+                  <TerminalHolder bind:tabs={splitTabs} bind:activeTabId={splitActiveTabId} onSessionDisconnect={handleSessionDisconnect} />
+                {:else}
+                  <div class="split-empty">
+                    <p>{t('terminal.splitSecondary')}</p>
+                    <button class="local-btn-empty" onclick={openNewTerminal}>{t('terminal.openNew')}</button>
+                  </div>
+                {/if}
               </div>
             </div>
           {/if}
@@ -631,6 +709,36 @@
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-primary);
     flex-shrink: 0;
+    align-items: center;
+  }
+
+  .new-terminal-btn {
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    color: var(--success);
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-right: 6px;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .new-terminal-btn:hover {
+    background: var(--success);
+    color: var(--text-inverse);
+    border-color: var(--success);
+  }
+
+  .split-group {
+    display: flex;
+    gap: 2px;
   }
 
   .split-btn {
@@ -689,6 +797,12 @@
   .split-divider {
     flex-shrink: 0;
     background: var(--border-primary);
+    transition: background 0.15s;
+  }
+
+  .split-divider:hover,
+  .split-divider.dragging {
+    background: var(--accent);
   }
 
   .split-container.vertical .split-divider {

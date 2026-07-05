@@ -85,7 +85,9 @@
     "splitVertical": "Split vertically",
     "splitHorizontal": "Split horizontally",
     "splitSecondary": "Secondary pane",
-    "splitHint": "Select a tab to open here"
+    "splitHint": "Select a tab to open here",
+    "newTerminal": "New terminal tab",
+    "openNew": "Open new terminal"
   },
   "files": {
     "addressBar": "Path",

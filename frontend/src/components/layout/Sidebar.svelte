@@ -400,13 +400,14 @@
 
 {#if contextMenu && sessions}
   {@const allFolders = getAllFolders(sessions)}
+  {@const sessionId = contextMenu.sessionId}
   <div class="context-menu" style:left="{contextMenu.x}px" style:top="{contextMenu.y}px">
     <div class="context-menu-title">{t('sidebar.moveToFolder')}</div>
-    <button class="context-menu-item" onclick={() => moveSessionToFolder(contextMenu.sessionId, null)}>
+    <button class="context-menu-item" onclick={() => moveSessionToFolder(sessionId, null)}>
       {t('sidebar.rootLevel')}
     </button>
     {#each allFolders as folder}
-      <button class="context-menu-item" onclick={() => moveSessionToFolder(contextMenu.sessionId, folder.id)}>
+      <button class="context-menu-item" onclick={() => moveSessionToFolder(sessionId, folder.id)}>
         {folder.name}
       </button>
     {/each}

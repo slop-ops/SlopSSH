@@ -54,8 +54,14 @@ pub async fn check_for_updates() -> Result<serde_json::Value, String> {
         slopssh_core::version(),
     );
     match checker.check_for_update().await {
-        Ok(Some(info)) => serde_json::to_value(&info).map_err(|e| e.to_string()),
-        Ok(None) => Ok(serde_json::json!({"is_newer": false})),
+        Ok(Some(info)) => Ok(serde_json::json!({
+            "has_update": info.is_newer,
+            "version": info.latest_version,
+            "download_url": info.download_url,
+            "release_notes": info.release_notes,
+            "release_url": info.release_url,
+        })),
+        Ok(None) => Ok(serde_json::json!({"has_update": false})),
         Err(e) => Err(format!("Update check failed: {}", e)),
     }
 }

@@ -154,3 +154,13 @@ body {
   background: var(--selection-bg);
   color: var(--selection-text);
 }
+
+select {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+}
+
+select option {
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+}

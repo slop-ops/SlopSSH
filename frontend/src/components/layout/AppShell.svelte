@@ -6,7 +6,7 @@
   import ToolsPanel from '../tools/ToolsPanel.svelte'
   import NewSessionDialog from '../session/NewSessionDialog.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
-  import { getTheme, toggleTheme } from '$lib/stores/theme.svelte'
+  import { getTheme, toggleTheme, persistTheme } from '$lib/stores/theme.svelte'
   import { t } from '$lib/utils/i18n'
   import { registerHandler, setEnabled as setShortcutsEnabled } from '$lib/utils/shortcuts'
   import { listen } from '@tauri-apps/api/event'
@@ -145,6 +145,7 @@
   function handleToggleTheme() {
     toggleTheme()
     theme = getTheme()
+    persistTheme(theme)
   }
 
   function openLocalTerminal() {
@@ -431,11 +432,11 @@
   <main class="content" role="main">
     <div class="toolbar" role="toolbar" aria-label={t('toolbar.mainToolbar')}>
       <button class="toolbar-btn" onclick={() => { sidebarCollapsed = !sidebarCollapsed; if (!showSidebar) showSidebar = true }} aria-label={sidebarCollapsed ? t('toolbar.expandSidebar') : t('toolbar.collapseSidebar')}>
-        {sidebarCollapsed ? '&#9654;' : '&#9664;'}
+        {sidebarCollapsed ? '\u25B6' : '\u25C0'}
       </button>
       {#if !sidebarCollapsed}
         <button class="toolbar-btn" onclick={toggleSidebar} aria-label={showSidebar ? t('toolbar.hideSidebar') : t('toolbar.showSidebar')} aria-expanded={showSidebar}>
-          {showSidebar ? '&#9664;' : '&#9654;'}
+          {showSidebar ? '\u25C0' : '\u25B6'}
         </button>
       {/if}
       <button class="toolbar-btn" onclick={() => (showNewSession = true)} aria-label={t('toolbar.newSession')}>{t('toolbar.newSession')}</button>
@@ -450,7 +451,7 @@
         <span class="update-status">{updateStatus}</span>
       {/if}
       <button class="toolbar-btn theme-toggle" onclick={handleToggleTheme} title={t('toolbar.toggleTheme')} aria-label={theme === 'dark' ? t('toolbar.switchToLight') : t('toolbar.switchToDark')}>
-        {theme === 'dark' ? '&#9728;' : '&#9790;'}
+        {theme === 'dark' ? '\u2600' : '\u263E'}
       </button>
       <button class="toolbar-btn" onclick={() => (showSettings = true)} aria-label={t('toolbar.openSettings')}>{t('toolbar.settings')}</button>
     </div>
@@ -459,9 +460,9 @@
       <div class="main-views">
         <div class="view" class:hidden={activeView !== 'terminal'} role="tabpanel" aria-label={t('toolbar.terminal')}>
           <div class="terminal-controls">
-            <button class="split-btn" class:active={splitMode === 'none'} onclick={() => (splitMode = 'none')} title={t('terminal.noSplit')}>&#9638;</button>
-            <button class="split-btn" class:active={splitMode === 'vertical'} onclick={() => (splitMode = 'vertical')} title={t('terminal.splitVertical')}>&#9553;</button>
-            <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => (splitMode = 'horizontal')} title={t('terminal.splitHorizontal')}>&#9552;</button>
+            <button class="split-btn" class:active={splitMode === 'none'} onclick={() => (splitMode = 'none')} title={t('terminal.noSplit')}>{'\u2593'}</button>
+            <button class="split-btn" class:active={splitMode === 'vertical'} onclick={() => (splitMode = 'vertical')} title={t('terminal.splitVertical')}>{'\u2551'}</button>
+            <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => (splitMode = 'horizontal')} title={t('terminal.splitHorizontal')}>{'\u2550'}</button>
           </div>
           {#if splitMode === 'none'}
             <TerminalHolder bind:tabs bind:activeTabId onSessionDisconnect={handleSessionDisconnect} />

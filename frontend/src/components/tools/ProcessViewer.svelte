@@ -105,7 +105,7 @@
     ),
   )
 
-  let sorted = $derived(() => {
+  let sorted = $derived.by(() => {
     const list = [...filtered]
     list.sort((a, b) => {
       const av = a[sortBy as keyof ProcessEntry] ?? ''
@@ -157,7 +157,7 @@
         </tr>
       </thead>
       <tbody>
-        {#each sorted() as p (p.pid)}
+        {#each sorted as p (p.pid)}
           <tr>
             <td class="mono">{p.pid}</td>
             <td>{p.user}</td>

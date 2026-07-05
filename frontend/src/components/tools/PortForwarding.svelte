@@ -2,6 +2,8 @@
   import { portForwardStart, portForwardStop, portForwardList } from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
 
+  let { sessionId }: { sessionId: string } = $props()
+
   let forwards: string[] = $state([])
   let bindHost = $state('127.0.0.1')
   let bindPort = $state(8080)
@@ -51,8 +53,6 @@
       error = String(e)
     }
   }
-
-  let { sessionId }: { sessionId: string } = $props()
 
   $effect(() => {
     refresh()

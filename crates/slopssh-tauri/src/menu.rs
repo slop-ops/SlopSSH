@@ -39,19 +39,6 @@ pub fn create_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
         ],
     )?;
 
-    let session_menu = Submenu::with_items(
-        app,
-        "Session",
-        true,
-        &[
-            &MenuItem::with_id(app, "connect", "Connect", true, None::<&str>)?,
-            &MenuItem::with_id(app, "disconnect", "Disconnect", true, None::<&str>)?,
-            &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, "duplicate", "Duplicate Session", true, None::<&str>)?,
-            &MenuItem::with_id(app, "delete_session", "Delete Session", true, None::<&str>)?,
-        ],
-    )?;
-
     let view_menu = Submenu::with_items(
         app,
         "View",
@@ -118,7 +105,6 @@ pub fn create_menu(app: &AppHandle) -> Result<Menu<tauri::Wry>, tauri::Error> {
         &[
             &file_menu,
             &edit_menu,
-            &session_menu,
             &view_menu,
             &tools_menu,
             &help_menu,

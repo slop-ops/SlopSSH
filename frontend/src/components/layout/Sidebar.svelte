@@ -456,13 +456,13 @@
   .disconnect-btn {
     background: none;
     border: none;
-    color: var(--text-tertiary);
+    color: #e06c75;
     cursor: pointer;
     font-size: 11px;
     padding: 4px 8px;
     border-radius: 4px;
-    opacity: 0;
-    transition: opacity 0.15s, color 0.15s;
+    opacity: 0.6;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
   }
 
   .active-session:hover .disconnect-btn {
@@ -523,13 +523,13 @@
   .delete-btn {
     background: none;
     border: none;
-    color: var(--text-tertiary);
+    color: #e06c75;
     cursor: pointer;
     font-size: 11px;
     padding: 4px 8px;
     border-radius: 4px;
-    opacity: 0;
-    transition: opacity 0.15s, color 0.15s;
+    opacity: 0.6;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
   }
 
   .session-item:hover .delete-btn {

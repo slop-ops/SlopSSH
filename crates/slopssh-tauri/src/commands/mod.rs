@@ -19,7 +19,7 @@ pub use local_terminal_cmds::*;
 pub use plugin_cmds::*;
 pub use port_forward_cmds::*;
 pub use session_cmds::{
-    create_folder, create_session, delete_session, list_sessions, update_session,
+    create_folder, create_session, delete_session, list_sessions, move_session, update_session,
 };
 pub use settings_cmds::get_app_version;
 pub use sftp_cmds::*;

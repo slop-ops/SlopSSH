@@ -43,6 +43,10 @@ export async function createFolder(name: string, parentId?: string): Promise<str
   return invoke<string>('create_folder', { name, parentId: parentId ?? null })
 }
 
+export async function moveSession(sessionId: string, targetFolderId?: string): Promise<void> {
+  return invoke('move_session', { sessionId, targetFolderId: targetFolderId ?? null })
+}
+
 export async function sshConnect(sessionId: string, password?: string, savePassword?: boolean): Promise<ConnectResult> {
   return invoke('ssh_connect', { sessionId, password: password ?? null, savePassword: savePassword ?? null })
 }

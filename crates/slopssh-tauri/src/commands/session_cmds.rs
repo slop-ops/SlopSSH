@@ -74,6 +74,73 @@ pub async fn create_folder(
     Ok(id)
 }
 
+#[tauri::command]
+pub async fn move_session(
+    state: State<'_, AppState>,
+    session_id: String,
+    target_folder_id: Option<String>,
+) -> Result<(), String> {
+    tracing::debug!(session_id = %session_id, "move_session");
+    let mut session_store = state.session_store.lock().await;
+    let root = session_store.root_mut();
+
+    let mut session: Option<SessionInfo> = None;
+    extract_session_from_tree(root, &session_id, &mut session);
+
+    let Some(session) = session else {
+        return Err(format!("Session {} not found", session_id));
+    };
+
+    if let Some(fid) = target_folder_id.as_deref() {
+        if let Some(folder) = find_folder_mut(root, fid) {
+            folder.items.push(session);
+        } else {
+            root.items.push(session);
+        }
+    } else {
+        root.items.push(session);
+    }
+
+    session_store.save().map_err(|e| e.to_string())
+}
+
+fn extract_session_from_tree(
+    folder: &mut SessionFolder,
+    id: &str,
+    out: &mut Option<SessionInfo>,
+) -> bool {
+    let before = folder.items.len();
+    folder.items.retain(|item| {
+        if item.id == id {
+            *out = Some(item.clone());
+            false
+        } else {
+            true
+        }
+    });
+    if folder.items.len() < before {
+        return true;
+    }
+    for sub in &mut folder.folders {
+        if extract_session_from_tree(sub, id, out) {
+            return true;
+        }
+    }
+    false
+}
+
+fn find_folder_mut<'a>(folder: &'a mut SessionFolder, id: &str) -> Option<&'a mut SessionFolder> {
+    if folder.id == id {
+        return Some(folder);
+    }
+    for sub in &mut folder.folders {
+        if let Some(found) = find_folder_mut(sub, id) {
+            return Some(found);
+        }
+    }
+    None
+}
+
 fn remove_session_from_tree(folder: &mut SessionFolder, id: &str) -> bool {
     let before = folder.items.len();
     folder.items.retain(|item| item.id != id);

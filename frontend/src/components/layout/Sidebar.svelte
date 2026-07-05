@@ -42,6 +42,11 @@
   let connectingId = $state('')
   let error = $state('')
   let passwordDialogSession = $state<{ id: string; name: string } | null>(null)
+  let showNewFolder = $state(false)
+  let newFolderName = $state('')
+  let collapsedFolders = $state<Set<string>>(new Set())
+  let contextMenu = $state<{ x: number; y: number; sessionId: string } | null>(null)
+  let dragOverFolderId = $state<string | null>(null)
 
   $effect(() => {
     loadSessions()
@@ -103,6 +108,84 @@
     }
   }
 
+  async function createFolder() {
+    if (!newFolderName.trim()) return
+    try {
+      await api.createFolder(newFolderName.trim())
+      newFolderName = ''
+      showNewFolder = false
+      await loadSessions()
+    } catch (e) {
+      error = String(e)
+    }
+  }
+
+  function toggleFolder(folderId: string) {
+    if (collapsedFolders.has(folderId)) {
+      collapsedFolders.delete(folderId)
+    } else {
+      collapsedFolders.add(folderId)
+    }
+    collapsedFolders = collapsedFolders
+  }
+
+  async function moveSessionToFolder(sessionId: string, targetFolderId: string | null) {
+    try {
+      await api.moveSession(sessionId, targetFolderId ?? undefined)
+      await loadSessions()
+    } catch (e) {
+      error = String(e)
+    }
+    contextMenu = null
+  }
+
+  function handleContextMenu(e: MouseEvent, sessionId: string) {
+    e.preventDefault()
+    contextMenu = { x: e.clientX, y: e.clientY, sessionId }
+  }
+
+  function closeContextMenu() {
+    contextMenu = null
+  }
+
+  function getAllFolders(folder: SessionFolder, prefix = ''): Array<{ id: string; name: string }> {
+    const result: Array<{ id: string; name: string }> = []
+    for (const sub of folder.folders || []) {
+      const fullName = prefix ? `${prefix} / ${sub.name}` : sub.name
+      result.push({ id: sub.id, name: fullName })
+      result.push(...getAllFolders(sub, fullName))
+    }
+    return result
+  }
+
+  function handleDragStart(e: DragEvent, sessionId: string) {
+    if (e.dataTransfer) {
+      e.dataTransfer.setData('text/plain', sessionId)
+      e.dataTransfer.effectAllowed = 'move'
+    }
+  }
+
+  function handleDragOver(e: DragEvent, folderId: string | null) {
+    e.preventDefault()
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move'
+    }
+    dragOverFolderId = folderId
+  }
+
+  function handleDragLeave() {
+    dragOverFolderId = null
+  }
+
+  async function handleDrop(e: DragEvent, targetFolderId: string | null) {
+    e.preventDefault()
+    dragOverFolderId = null
+    const sessionId = e.dataTransfer?.getData('text/plain')
+    if (sessionId) {
+      await moveSessionToFolder(sessionId, targetFolderId)
+    }
+  }
+
   function getSessionName(sessionId: string): string {
     if (!sessions) return sessionId
     const found = findSessionInTree(sessions, sessionId)
@@ -140,22 +223,36 @@
     username: string
     port: number
     isFolder?: boolean
+    folderId?: string
   }
 
   function flattenSessions(
     folder: SessionFolder,
     depth: number = 0,
+    parentFolderId: string | null = null,
   ): Array<{ item: FlatItem; depth: number }> {
     const result: Array<{ item: FlatItem; depth: number }> = []
     for (const item of folder.items || []) {
-      result.push({ item, depth })
+      result.push({ item: { ...item, folderId: parentFolderId ?? undefined }, depth })
     }
     for (const sub of folder.folders || []) {
-      result.push({ item: { ...sub, isFolder: true, host: '', username: '', port: 0 }, depth })
-      result.push(...flattenSessions(sub, depth + 1))
+      result.push({ item: { ...sub, isFolder: true, host: '', username: '', port: 0, folderId: sub.id }, depth })
+      if (!collapsedFolders.has(sub.id)) {
+        result.push(...flattenSessions(sub, depth + 1, sub.id))
+      }
     }
     return result
   }
+
+  $effect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (contextMenu && !(e.target as HTMLElement).closest('.context-menu')) {
+        closeContextMenu()
+      }
+    }
+    window.addEventListener('click', handleClickOutside)
+    return () => window.removeEventListener('click', handleClickOutside)
+  })
 </script>
 
 <div class="sidebar-content" class:collapsed>
@@ -196,48 +293,95 @@
       <div class="header">
         <h2>{t('sidebar.sessions')}</h2>
         <div class="header-actions">
+          <button class="folder-btn" onclick={() => { showNewFolder = !showNewFolder }} title={t('sidebar.newFolder')} aria-label="New folder">&#128193;</button>
           <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')} aria-label="Import SSH config">&#8595;</button>
           <button class="add-btn" onclick={onNewSession} aria-label="Add session">+</button>
         </div>
       </div>
 
+      {#if showNewFolder}
+        <div class="new-folder-row">
+          <input
+            type="text"
+            bind:value={newFolderName}
+            placeholder={t('sidebar.folderNamePlaceholder')}
+            class="new-folder-input"
+            onkeydown={(e) => { if (e.key === 'Enter') createFolder(); if (e.key === 'Escape') { showNewFolder = false; newFolderName = '' } }}
+          />
+          <button class="new-folder-confirm" onclick={createFolder} disabled={!newFolderName.trim()}>&#10003;</button>
+          <button class="new-folder-cancel" onclick={() => { showNewFolder = false; newFolderName = '' }}>&#10005;</button>
+        </div>
+      {/if}
+
       {#if error}
         <div class="error">{error}</div>
       {/if}
 
-      {#if sessions}
-        {@const flatItems = flattenSessions(sessions)}
-        {#if flatItems.length === 0}
-          <div class="empty">
-            <p>{t('sidebar.noSessions')}</p>
-            <button class="empty-add" onclick={onNewSession}>{t('sidebar.addSession')}</button>
-          </div>
+      <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <div
+        class="drop-zone"
+        class:drag-over={dragOverFolderId === 'root'}
+        ondragover={(e) => handleDragOver(e, 'root')}
+        ondragleave={handleDragLeave}
+        ondrop={(e) => handleDrop(e, null)}
+      >
+        {#if sessions}
+          {@const flatItems = flattenSessions(sessions)}
+          {#if flatItems.length === 0}
+            <div class="empty">
+              <p>{t('sidebar.noSessions')}</p>
+              <button class="empty-add" onclick={onNewSession}>{t('sidebar.addSession')}</button>
+            </div>
+          {:else}
+            {#each flatItems as { item, depth }}
+              {#if item.isFolder}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                  class="folder"
+                  class:collapsed={collapsedFolders.has(item.id)}
+                  class:drag-over={dragOverFolderId === item.id}
+                  style:padding-left="{depth * 12 + 12}px"
+                  onclick={() => toggleFolder(item.id)}
+                  onkeydown={(e) => { if (e.key === 'Enter') toggleFolder(item.id) }}
+                  role="button"
+                  tabindex={0}
+                  ondragover={(e) => { e.stopPropagation(); handleDragOver(e, item.id) }}
+                  ondragleave={handleDragLeave}
+                  ondrop={(e) => { e.stopPropagation(); handleDrop(e, item.id) }}
+                >
+                  <span class="folder-chevron">{collapsedFolders.has(item.id) ? '\u25B6' : '\u25BC'}</span>
+                  <span class="folder-icon">{'\uD83D\uDCC1'}</span>
+                  <span class="folder-name">{item.name}</span>
+                </div>
+              {:else}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                  class="session-item"
+                  style:padding-left="{depth * 12 + 12}px"
+                  class:selected={selectedSessionId === item.id}
+                  class:connected={connectedSessionIds.includes(item.id)}
+                  draggable="true"
+                  ondragstart={(e) => handleDragStart(e, item.id)}
+                  oncontextmenu={(e) => handleContextMenu(e, item.id)}
+                >
+                  <button class="session-info" onclick={() => { selectedSessionId = item.id; connect(item.id, item.name || item.host) }}>
+                    <span class="session-name">{item.name || item.host}</span>
+                    <span class="session-host">{item.username}@{item.host}:{item.port}</span>
+                    {#if connectingId === item.id}
+                      <span class="connecting">{t('sidebar.connecting')}</span>
+                    {/if}
+                  </button>
+                  <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }} aria-label="Delete session">
+                    x
+                  </button>
+                </div>
+              {/if}
+            {/each}
+          {/if}
         {:else}
-          {#each flatItems as { item, depth }}
-            {#if item.isFolder}
-              <div class="folder" style:padding-left="{depth * 12 + 12}px">
-                <span class="folder-icon">{'{'}{'}'}</span>
-                <span class="folder-name">{item.name}</span>
-              </div>
-            {:else}
-              <div class="session-item" style:padding-left="{depth * 12 + 12}px" class:selected={selectedSessionId === item.id} class:connected={connectedSessionIds.includes(item.id)}>
-                <button class="session-info" onclick={() => { selectedSessionId = item.id; connect(item.id, item.name || item.host) }}>
-                  <span class="session-name">{item.name || item.host}</span>
-                  <span class="session-host">{item.username}@{item.host}:{item.port}</span>
-                  {#if connectingId === item.id}
-                    <span class="connecting">{t('sidebar.connecting')}</span>
-                  {/if}
-                </button>
-                <button class="delete-btn" onclick={(e: Event) => { e.stopPropagation(); deleteSession(item.id) }} aria-label="Delete session">
-                  x
-                </button>
-              </div>
-            {/if}
-          {/each}
+          <div class="loading">{t('sidebar.loading')}</div>
         {/if}
-      {:else}
-        <div class="loading">{t('sidebar.loading')}</div>
-      {/if}
+      </div>
     </div>
   {/if}
 </div>
@@ -252,6 +396,21 @@
     onsubmit={handlePasswordSubmit}
     oncancel={handlePasswordCancel}
   />
+{/if}
+
+{#if contextMenu && sessions}
+  {@const allFolders = getAllFolders(sessions)}
+  <div class="context-menu" style:left="{contextMenu.x}px" style:top="{contextMenu.y}px">
+    <div class="context-menu-title">{t('sidebar.moveToFolder')}</div>
+    <button class="context-menu-item" onclick={() => moveSessionToFolder(contextMenu.sessionId, null)}>
+      {t('sidebar.rootLevel')}
+    </button>
+    {#each allFolders as folder}
+      <button class="context-menu-item" onclick={() => moveSessionToFolder(contextMenu.sessionId, folder.id)}>
+        {folder.name}
+      </button>
+    {/each}
+  </div>
 {/if}
 
 <style>
@@ -353,22 +512,9 @@
     gap: 4px;
   }
 
-  .add-btn {
-    background: transparent;
-    border: 1px solid var(--border-primary);
-    color: var(--text-secondary);
-    width: 24px;
-    height: 24px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .import-btn {
+  .add-btn,
+  .import-btn,
+  .folder-btn {
     background: transparent;
     border: 1px solid var(--border-primary);
     color: var(--text-secondary);
@@ -383,14 +529,67 @@
     padding: 0;
   }
 
-  .import-btn:hover {
+  .import-btn:hover,
+  .add-btn:hover,
+  .folder-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
   }
 
-  .add-btn:hover {
-    background: var(--bg-hover);
+  .new-folder-row {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 8px;
+    padding: 0 4px;
+  }
+
+  .new-folder-input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-active);
+    border-radius: 4px;
+    padding: 4px 8px;
     color: var(--text-primary);
+    font-size: 12px;
+    outline: none;
+  }
+
+  .new-folder-confirm,
+  .new-folder-cancel {
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    width: 24px;
+    height: 24px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .new-folder-confirm:hover {
+    background: var(--success);
+    color: var(--text-inverse);
+    border-color: var(--success);
+  }
+
+  .new-folder-cancel:hover {
+    background: var(--error);
+    color: var(--text-inverse);
+    border-color: var(--error);
+  }
+
+  .drop-zone {
+    min-height: 20px;
+    transition: background 0.15s;
+  }
+
+  .drop-zone.drag-over {
+    background: var(--accent-bg);
+    border-radius: 4px;
   }
 
   .active-session {
@@ -483,6 +682,7 @@
     border-radius: 6px;
     margin-bottom: 2px;
     transition: background 0.15s;
+    cursor: grab;
   }
 
   .session-item:hover {
@@ -548,11 +748,30 @@
     align-items: center;
     gap: 6px;
     padding: 4px 12px;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: background 0.15s;
+    user-select: none;
+  }
+
+  .folder:hover {
+    background: var(--bg-hover);
+  }
+
+  .folder.drag-over {
+    background: var(--accent-bg);
+    outline: 1px dashed var(--accent);
+  }
+
+  .folder-chevron {
+    color: var(--text-tertiary);
+    font-size: 9px;
+    width: 12px;
+    text-align: center;
   }
 
   .folder-icon {
-    color: var(--text-tertiary);
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .folder-name {
@@ -597,5 +816,47 @@
     border-radius: 6px;
     font-size: 12px;
     margin-bottom: 8px;
+  }
+
+  .context-menu {
+    position: fixed;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    padding: 4px 0;
+    min-width: 160px;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1000;
+    box-shadow: var(--shadow-lg);
+  }
+
+  .context-menu-title {
+    padding: 4px 12px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-primary);
+    margin-bottom: 4px;
+  }
+
+  .context-menu-item {
+    display: block;
+    width: 100%;
+    text-align: left;
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 6px 12px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s;
+  }
+
+  .context-menu-item:hover {
+    background: var(--bg-hover);
   }
 </style>

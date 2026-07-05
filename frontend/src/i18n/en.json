@@ -19,7 +19,11 @@
     "connecting": "Connecting...",
     "loading": "Loading...",
     "disconnect": "Disconnect",
-    "importSshConfig": "Import SSH Config"
+    "importSshConfig": "Import SSH Config",
+    "newFolder": "New Folder",
+    "folderNamePlaceholder": "Folder name...",
+    "moveToFolder": "Move to folder",
+    "rootLevel": "Root level"
   },
   "toolbar": {
     "newSession": "+ New Session",

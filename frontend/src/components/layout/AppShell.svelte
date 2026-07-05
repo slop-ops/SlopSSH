@@ -22,13 +22,36 @@
     isLocal?: boolean
   }
 
+  interface SessionWorkspace {
+    sessionId: string
+    tabs: Tab[]
+    activeTabId: string
+    activeView: 'terminal' | 'files' | 'tools'
+    splitMode: 'none' | 'horizontal' | 'vertical'
+    splitActivePane: 'primary' | 'secondary'
+    splitTabs: Tab[]
+    splitActiveTabId: string
+    splitRatio: number
+  }
+
+  function createWorkspace(sessionId: string): SessionWorkspace {
+    return {
+      sessionId,
+      tabs: [],
+      activeTabId: '',
+      activeView: 'terminal',
+      splitMode: 'none',
+      splitActivePane: 'primary',
+      splitTabs: [],
+      splitActiveTabId: '',
+      splitRatio: 50,
+    }
+  }
+
   let showSidebar = $state(true)
   let sidebarCollapsed = $state(false)
-  let tabs: Tab[] = $state([])
-  let activeTabId = $state('')
   let showNewSession = $state(false)
   let showSettings = $state(false)
-  let activeView = $state('terminal')
   let activeSessionId = $state('')
   let theme = $state(getTheme())
   let restoring = $state(true)
@@ -38,27 +61,71 @@
   let appVersion = $state('')
   let selectedSessionId = $state('')
   let sidebarSessions = $state<SessionFolder | null>(null)
-  let splitMode = $state<'none' | 'horizontal' | 'vertical'>('none')
-  let splitActivePane = $state<'primary' | 'secondary'>('primary')
-  let splitTabId = $state('')
-  let splitTabs: Tab[] = $state([])
-  let splitActiveTabId = $state('')
-  let splitRatio = $state(50)
   let isDragging = $state(false)
   let disconnectedSessionIds = $state<Set<string>>(new Set())
+  let localTabs: Tab[] = $state([])
+  let workspaces: Map<string, SessionWorkspace> = $state(new Map())
+
+  let ws = $derived(workspaces.get(activeSessionId) ?? null)
+
+  let tabs = $derived(ws ? ws.tabs : localTabs)
+  let activeTabId = $derived(ws ? ws.activeTabId : (localTabs.length > 0 ? localTabs[localTabs.length - 1].id : ''))
+  let activeView = $derived(ws ? ws.activeView : 'terminal')
+  let splitMode = $derived(ws ? ws.splitMode : 'none')
+  let splitActivePane = $derived(ws ? ws.splitActivePane : 'primary')
+  let splitTabs = $derived(ws ? ws.splitTabs : [])
+  let splitActiveTabId = $derived(ws ? ws.splitActiveTabId : '')
+  let splitRatio = $derived(ws ? ws.splitRatio : 50)
 
   let connectedSessionIds = $derived(
-    [...new Set(tabs.filter((t) => !t.isLocal && t.sessionId).map((t) => t.sessionId))]
+    [...new Set([...workspaces.values()].flatMap((w) => w.tabs.filter((t) => !t.isLocal).map((t) => t.sessionId)))]
   )
+
+  function updateWorkspace(sessionId: string, updater: (ws: SessionWorkspace) => void) {
+    const existing = workspaces.get(sessionId)
+    if (existing) {
+      updater(existing)
+      workspaces = new Map(workspaces)
+    }
+  }
+
+  function setActiveView(view: 'terminal' | 'files' | 'tools') {
+    if (ws) {
+      updateWorkspace(activeSessionId, (w) => { w.activeView = view })
+    }
+  }
+
+  function setActiveTabId(tabId: string) {
+    if (ws) {
+      updateWorkspace(activeSessionId, (w) => { w.activeTabId = tabId })
+    }
+  }
+
+  function setSplitMode(mode: 'none' | 'horizontal' | 'vertical') {
+    if (ws) {
+      updateWorkspace(activeSessionId, (w) => { w.splitMode = mode })
+    }
+  }
+
+  function setSplitActivePane(pane: 'primary' | 'secondary') {
+    if (ws) {
+      updateWorkspace(activeSessionId, (w) => { w.splitActivePane = pane })
+    }
+  }
+
+  function setSplitRatio(ratio: number) {
+    if (ws) {
+      updateWorkspace(activeSessionId, (w) => { w.splitRatio = ratio })
+    }
+  }
 
   async function restoreTabState() {
     try {
       const state = await api.loadTabState()
       if (state?.tabs?.length) {
-        const validTabs: Tab[] = []
         for (const st of state.tabs) {
           if (st.is_local) {
-            validTabs.push({
+            localTabs.push({
               id: crypto.randomUUID(),
               sessionId: st.session_id,
               channelId: st.channel_id,
@@ -69,24 +136,38 @@
             try {
               const connected = await api.sshIsConnected(st.session_id)
               if (connected) {
-                validTabs.push({
+                let workspace = workspaces.get(st.session_id)
+                if (!workspace) {
+                  workspace = createWorkspace(st.session_id)
+                  workspaces.set(st.session_id, workspace)
+                }
+                workspace.tabs.push({
                   id: crypto.randomUUID(),
                   sessionId: st.session_id,
                   channelId: crypto.randomUUID(),
                   title: st.title,
                 })
+                if (!workspace.activeTabId) {
+                  workspace.activeTabId = workspace.tabs[workspace.tabs.length - 1].id
+                }
               }
             } catch {
               // session not connected, skip
             }
           }
         }
-        tabs = validTabs
-        if (validTabs.length > 0) {
-          const prevActive = state.active_tab_id
-          const match = prevActive ? validTabs.find((t) => t.sessionId === prevActive) : null
-          activeTabId = match ? match.id : validTabs[0].id
-          activeSessionId = (match || validTabs[0]).sessionId
+        workspaces = new Map(workspaces)
+        localTabs = [...localTabs]
+        if (state.active_tab_id) {
+          for (const [sid, workspace] of workspaces) {
+            if (workspace.tabs.some((t) => t.sessionId === state.active_tab_id)) {
+              activeSessionId = sid
+              break
+            }
+          }
+        }
+        if (!activeSessionId && workspaces.size > 0) {
+          activeSessionId = workspaces.keys().next().value ?? ''
         }
       }
     } catch {
@@ -100,28 +181,50 @@
   async function persistTabState() {
     if (restoring) return
     try {
-      const savedTabs: SavedTab[] = tabs.map((tab) => ({
-        session_id: tab.sessionId,
-        channel_id: tab.channelId,
-        title: tab.title,
-        is_local: tab.isLocal ?? false,
-      }))
-      await api.saveTabState({ tabs: savedTabs, active_tab_id: activeTabId || null })
+      const allTabs: SavedTab[] = [
+        ...localTabs.map((tab) => ({
+          session_id: tab.sessionId,
+          channel_id: tab.channelId,
+          title: tab.title,
+          is_local: true,
+        })),
+        ...[...workspaces.values()].flatMap((w) =>
+          w.tabs.map((tab) => ({
+            session_id: tab.sessionId,
+            channel_id: tab.channelId,
+            title: tab.title,
+            is_local: false,
+          }))
+        ),
+      ]
+      await api.saveTabState({ tabs: allTabs, active_tab_id: activeSessionId || null })
     } catch {
       // ignore save errors
     }
   }
 
   function handleConnect(sessionId: string, name: string) {
-    activeSessionId = sessionId
-    activeView = 'terminal'
     disconnectedSessionIds.delete(sessionId)
     disconnectedSessionIds = disconnectedSessionIds
+    let workspace = workspaces.get(sessionId)
+    if (!workspace) {
+      workspace = createWorkspace(sessionId)
+      workspaces.set(sessionId, workspace)
+    }
     const channelId = crypto.randomUUID()
     const tabId = crypto.randomUUID()
-    tabs = [...tabs, { id: tabId, sessionId, channelId, title: name }]
-    activeTabId = tabId
+    workspace.tabs = [...workspace.tabs, { id: tabId, sessionId, channelId, title: name }]
+    workspace.activeTabId = tabId
+    workspace.activeView = 'terminal'
+    activeSessionId = sessionId
+    workspaces = new Map(workspaces)
     api.updateTrayTooltip()
+  }
+
+  function handleSessionSelect(sessionId: string) {
+    if (workspaces.has(sessionId)) {
+      activeSessionId = sessionId
+    }
   }
 
   async function handleDisconnectSession(sessionId: string) {
@@ -133,14 +236,12 @@
     clearSessionCache(sessionId)
     disconnectedSessionIds.delete(sessionId)
     disconnectedSessionIds = disconnectedSessionIds
-    const tabsToClose = tabs.filter((t) => t.sessionId === sessionId && !t.isLocal)
-    for (const tab of tabsToClose) {
-      closeTab(tab.id)
+    workspaces.delete(sessionId)
+    workspaces = new Map(workspaces)
+    if (activeSessionId === sessionId) {
+      activeSessionId = workspaces.size > 0 ? workspaces.keys().next().value ?? '' : ''
     }
-    const splitTabsToClose = splitTabs.filter((t) => t.sessionId === sessionId && !t.isLocal)
-    for (const tab of splitTabsToClose) {
-      closeSplitTab(tab.id)
-    }
+    api.updateTrayTooltip()
   }
 
   function handleSessionDisconnect(sessionId: string) {
@@ -161,35 +262,41 @@
   function openLocalTerminal() {
     const channelId = crypto.randomUUID()
     const tabId = crypto.randomUUID()
-    tabs = [...tabs, { id: tabId, sessionId: '', channelId, title: t('app.localTerminal'), isLocal: true }]
-    activeTabId = tabId
-    activeView = 'terminal'
+    localTabs = [...localTabs, { id: tabId, sessionId: '', channelId, title: t('app.localTerminal'), isLocal: true }]
+    activeSessionId = ''
   }
 
   function openNewTerminal() {
-    if (!activeSessionId) return
+    if (!activeSessionId || !ws) return
     const channelId = crypto.randomUUID()
     const tabId = crypto.randomUUID()
-    const tabNum = tabs.filter((t) => t.sessionId === activeSessionId).length + 1
+    const tabNum = ws.tabs.filter((t) => t.sessionId === activeSessionId).length + 1
     const newTab: Tab = { id: tabId, sessionId: activeSessionId, channelId, title: `Terminal ${tabNum}` }
-    if (splitActivePane === 'secondary' && splitMode !== 'none') {
-      splitTabs = [...splitTabs, newTab]
-      splitActiveTabId = tabId
+    if (ws.splitActivePane === 'secondary' && ws.splitMode !== 'none') {
+      updateWorkspace(activeSessionId, (w) => {
+        w.splitTabs = [...w.splitTabs, newTab]
+        w.splitActiveTabId = tabId
+      })
     } else {
-      tabs = [...tabs, newTab]
-      activeTabId = tabId
+      updateWorkspace(activeSessionId, (w) => {
+        w.tabs = [...w.tabs, newTab]
+        w.activeTabId = tabId
+      })
     }
-    activeView = 'terminal'
+    setActiveView('terminal')
   }
 
   function activateSplitMode(mode: 'vertical' | 'horizontal') {
-    splitMode = mode
-    if (splitTabs.length === 0 && activeSessionId) {
-      const channelId = crypto.randomUUID()
-      const tabId = crypto.randomUUID()
-      splitTabs = [{ id: tabId, sessionId: activeSessionId, channelId, title: 'Terminal 2' }]
-      splitActiveTabId = tabId
-    }
+    if (!ws) return
+    updateWorkspace(activeSessionId, (w) => {
+      w.splitMode = mode
+      if (w.splitTabs.length === 0) {
+        const channelId = crypto.randomUUID()
+        const tabId = crypto.randomUUID()
+        w.splitTabs = [{ id: tabId, sessionId: activeSessionId, channelId, title: 'Terminal 2' }]
+        w.splitActiveTabId = tabId
+      }
+    })
   }
 
   function handleSplitDividerMouseDown(e: MouseEvent) {
@@ -198,14 +305,14 @@
     if (!container) return
 
     const rect = container.getBoundingClientRect()
-    const isVert = splitMode === 'vertical'
+    const isVert = ws?.splitMode === 'vertical'
 
     function onMouseMove(ev: MouseEvent) {
       const pos = isVert ? ev.clientX - rect.left : ev.clientY - rect.top
       const size = isVert ? rect.width : rect.height
       let ratio = (pos / size) * 100
       ratio = Math.max(20, Math.min(80, ratio))
-      splitRatio = ratio
+      setSplitRatio(ratio)
     }
 
     function onMouseUp() {
@@ -233,7 +340,7 @@
     switch (action) {
       case 'new-tab':
         if (activeSessionId) {
-          handleConnect(activeSessionId, t('app.newTab', { count: String(tabs.length + 1) }))
+          handleConnect(activeSessionId, t('app.newTab', { count: String((ws?.tabs.length ?? 0) + 1) }))
         }
         break
       case 'close-tab':
@@ -242,16 +349,18 @@
         }
         break
       case 'next-tab': {
-        const idx = tabs.findIndex((t) => t.id === activeTabId)
-        if (idx >= 0 && idx < tabs.length - 1) {
-          activeTabId = tabs[idx + 1].id
+        const currentTabs = ws ? ws.tabs : localTabs
+        const idx = currentTabs.findIndex((t) => t.id === activeTabId)
+        if (idx >= 0 && idx < currentTabs.length - 1) {
+          if (ws) setActiveTabId(currentTabs[idx + 1].id)
         }
         break
       }
       case 'prev-tab': {
-        const idx = tabs.findIndex((t) => t.id === activeTabId)
+        const currentTabs = ws ? ws.tabs : localTabs
+        const idx = currentTabs.findIndex((t) => t.id === activeTabId)
         if (idx > 0) {
-          activeTabId = tabs[idx - 1].id
+          if (ws) setActiveTabId(currentTabs[idx - 1].id)
         }
         break
       }
@@ -265,10 +374,10 @@
         showNewSession = true
         break
       case 'toggle-files':
-        if (activeSessionId) activeView = activeView === 'files' ? 'terminal' : 'files'
+        if (activeSessionId && ws) setActiveView(ws.activeView === 'files' ? 'terminal' : 'files')
         break
       case 'toggle-tools':
-        if (activeSessionId) activeView = activeView === 'tools' ? 'terminal' : 'tools'
+        if (activeSessionId && ws) setActiveView(ws.activeView === 'tools' ? 'terminal' : 'tools')
         break
       case 'escape':
         if (showNewSession) showNewSession = false
@@ -287,43 +396,43 @@
   }
 
   function closeTab(tabId: string) {
-    const closedTab = tabs.find((t) => t.id === tabId)
-    tabs = tabs.filter((t) => t.id !== tabId)
-    if (activeTabId === tabId) {
-      activeTabId = tabs.length > 0 ? tabs[tabs.length - 1].id : ''
-    }
-    if (closedTab && closedTab.sessionId && !closedTab.isLocal) {
-      const stillConnected = tabs.some((t) => t.sessionId === closedTab.sessionId && !t.isLocal)
-      if (!stillConnected) {
-        const remainingSessions = [...new Set(tabs.filter((t) => !t.isLocal && t.sessionId).map((t) => t.sessionId))]
-        activeSessionId = remainingSessions.length > 0 ? remainingSessions[remainingSessions.length - 1] : ''
-        if (!activeSessionId) {
-          activeView = 'terminal'
+    if (ws) {
+      const closedTab = ws.tabs.find((t) => t.id === tabId)
+      updateWorkspace(activeSessionId, (w) => {
+        w.tabs = w.tabs.filter((t) => t.id !== tabId)
+        if (w.activeTabId === tabId) {
+          w.activeTabId = w.tabs.length > 0 ? w.tabs[w.tabs.length - 1].id : ''
         }
+      })
+      const updatedWs = workspaces.get(activeSessionId)
+      if (updatedWs && updatedWs.tabs.length === 0) {
+        workspaces.delete(activeSessionId)
+        workspaces = new Map(workspaces)
+        const remaining = [...workspaces.keys()]
+        activeSessionId = remaining.length > 0 ? remaining[remaining.length - 1] : ''
       }
+    } else {
+      localTabs = localTabs.filter((t) => t.id !== tabId)
     }
     api.updateTrayTooltip()
   }
 
   function closeSplitTab(tabId: string) {
-    splitTabs = splitTabs.filter((t) => t.id !== tabId)
-    if (splitActiveTabId === tabId) {
-      splitActiveTabId = splitTabs.length > 0 ? splitTabs[splitTabs.length - 1].id : ''
-    }
-    if (splitTabs.length === 0) {
-      splitMode = 'none'
-    }
+    if (!ws) return
+    updateWorkspace(activeSessionId, (w) => {
+      w.splitTabs = w.splitTabs.filter((t) => t.id !== tabId)
+      if (w.splitActiveTabId === tabId) {
+        w.splitActiveTabId = w.splitTabs.length > 0 ? w.splitTabs[w.splitTabs.length - 1].id : ''
+      }
+      if (w.splitTabs.length === 0) {
+        w.splitMode = 'none'
+      }
+    })
   }
 
   $effect(() => {
-    if (tabs.length > 0) {
-      const activeTab = tabs.find((t) => t.id === activeTabId)
-      if (activeTab && !activeTab.isLocal && activeTab.sessionId) {
-        activeSessionId = activeTab.sessionId
-      }
-    }
-    void tabs
-    void activeTabId
+    void activeSessionId
+    void workspaces
     persistTabState()
   })
 
@@ -400,10 +509,10 @@
             try {
               await api.sshDisconnect(activeSessionId)
               clearSessionCache(activeSessionId)
-              const tabsToClose = tabs.filter((t) => t.sessionId === activeSessionId && !t.isLocal)
-              for (const tab of tabsToClose) {
-                closeTab(tab.id)
-              }
+              workspaces.delete(activeSessionId)
+              workspaces = new Map(workspaces)
+              const remaining = [...workspaces.keys()]
+              activeSessionId = remaining.length > 0 ? remaining[remaining.length - 1] : ''
             } catch (e) {
               console.error('Disconnect failed:', e)
             }
@@ -456,7 +565,7 @@
           }
           break
         case 'file_browser':
-          if (activeSessionId) activeView = 'files'
+          if (activeSessionId && ws) setActiveView('files')
           break
         case 'process_viewer':
         case 'log_viewer':
@@ -465,7 +574,7 @@
         case 'port_forwarding':
         case 'port_viewer':
         case 'key_manager':
-          if (activeSessionId) activeView = 'tools'
+          if (activeSessionId && ws) setActiveView('tools')
           break
         case 'about':
           try {
@@ -499,7 +608,7 @@
   <div class="app-shell" role="application" aria-label={t('app.title')}>
   {#if showSidebar}
     <aside class="sidebar" class:collapsed={sidebarCollapsed} role="navigation" aria-label={t('sidebar.sessionList')}>
-      <Sidebar onConnect={handleConnect} onDisconnect={handleDisconnectSession} onNewSession={() => (showNewSession = true)} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} {tabs} {connectedSessionIds} {disconnectedSessionIds} collapsed={sidebarCollapsed} />
+      <Sidebar onConnect={handleConnect} onDisconnect={handleDisconnectSession} onNewSession={() => (showNewSession = true)} onSessionSelect={handleSessionSelect} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} tabs={[...localTabs, ...[...workspaces.values()].flatMap((w) => w.tabs)]} {connectedSessionIds} {disconnectedSessionIds} collapsed={sidebarCollapsed} />
     </aside>
   {/if}
   <main class="content" role="main">
@@ -515,9 +624,9 @@
       <button class="toolbar-btn" onclick={() => (showNewSession = true)} aria-label={t('toolbar.newSession')}>{t('toolbar.newSession')}</button>
       {#if activeSessionId}
         <div class="toolbar-separator" role="separator"></div>
-        <button class="toolbar-btn" class:active={activeView === 'terminal'} onclick={() => (activeView = 'terminal')} aria-pressed={activeView === 'terminal'}>{t('toolbar.terminal')}</button>
-        <button class="toolbar-btn" class:active={activeView === 'files'} onclick={() => (activeView = 'files')} aria-pressed={activeView === 'files'}>{t('toolbar.files')}</button>
-        <button class="toolbar-btn" class:active={activeView === 'tools'} onclick={() => (activeView = 'tools')} aria-pressed={activeView === 'tools'}>{t('toolbar.tools')}</button>
+        <button class="toolbar-btn" class:active={activeView === 'terminal'} onclick={() => setActiveView('terminal')} aria-pressed={activeView === 'terminal'}>{t('toolbar.terminal')}</button>
+        <button class="toolbar-btn" class:active={activeView === 'files'} onclick={() => setActiveView('files')} aria-pressed={activeView === 'files'}>{t('toolbar.files')}</button>
+        <button class="toolbar-btn" class:active={activeView === 'tools'} onclick={() => setActiveView('tools')} aria-pressed={activeView === 'tools'}>{t('toolbar.tools')}</button>
       {/if}
       <div class="toolbar-spacer"></div>
       {#if updateStatus}
@@ -535,23 +644,23 @@
           <div class="terminal-controls">
             <button class="new-terminal-btn" onclick={openNewTerminal} title={t('terminal.newTerminal')} aria-label="New terminal tab">+</button>
             <div class="split-group">
-              <button class="split-btn" class:active={splitMode === 'none'} onclick={() => (splitMode = 'none')} title={t('terminal.noSplit')}>{'\u2593'}</button>
+              <button class="split-btn" class:active={splitMode === 'none'} onclick={() => setSplitMode('none')} title={t('terminal.noSplit')}>{'\u2593'}</button>
               <button class="split-btn" class:active={splitMode === 'vertical'} onclick={() => activateSplitMode('vertical')} title={t('terminal.splitVertical')}>{'\u2551'}</button>
               <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => activateSplitMode('horizontal')} title={t('terminal.splitHorizontal')}>{'\u2550'}</button>
             </div>
           </div>
           {#if splitMode === 'none'}
-            <TerminalHolder bind:tabs bind:activeTabId onSessionDisconnect={handleSessionDisconnect} />
+            <TerminalHolder bind:tabs={ws!.tabs} bind:activeTabId={ws!.activeTabId} onSessionDisconnect={handleSessionDisconnect} />
           {:else}
             <div class="split-container" class:horizontal={splitMode === 'horizontal'} class:vertical={splitMode === 'vertical'}>
-              <div class="split-pane" class:active-pane={splitActivePane === 'primary'} style:flex="0 0 {splitRatio}%" onclick={() => (splitActivePane = 'primary')}>
-                <TerminalHolder bind:tabs bind:activeTabId onSessionDisconnect={handleSessionDisconnect} />
+              <div class="split-pane" class:active-pane={splitActivePane === 'primary'} style:flex="0 0 {splitRatio}%" onclick={() => setSplitActivePane('primary')}>
+                <TerminalHolder bind:tabs={ws!.tabs} bind:activeTabId={ws!.activeTabId} onSessionDisconnect={handleSessionDisconnect} />
               </div>
               <!-- svelte-ignore a11y_no_static_element_interactions -->
               <div class="split-divider" class:dragging={isDragging} onmousedown={handleSplitDividerMouseDown}></div>
-              <div class="split-pane" class:active-pane={splitActivePane === 'secondary'} style:flex="1" onclick={() => (splitActivePane = 'secondary')}>
+              <div class="split-pane" class:active-pane={splitActivePane === 'secondary'} style:flex="1" onclick={() => setSplitActivePane('secondary')}>
                 {#if splitTabs.length > 0}
-                  <TerminalHolder bind:tabs={splitTabs} bind:activeTabId={splitActiveTabId} onSessionDisconnect={handleSessionDisconnect} />
+                  <TerminalHolder bind:tabs={ws!.splitTabs} bind:activeTabId={ws!.splitActiveTabId} onSessionDisconnect={handleSessionDisconnect} />
                 {:else}
                   <div class="split-empty">
                     <p>{t('terminal.splitSecondary')}</p>
@@ -570,6 +679,12 @@
         </div>
         <div class="view" class:hidden={activeView !== 'tools'} role="tabpanel" aria-label={t('toolbar.tools')}>
           <ToolsPanel sessionId={activeSessionId} />
+        </div>
+      </div>
+    {:else if localTabs.length > 0}
+      <div class="main-views">
+        <div class="view" role="tabpanel" aria-label={t('toolbar.terminal')}>
+          <TerminalHolder bind:tabs={localTabs} activeTabId={localTabs[localTabs.length - 1].id} onSessionDisconnect={handleSessionDisconnect} />
         </div>
       </div>
     {:else}

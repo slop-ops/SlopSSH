@@ -17,6 +17,7 @@
     onConnect,
     onDisconnect,
     onNewSession,
+    onSessionSelect,
     showImport = $bindable(false),
     selectedSessionId = $bindable(''),
     sessions: sessions = $bindable<SessionFolder | null>(null),
@@ -28,6 +29,7 @@
     onConnect: (id: string, name: string) => void
     onDisconnect: (sessionId: string) => void
     onNewSession: () => void
+    onSessionSelect?: (sessionId: string) => void
     showImport?: boolean
     selectedSessionId?: string
     sessions?: SessionFolder | null
@@ -161,7 +163,7 @@
     <div class="collapsed-items">
       {#if connectedSessionIds.length > 0}
         {#each connectedSessionIds as sessionId}
-          <button class="collapsed-item active" class:selected={selectedSessionId === sessionId} onclick={() => { selectedSessionId = sessionId }} title={getSessionName(sessionId)}>
+          <button class="collapsed-item active" class:selected={selectedSessionId === sessionId} onclick={() => { selectedSessionId = sessionId; onSessionSelect?.(sessionId) }} title={getSessionName(sessionId)}>
             <span class="collapsed-dot"></span>
           </button>
         {/each}
@@ -177,7 +179,7 @@
       <h2 class="section-title">{t('sidebar.activeSessions')}</h2>
       {#each connectedSessionIds as sessionId}
         <div class="active-session" class:selected={selectedSessionId === sessionId} class:disconnected={disconnectedSessionIds.has(sessionId)}>
-          <button class="active-session-info" onclick={() => { selectedSessionId = sessionId }}>
+          <button class="active-session-info" onclick={() => { selectedSessionId = sessionId; onSessionSelect?.(sessionId) }}>
             <span class="active-dot" class:error={disconnectedSessionIds.has(sessionId)}></span>
             <span class="active-name">{getSessionName(sessionId)}</span>
             <span class="active-tabs">{getTabCount(sessionId)}</span>

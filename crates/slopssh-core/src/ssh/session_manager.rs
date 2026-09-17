@@ -355,10 +355,16 @@ impl SessionManager {
             .get(session_id)
             .ok_or(SshError::NotConnected)?;
         let handle = session.connection.handle().ok_or(SshError::NotConnected)?;
-        handle
+        let channel = handle
             .channel_open_session()
             .await
-            .map_err(|e| SshError::ChannelError(format!("Failed to open SFTP channel: {}", e)))
+            .map_err(|e| SshError::ChannelError(format!("Failed to open SFTP channel: {}", e)))?;
+
+        channel.request_subsystem(true, "sftp").await.map_err(|e| {
+            SshError::ChannelError(format!("Failed to request SFTP subsystem: {}", e))
+        })?;
+
+        Ok(channel)
     }
 
     /// Returns `true` if the session exists and its connection is alive.

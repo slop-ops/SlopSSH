@@ -73,18 +73,15 @@
           <div
             class="terminal-panel"
             class:active={activeTabId === tab.id}
-            style:visibility={activeTabId === tab.id ? 'visible' : 'hidden'}
-            style:position={activeTabId === tab.id ? 'relative' : 'absolute'}
-            style:inset={activeTabId === tab.id ? '' : '0'}
-            style:height={activeTabId === tab.id ? '100%' : '0'}
-            style:overflow={activeTabId === tab.id ? 'visible' : 'hidden'}
+            class:inactive={activeTabId !== tab.id}
           >
             {#if tab.isLocal}
-              <LocalTerminal channelId={tab.channelId} />
+              <LocalTerminal channelId={tab.channelId} isActive={activeTabId === tab.id} />
             {:else}
               <Terminal
                 sessionId={tab.sessionId}
                 channelId={tab.channelId}
+                isActive={activeTabId === tab.id}
                 onSendSnippet={(handler) => registerSnippetHandler(tab.id, handler)}
                 onDisconnect={() => onSessionDisconnect?.(tab.sessionId)}
               />
@@ -214,17 +211,35 @@
   }
 
   .tab-content {
+    position: relative;
     flex: 1;
     overflow: hidden;
-  }
-
-  .terminal-panel {
     height: 100%;
     width: 100%;
   }
 
-  .terminal-panel:not(.active) {
+  .terminal-panel {
+    width: 100%;
+    height: 100%;
+  }
+
+  .terminal-panel.inactive {
+    position: absolute;
+    top: 0;
+    left: -99999px;
+    width: 100%;
+    height: 100%;
+    visibility: hidden;
     pointer-events: none;
+    z-index: -1;
+  }
+
+  .terminal-panel.active {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    visibility: visible;
+    z-index: 1;
   }
 
   .empty {

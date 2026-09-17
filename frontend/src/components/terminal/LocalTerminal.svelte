@@ -4,15 +4,16 @@
   import { FitAddon } from '@xterm/addon-fit'
   import { WebglAddon } from '@xterm/addon-webgl'
   import { listen } from '@tauri-apps/api/event'
-  import { darkTheme, lightTheme } from '$lib/terminal/themes'
-  import { getTheme, getTerminalSettings } from '$lib/stores/theme.svelte'
+  import { getTheme, getTerminalSettings, getActiveXtermTheme } from '$lib/stores/theme.svelte'
   import * as api from '$lib/api/invoke'
   import '@xterm/xterm/css/xterm.css'
 
   let {
     channelId = crypto.randomUUID(),
+    isActive = true,
   }: {
     channelId?: string
+    isActive?: boolean
   } = $props()
 
   let terminalEl: HTMLDivElement | undefined = $state()
@@ -67,7 +68,7 @@
     if (!terminalEl) return
 
     const settings = getTerminalSettings()
-    const theme = getTheme() === 'light' ? lightTheme : darkTheme
+    const theme = getActiveXtermTheme()
     terminal = new Terminal({
       theme,
       fontFamily: settings.font_family || 'JetBrains Mono, monospace',
@@ -185,11 +186,26 @@
     }
   })
 
+  // Reactive effect when tab becomes active
+  $effect(() => {
+    if (isActive && terminal && fitAddon && terminalEl) {
+      requestAnimationFrame(() => {
+        if (!terminalEl || terminalEl.offsetParent === null) return
+        fitAddon?.fit()
+        terminal?.focus()
+        if (connected && terminal) {
+          const { cols, rows } = terminal
+          api.localTerminalResize(channelId, cols, rows).catch(console.error)
+        }
+      })
+    }
+  })
+
   // Reactive theme switching
   $effect(() => {
-    const themeName = getTheme()
+    getTheme()
     if (terminal) {
-      terminal.options.theme = themeName === 'light' ? lightTheme : darkTheme
+      terminal.options.theme = getActiveXtermTheme()
     }
   })
 </script>

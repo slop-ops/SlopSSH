@@ -93,4 +93,41 @@ describe('terminal themes', () => {
       expect(darkTheme.selectionBackground).toBe(lightTheme.selectionBackground)
     })
   })
+
+  describe('multi-theme suite', () => {
+    it('supports Tokyo Night, Catppuccin, JetBrains, One Dark, and GitHub Light', async () => {
+      const {
+        tokyoNightTheme,
+        catppuccinMochaTheme,
+        jetbrainsDarkTheme,
+        oneDarkTheme,
+        githubLightTheme,
+        getTerminalTheme,
+      } = await import('$lib/terminal/themes')
+
+      expect(tokyoNightTheme.name).toBe('Tokyo Night')
+      expect(catppuccinMochaTheme.name).toBe('Catppuccin Mocha')
+      expect(jetbrainsDarkTheme.name).toBe('JetBrains Dark')
+      expect(oneDarkTheme.name).toBe('One Dark')
+      expect(githubLightTheme.name).toBe('GitHub Light')
+
+      expect(getTerminalTheme('tokyo-night').background).toBe('#1a1b26')
+      expect(getTerminalTheme('catppuccin-mocha').background).toBe('#1e1e2e')
+      expect(getTerminalTheme('jetbrains-dark').background).toBe('#1e1f22')
+      expect(getTerminalTheme('github-light').background).toBe('#ffffff')
+
+      // Custom theme support
+      const custom = getTerminalTheme('custom', {
+        bgPrimary: '#123456',
+        bgSecondary: '#234567',
+        bgTertiary: '#345678',
+        textPrimary: '#ffffff',
+        textSecondary: '#888888',
+        accent: '#ff0077',
+        border: '#444444',
+      })
+      expect(custom.background).toBe('#123456')
+      expect(custom.cursor).toBe('#ff0077')
+    })
+  })
 })

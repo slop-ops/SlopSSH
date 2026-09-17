@@ -1,13 +1,23 @@
 <script lang="ts">
   import { onDestroy } from 'svelte'
   import * as api from '$lib/api/invoke'
-  import { setTheme, persistTheme, setTerminalSettings } from '$lib/stores/theme.svelte'
+  import {
+    setTheme,
+    persistTheme,
+    setTerminalSettings,
+    BUILTIN_THEMES,
+    getCustomPalette,
+    setCustomPalette,
+    DEFAULT_CUSTOM_PALETTE,
+    type CustomPalette,
+  } from '$lib/stores/theme.svelte'
   import { loadLocale, t } from '$lib/utils/i18n'
   import type { Settings, EditorInfo, PluginInfo } from '$lib/types'
 
   let { open = $bindable() }: { open: boolean } = $props()
 
   let settings = $state<Settings | null>(null)
+  let palette = $state<CustomPalette>({ ...getCustomPalette() })
   let loading = $state(false)
   let saving = $state(false)
   let error = $state('')
@@ -196,12 +206,82 @@
               </select>
             </div>
             <div class="field">
-              <label>{t('settings.theme')}</label>
-              <select bind:value={settings.theme}>
-                <option value="dark">{t('settings.dark')}</option>
-                <option value="light">{t('settings.light')}</option>
+              <label for="settings-theme-select">{t('settings.theme') || 'Color Theme'}</label>
+              <select id="settings-theme-select" bind:value={settings.theme} onchange={() => {
+                if (settings?.theme) {
+                  setTheme(settings.theme)
+                }
+              }}>
+                {#each BUILTIN_THEMES as bt}
+                  <option value={bt.id}>{bt.name}</option>
+                {/each}
               </select>
             </div>
+
+            {#if settings.theme === 'custom'}
+              <div class="custom-palette-section">
+                <div class="palette-header">
+                  <span class="palette-title">Custom Palette Tuning</span>
+                  <button type="button" class="reset-palette-btn" onclick={() => {
+                    palette = { ...DEFAULT_CUSTOM_PALETTE }
+                    setCustomPalette(palette)
+                  }}>
+                    Reset Defaults
+                  </button>
+                </div>
+                <div class="palette-grid">
+                  <div class="color-picker-item">
+                    <label for="color-bg-primary">Canvas Background</label>
+                    <div class="color-input-wrap">
+                      <input id="color-bg-primary" type="color" bind:value={palette.bgPrimary} oninput={() => setCustomPalette(palette)} />
+                      <input type="text" class="color-text-input" bind:value={palette.bgPrimary} oninput={() => setCustomPalette(palette)} />
+                    </div>
+                  </div>
+                  <div class="color-picker-item">
+                    <label for="color-bg-secondary">Sidebar / Header</label>
+                    <div class="color-input-wrap">
+                      <input id="color-bg-secondary" type="color" bind:value={palette.bgSecondary} oninput={() => setCustomPalette(palette)} />
+                      <input type="text" class="color-text-input" bind:value={palette.bgSecondary} oninput={() => setCustomPalette(palette)} />
+                    </div>
+                  </div>
+                  <div class="color-picker-item">
+                    <label for="color-bg-tertiary">Panels & Surfaces</label>
+                    <div class="color-input-wrap">
+                      <input id="color-bg-tertiary" type="color" bind:value={palette.bgTertiary} oninput={() => setCustomPalette(palette)} />
+                      <input type="text" class="color-text-input" bind:value={palette.bgTertiary} oninput={() => setCustomPalette(palette)} />
+                    </div>
+                  </div>
+                  <div class="color-picker-item">
+                    <label for="color-accent">Accent Color</label>
+                    <div class="color-input-wrap">
+                      <input id="color-accent" type="color" bind:value={palette.accent} oninput={() => setCustomPalette(palette)} />
+                      <input type="text" class="color-text-input" bind:value={palette.accent} oninput={() => setCustomPalette(palette)} />
+                    </div>
+                  </div>
+                  <div class="color-picker-item">
+                    <label for="color-text-primary">Text Primary</label>
+                    <div class="color-input-wrap">
+                      <input id="color-text-primary" type="color" bind:value={palette.textPrimary} oninput={() => setCustomPalette(palette)} />
+                      <input type="text" class="color-text-input" bind:value={palette.textPrimary} oninput={() => setCustomPalette(palette)} />
+                    </div>
+                  </div>
+                  <div class="color-picker-item">
+                    <label for="color-text-secondary">Text Muted</label>
+                    <div class="color-input-wrap">
+                      <input id="color-text-secondary" type="color" bind:value={palette.textSecondary} oninput={() => setCustomPalette(palette)} />
+                      <input type="text" class="color-text-input" bind:value={palette.textSecondary} oninput={() => setCustomPalette(palette)} />
+                    </div>
+                  </div>
+                  <div class="color-picker-item">
+                    <label for="color-border">Borders</label>
+                    <div class="color-input-wrap">
+                      <input id="color-border" type="color" bind:value={palette.border} oninput={() => setCustomPalette(palette)} />
+                      <input type="text" class="color-text-input" bind:value={palette.border} oninput={() => setCustomPalette(palette)} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            {/if}
             <div class="field">
               <label>{t('settings.logLevel')}</label>
               <select bind:value={settings.log_level}>
@@ -848,5 +928,86 @@
 
   .danger-btn:hover {
     background: var(--error-bg);
+  }
+
+  .custom-palette-section {
+    margin-top: 12px;
+    padding: 12px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+  }
+
+  .palette-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .palette-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  .reset-palette-btn {
+    background: transparent;
+    border: 1px solid var(--border-primary);
+    color: var(--text-secondary);
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+  }
+
+  .reset-palette-btn:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
+  }
+
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+
+  .color-picker-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .color-picker-item label {
+    font-size: 11px;
+    color: var(--text-secondary);
+  }
+
+  .color-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .color-input-wrap input[type='color'] {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    cursor: pointer;
+    background: transparent;
+  }
+
+  .color-text-input {
+    flex: 1;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 3px 6px;
+    color: var(--text-primary);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    outline: none;
   }
 </style>

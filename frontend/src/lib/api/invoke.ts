@@ -4,6 +4,7 @@ import type {
   SessionInfo,
   SessionFolder,
   DirEntry,
+  FileItem,
   Snippet,
   TransferProgress,
   SshKeyInfo,
@@ -117,6 +118,30 @@ export async function sftpStat(sessionId: string, path: string): Promise<DirEntr
 
 export async function sftpHome(sessionId: string): Promise<string> {
   return invoke<string>('sftp_home', { sessionId })
+}
+
+export async function localGetHome(): Promise<string> {
+  return invoke<string>('local_get_home')
+}
+
+export async function localGetDrives(): Promise<string[]> {
+  return invoke<string[]>('local_get_drives')
+}
+
+export async function localListDir(path?: string): Promise<FileItem[]> {
+  return invoke<FileItem[]>('local_list_dir', { path })
+}
+
+export async function localMkdir(path: string): Promise<void> {
+  return invoke('local_mkdir', { path })
+}
+
+export async function localRemove(path: string): Promise<void> {
+  return invoke('local_remove', { path })
+}
+
+export async function localRename(from: string, to: string): Promise<void> {
+  return invoke('local_rename', { from, to })
 }
 
 export async function getAppVersion(): Promise<string> {

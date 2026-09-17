@@ -39,6 +39,16 @@
     "switchToDark": "Switch to dark theme",
     "openSettings": "Open settings"
   },
+  "sessionTab": {
+    "reconnecting": "Reconnecting...",
+    "disconnected": "Disconnected from host",
+    "reconnect": "Reconnect",
+    "closeSession": "Close Session",
+    "newSession": "New Session",
+    "localTerminal": "Local Terminal",
+    "noTerminals": "No terminal tabs open in this session",
+    "openTerminal": "Open Terminal"
+  },
   "session": {
     "newSession": "New Session",
     "name": "Name",

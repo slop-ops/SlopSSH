@@ -2,6 +2,8 @@
   import FileList from './FileList.svelte'
   import ContextMenu from '../common/ContextMenu.svelte'
   import FileEditor from './FileEditor.svelte'
+  import PromptDialog from '../common/PromptDialog.svelte'
+  import ConfirmDialog from '../common/ConfirmDialog.svelte'
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
 
@@ -26,6 +28,22 @@
   let dragOverState = $state(false)
   let contextMenu = $state<{ x: number; y: number; entry: FileEntry | null } | null>(null)
   let editingFile = $state<string | null>(null)
+
+  let promptState = $state<{
+    open: boolean
+    title: string
+    placeholder: string
+    value: string
+    onconfirm: (val: string) => void
+  }>({ open: false, title: '', placeholder: '', value: '', onconfirm: () => {} })
+
+  let confirmState = $state<{
+    open: boolean
+    title: string
+    message: string
+    isDanger: boolean
+    onconfirm: () => void
+  }>({ open: false, title: '', message: '', isDanger: false, onconfirm: () => {} })
 
   $effect(() => {
     if (sessionId) loadHome()
@@ -86,37 +104,58 @@
     }
   }
 
-  async function createDirectory() {
-    const name = prompt(t('files.newFolder'))
-    if (!name) return
-    const path = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`
-    try {
-      await api.sftpMkdir(sessionId, path)
-      await loadDir(currentPath)
-    } catch (e) {
-      error = String(e)
+  function createDirectory() {
+    promptState = {
+      open: true,
+      title: t('files.newFolder') || 'New Folder',
+      placeholder: t('files.folderName') || 'Folder name',
+      value: '',
+      onconfirm: async (name) => {
+        if (!name) return
+        const path = currentPath === '/' ? `/${name}` : `${currentPath}/${name}`
+        try {
+          await api.sftpMkdir(sessionId, path)
+          await loadDir(currentPath)
+        } catch (e) {
+          error = String(e)
+        }
+      },
     }
   }
 
-  async function deleteEntry(entry: FileEntry) {
-    if (!confirm(t('files.delete') + ' ' + entry.name + '?')) return
-    try {
-      await api.sftpRemove(sessionId, entry.path)
-      await loadDir(currentPath)
-    } catch (e) {
-      error = String(e)
+  function deleteEntry(entry: FileEntry) {
+    confirmState = {
+      open: true,
+      title: t('files.delete') || 'Delete',
+      message: `${t('files.delete') || 'Delete'} ${entry.name}?`,
+      isDanger: true,
+      onconfirm: async () => {
+        try {
+          await api.sftpRemove(sessionId, entry.path)
+          await loadDir(currentPath)
+        } catch (e) {
+          error = String(e)
+        }
+      },
     }
   }
 
-  async function renameEntry(entry: FileEntry) {
-    const newName = prompt(t('files.rename'), entry.name)
-    if (!newName || newName === entry.name) return
-    const newPath = currentPath === '/' ? `/${newName}` : `${currentPath}/${newName}`
-    try {
-      await api.sftpRename(sessionId, entry.path, newPath)
-      await loadDir(currentPath)
-    } catch (e) {
-      error = String(e)
+  function renameEntry(entry: FileEntry) {
+    promptState = {
+      open: true,
+      title: t('files.rename') || 'Rename',
+      placeholder: t('files.newName') || 'New name',
+      value: entry.name,
+      onconfirm: async (newName) => {
+        if (!newName || newName === entry.name) return
+        const newPath = currentPath === '/' ? `/${newName}` : `${currentPath}/${newName}`
+        try {
+          await api.sftpRename(sessionId, entry.path, newPath)
+          await loadDir(currentPath)
+        } catch (e) {
+          error = String(e)
+        }
+      },
     }
   }
 
@@ -372,6 +411,22 @@
     }}
   />
 {/if}
+
+<PromptDialog
+  bind:open={promptState.open}
+  title={promptState.title}
+  placeholder={promptState.placeholder}
+  defaultValue={promptState.value}
+  onconfirm={promptState.onconfirm}
+/>
+
+<ConfirmDialog
+  bind:open={confirmState.open}
+  title={confirmState.title}
+  message={confirmState.message}
+  isDanger={confirmState.isDanger}
+  onconfirm={confirmState.onconfirm}
+/>
 
 <style>
   .file-browser {

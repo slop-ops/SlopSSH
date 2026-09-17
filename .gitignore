@@ -14,4 +14,16 @@ RELEASE-PLAN.md
 REPORT.md
 SKILLS.md
 crates/slopssh-tauri/gen/
+
+# Agent service directories and planning files
+.opencode/
+.claude/
+.cursor/
+.gemini/
+.idea/
+.vscode/
 PLAN.md
+*.plan.md
+TODO.md
+agent/
+scratch/

@@ -54,8 +54,10 @@
     }
   }
 
+  let isSampling = false
   async function sample() {
-    if (!sessionId) return
+    if (!sessionId || isSampling) return
+    isSampling = true
     try {
       const result = await api.remoteExec(
         sessionId,
@@ -63,9 +65,11 @@
         5,
       )
       parseStats(result.stdout)
+      error = ''
     } catch (e) {
       error = String(e)
-      stop()
+    } finally {
+      isSampling = false
     }
   }
 
@@ -178,11 +182,12 @@
     color: string,
     fillColor: string,
   ) {
+    const rect = canvas.getBoundingClientRect()
+    if (rect.width <= 0 || rect.height <= 0) return
     const ctx = canvas.getContext('2d')
     if (!ctx || data.length < 2) return
 
     const dpr = window.devicePixelRatio || 1
-    const rect = canvas.getBoundingClientRect()
     canvas.width = rect.width * dpr
     canvas.height = rect.height * dpr
     ctx.scale(dpr, dpr)

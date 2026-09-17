@@ -1,11 +1,15 @@
 <script lang="ts">
   import Sidebar from './Sidebar.svelte'
+  import SessionTabBar, { type SessionTabItem } from './SessionTabBar.svelte'
   import TerminalHolder from '../terminal/TerminalHolder.svelte'
-  import FileBrowser from '../files/FileBrowser.svelte'
+  import DualPaneFileBrowser from '../files/DualPaneFileBrowser.svelte'
   import TransferQueue from '../files/TransferQueue.svelte'
   import ToolsPanel from '../tools/ToolsPanel.svelte'
+  import StatusBar from './StatusBar.svelte'
+  import Icon from '../common/Icon.svelte'
   import NewSessionDialog from '../session/NewSessionDialog.svelte'
   import SettingsDialog from '../settings/SettingsDialog.svelte'
+  import Toast from '../common/Toast.svelte'
   import { getTheme, toggleTheme, persistTheme } from '$lib/stores/theme.svelte'
   import { t } from '$lib/utils/i18n'
   import { registerHandler, setEnabled as setShortcutsEnabled } from '$lib/utils/shortcuts'
@@ -24,6 +28,10 @@
 
   interface SessionWorkspace {
     sessionId: string
+    name?: string
+    host?: string
+    username?: string
+    port?: number
     tabs: Tab[]
     activeTabId: string
     activeView: 'terminal' | 'files' | 'tools'
@@ -32,11 +40,16 @@
     splitTabs: Tab[]
     splitActiveTabId: string
     splitRatio: number
+    status?: 'connected' | 'reconnecting' | 'disconnected'
   }
 
-  function createWorkspace(sessionId: string): SessionWorkspace {
+  function createWorkspace(sessionId: string, info?: Partial<SessionInfo>): SessionWorkspace {
     return {
       sessionId,
+      name: info?.name,
+      host: info?.host,
+      username: info?.username,
+      port: info?.port,
       tabs: [],
       activeTabId: '',
       activeView: 'terminal',
@@ -45,6 +58,7 @@
       splitTabs: [],
       splitActiveTabId: '',
       splitRatio: 50,
+      status: 'connected',
     }
   }
 
@@ -63,6 +77,8 @@
   let sidebarSessions = $state<SessionFolder | null>(null)
   let isDragging = $state(false)
   let disconnectedSessionIds = $state<Set<string>>(new Set())
+  let reconnectingSessionId = $state<string | null>(null)
+  let reconnectError = $state<string>('')
   let localTabs: Tab[] = $state([])
   let workspaces: Map<string, SessionWorkspace> = $state(new Map())
 
@@ -78,8 +94,28 @@
   let splitRatio = $derived(ws ? ws.splitRatio : 50)
 
   let connectedSessionIds = $derived(
-    [...new Set([...workspaces.values()].flatMap((w) => w.tabs.filter((t) => !t.isLocal).map((t) => t.sessionId)))]
+    [...workspaces.keys()].filter((id) => id !== '__local__' && !disconnectedSessionIds.has(id))
   )
+
+  let sessionTabItems = $derived<SessionTabItem[]>([
+    ...Array.from(workspaces.values()).map((w) => {
+      const isDisconnected = disconnectedSessionIds.has(w.sessionId)
+      const isReconnecting = reconnectingSessionId === w.sessionId
+      return {
+        id: w.sessionId,
+        title: w.name || w.host || `Session`,
+        subtitle: w.username && w.host ? `${w.username}@${w.host}` : (w.host ? `${w.host}:${w.port ?? 22}` : undefined),
+        status: isReconnecting ? ('reconnecting' as const) : (isDisconnected ? ('disconnected' as const) : ('connected' as const)),
+        isLocal: false,
+      }
+    }),
+    ...(localTabs.length > 0 ? [{
+      id: '__local__',
+      title: t('app.localTerminal'),
+      status: 'connected' as const,
+      isLocal: true,
+    }] : [])
+  ])
 
   function updateWorkspace(sessionId: string, updater: (ws: SessionWorkspace) => void) {
     const existing = workspaces.get(sessionId)
@@ -205,16 +241,25 @@
 
   function handleConnect(sessionId: string, name: string) {
     disconnectedSessionIds.delete(sessionId)
-    disconnectedSessionIds = disconnectedSessionIds
+    disconnectedSessionIds = new Set(disconnectedSessionIds)
     let workspace = workspaces.get(sessionId)
     if (!workspace) {
-      workspace = createWorkspace(sessionId)
+      let info: SessionInfo | null = null
+      if (sidebarSessions) {
+        info = findSessionInTree(sidebarSessions, sessionId)
+      }
+      workspace = createWorkspace(sessionId, info ?? { name })
+      if (!workspace.name) workspace.name = name
       workspaces.set(sessionId, workspace)
+    } else {
+      workspace.status = 'connected'
     }
-    const channelId = crypto.randomUUID()
-    const tabId = crypto.randomUUID()
-    workspace.tabs = [...workspace.tabs, { id: tabId, sessionId, channelId, title: name }]
-    workspace.activeTabId = tabId
+    if (workspace.tabs.length === 0) {
+      const channelId = crypto.randomUUID()
+      const tabId = crypto.randomUUID()
+      workspace.tabs = [{ id: tabId, sessionId, channelId, title: workspace.name || 'Terminal 1' }]
+      workspace.activeTabId = tabId
+    }
     workspace.activeView = 'terminal'
     activeSessionId = sessionId
     workspaces = new Map(workspaces)
@@ -224,6 +269,7 @@
   function handleSessionSelect(sessionId: string) {
     if (workspaces.has(sessionId)) {
       activeSessionId = sessionId
+      selectedSessionId = sessionId
     }
   }
 
@@ -235,18 +281,53 @@
     }
     clearSessionCache(sessionId)
     disconnectedSessionIds.delete(sessionId)
-    disconnectedSessionIds = disconnectedSessionIds
+    disconnectedSessionIds = new Set(disconnectedSessionIds)
     workspaces.delete(sessionId)
     workspaces = new Map(workspaces)
     if (activeSessionId === sessionId) {
-      activeSessionId = workspaces.size > 0 ? workspaces.keys().next().value ?? '' : ''
+      activeSessionId = workspaces.size > 0 ? workspaces.keys().next().value ?? '' : (localTabs.length > 0 ? '__local__' : '')
     }
     api.updateTrayTooltip()
   }
 
   function handleSessionDisconnect(sessionId: string) {
     disconnectedSessionIds.add(sessionId)
-    disconnectedSessionIds = disconnectedSessionIds
+    disconnectedSessionIds = new Set(disconnectedSessionIds)
+    const targetWs = workspaces.get(sessionId)
+    if (targetWs) {
+      targetWs.status = 'disconnected'
+      workspaces = new Map(workspaces)
+    }
+  }
+
+  function handleCloseSessionTab(sessionId: string) {
+    if (sessionId === '__local__') {
+      localTabs = []
+      if (activeSessionId === '__local__') {
+        activeSessionId = workspaces.size > 0 ? workspaces.keys().next().value ?? '' : ''
+      }
+    } else {
+      handleDisconnectSession(sessionId)
+    }
+  }
+
+  async function handleReconnectSession(sessionId: string) {
+    reconnectingSessionId = sessionId
+    reconnectError = ''
+    try {
+      await api.sshConnect(sessionId)
+      disconnectedSessionIds.delete(sessionId)
+      disconnectedSessionIds = new Set(disconnectedSessionIds)
+      const targetWs = workspaces.get(sessionId)
+      if (targetWs) {
+        targetWs.status = 'connected'
+        workspaces = new Map(workspaces)
+      }
+    } catch (e) {
+      reconnectError = String(e)
+    } finally {
+      reconnectingSessionId = null
+    }
   }
 
   function toggleSidebar() {
@@ -262,15 +343,19 @@
   function openLocalTerminal() {
     const channelId = crypto.randomUUID()
     const tabId = crypto.randomUUID()
-    localTabs = [...localTabs, { id: tabId, sessionId: '', channelId, title: t('app.localTerminal'), isLocal: true }]
-    activeSessionId = ''
+    localTabs = [...localTabs, { id: tabId, sessionId: '', channelId, title: `${t('app.localTerminal')} ${localTabs.length + 1}`, isLocal: true }]
+    activeSessionId = '__local__'
   }
 
   function openNewTerminal() {
-    if (!activeSessionId || !ws) return
+    if (!activeSessionId || activeSessionId === '__local__') {
+      openLocalTerminal()
+      return
+    }
+    if (!ws) return
     const channelId = crypto.randomUUID()
     const tabId = crypto.randomUUID()
-    const tabNum = ws.tabs.filter((t) => t.sessionId === activeSessionId).length + 1
+    const tabNum = ws.tabs.length + 1
     const newTab: Tab = { id: tabId, sessionId: activeSessionId, channelId, title: `Terminal ${tabNum}` }
     if (ws.splitActivePane === 'secondary' && ws.splitMode !== 'none') {
       updateWorkspace(activeSessionId, (w) => {
@@ -339,12 +424,16 @@
   function handleShortcutAction(action: string) {
     switch (action) {
       case 'new-tab':
-        if (activeSessionId) {
-          handleConnect(activeSessionId, t('app.newTab', { count: String((ws?.tabs.length ?? 0) + 1) }))
+        if (activeSessionId && activeSessionId !== '__local__') {
+          openNewTerminal()
+        } else {
+          openLocalTerminal()
         }
         break
       case 'close-tab':
-        if (activeTabId) {
+        if (ws && ws.activeTabId) {
+          closeTab(ws.activeTabId)
+        } else if (activeTabId) {
           closeTab(activeTabId)
         }
         break
@@ -397,22 +486,18 @@
 
   function closeTab(tabId: string) {
     if (ws) {
-      const closedTab = ws.tabs.find((t) => t.id === tabId)
       updateWorkspace(activeSessionId, (w) => {
         w.tabs = w.tabs.filter((t) => t.id !== tabId)
         if (w.activeTabId === tabId) {
           w.activeTabId = w.tabs.length > 0 ? w.tabs[w.tabs.length - 1].id : ''
         }
       })
-      const updatedWs = workspaces.get(activeSessionId)
-      if (updatedWs && updatedWs.tabs.length === 0) {
-        workspaces.delete(activeSessionId)
-        workspaces = new Map(workspaces)
-        const remaining = [...workspaces.keys()]
-        activeSessionId = remaining.length > 0 ? remaining[remaining.length - 1] : ''
-      }
+      // Decoupled: Workspace stays alive even if tabs reach 0!
     } else {
       localTabs = localTabs.filter((t) => t.id !== tabId)
+      if (localTabs.length === 0 && activeSessionId === '__local__') {
+        activeSessionId = workspaces.size > 0 ? workspaces.keys().next().value ?? '' : ''
+      }
     }
     api.updateTrayTooltip()
   }
@@ -612,17 +697,30 @@
     </aside>
   {/if}
   <main class="content" role="main">
+    <SessionTabBar
+      sessions={sessionTabItems}
+      {activeSessionId}
+      onSelectSession={(id) => {
+        activeSessionId = id
+        if (id !== '__local__') {
+          selectedSessionId = id
+        }
+      }}
+      onCloseSession={handleCloseSessionTab}
+      onNewSession={() => (showNewSession = true)}
+      onOpenLocalTerminal={openLocalTerminal}
+    />
     <div class="toolbar" role="toolbar" aria-label={t('toolbar.mainToolbar')}>
       <button class="toolbar-btn" onclick={() => { sidebarCollapsed = !sidebarCollapsed; if (!showSidebar) showSidebar = true }} aria-label={sidebarCollapsed ? t('toolbar.expandSidebar') : t('toolbar.collapseSidebar')}>
-        {sidebarCollapsed ? '\u25B6' : '\u25C0'}
+        <Icon name={sidebarCollapsed ? 'chevron-right' : 'chevron-left'} size={13} />
       </button>
       {#if !sidebarCollapsed}
         <button class="toolbar-btn" onclick={toggleSidebar} aria-label={showSidebar ? t('toolbar.hideSidebar') : t('toolbar.showSidebar')} aria-expanded={showSidebar}>
-          {showSidebar ? '\u25C0' : '\u25B6'}
+          <Icon name={showSidebar ? 'chevron-left' : 'chevron-right'} size={13} />
         </button>
       {/if}
       <button class="toolbar-btn" onclick={() => (showNewSession = true)} aria-label={t('toolbar.newSession')}>{t('toolbar.newSession')}</button>
-      {#if activeSessionId}
+      {#if activeSessionId && activeSessionId !== '__local__'}
         <div class="toolbar-separator" role="separator"></div>
         <button class="toolbar-btn" class:active={activeView === 'terminal'} onclick={() => setActiveView('terminal')} aria-pressed={activeView === 'terminal'}>{t('toolbar.terminal')}</button>
         <button class="toolbar-btn" class:active={activeView === 'files'} onclick={() => setActiveView('files')} aria-pressed={activeView === 'files'}>{t('toolbar.files')}</button>
@@ -638,42 +736,111 @@
       <button class="toolbar-btn" onclick={() => (showSettings = true)} aria-label={t('toolbar.openSettings')}>{t('toolbar.settings')}</button>
     </div>
 
-    {#if activeSessionId}
-      <div class="main-views">
-        <div class="view" class:hidden={activeView !== 'terminal'} role="tabpanel" aria-label={t('toolbar.terminal')}>
-          <div class="terminal-controls">
-            <button class="new-terminal-btn" onclick={openNewTerminal} title={t('terminal.newTerminal')} aria-label="New terminal tab">+</button>
-            <div class="split-group">
-              <button class="split-btn" class:active={splitMode === 'none'} onclick={() => setSplitMode('none')} title={t('terminal.noSplit')}>{'\u2593'}</button>
-              <button class="split-btn" class:active={splitMode === 'vertical'} onclick={() => activateSplitMode('vertical')} title={t('terminal.splitVertical')}>{'\u2551'}</button>
-              <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => activateSplitMode('horizontal')} title={t('terminal.splitHorizontal')}>{'\u2550'}</button>
+    {#if activeSessionId && activeSessionId !== '__local__'}
+      {#if disconnectedSessionIds.has(activeSessionId)}
+        <div class="disconnect-banner" role="alert">
+          <div class="disconnect-banner-content">
+            <span class="disconnect-icon">&#9888;</span>
+            <div class="disconnect-message">
+              <strong>{t('sessionTab.disconnected')}</strong>
+              {#if reconnectError}
+                <span class="disconnect-detail"> — {reconnectError}</span>
+              {/if}
             </div>
           </div>
-          {#if splitMode === 'none'}
-            <TerminalHolder bind:tabs={ws!.tabs} bind:activeTabId={ws!.activeTabId} onSessionDisconnect={handleSessionDisconnect} />
+          <div class="disconnect-banner-actions">
+            <button
+              class="reconnect-btn"
+              disabled={reconnectingSessionId === activeSessionId}
+              onclick={() => handleReconnectSession(activeSessionId)}
+            >
+              {reconnectingSessionId === activeSessionId ? t('sessionTab.reconnecting') : t('sessionTab.reconnect')}
+            </button>
+            <button
+              class="disconnect-close-btn"
+              onclick={() => handleDisconnectSession(activeSessionId)}
+            >
+              {t('sessionTab.closeSession')}
+            </button>
+          </div>
+        </div>
+      {/if}
+
+      <div class="main-views">
+        <div class="view" class:hidden={activeView !== 'terminal'} role="tabpanel" aria-label={t('toolbar.terminal')}>
+          {#if ws && ws.tabs.length === 0}
+            <div class="empty-terminal-state">
+              <div class="empty-terminal-icon">&gt;_</div>
+              <h3>{t('sessionTab.noTerminals')}</h3>
+              <button class="primary-btn" onclick={openNewTerminal}>
+                + {t('sessionTab.openTerminal')}
+              </button>
+            </div>
           {:else}
-            <div class="split-container" class:horizontal={splitMode === 'horizontal'} class:vertical={splitMode === 'vertical'}>
-              <div class="split-pane" class:active-pane={splitActivePane === 'primary'} style:flex="0 0 {splitRatio}%" onclick={() => setSplitActivePane('primary')}>
+            <div class="terminal-controls">
+              <button class="new-terminal-btn" onclick={openNewTerminal} title={t('terminal.newTerminal')} aria-label="New terminal tab">+</button>
+              <div class="split-group">
+                <button class="split-btn" class:active={splitMode === 'none'} onclick={() => setSplitMode('none')} title={t('terminal.noSplit')} aria-label="No split">
+                  <Icon name="split-none" size={13} />
+                </button>
+                <button class="split-btn" class:active={splitMode === 'vertical'} onclick={() => activateSplitMode('vertical')} title={t('terminal.splitVertical')} aria-label="Split vertical">
+                  <Icon name="split-v" size={13} />
+                </button>
+                <button class="split-btn" class:active={splitMode === 'horizontal'} onclick={() => activateSplitMode('horizontal')} title={t('terminal.splitHorizontal')} aria-label="Split horizontal">
+                  <Icon name="split-h" size={13} />
+                </button>
+              </div>
+            </div>
+            <div
+              class="split-container"
+              class:horizontal={splitMode === 'horizontal'}
+              class:vertical={splitMode === 'vertical'}
+              class:no-split={splitMode === 'none'}
+            >
+              <div
+                class="split-pane primary"
+                class:active-pane={splitMode !== 'none' && splitActivePane === 'primary'}
+                style:flex={splitMode === 'none' ? '1 1 100%' : `0 0 ${splitRatio}%`}
+                onclick={() => setSplitActivePane('primary')}
+                role="region"
+                aria-label="Primary terminal pane"
+              >
                 <TerminalHolder bind:tabs={ws!.tabs} bind:activeTabId={ws!.activeTabId} onSessionDisconnect={handleSessionDisconnect} />
               </div>
-              <!-- svelte-ignore a11y_no_static_element_interactions -->
-              <div class="split-divider" class:dragging={isDragging} onmousedown={handleSplitDividerMouseDown}></div>
-              <div class="split-pane" class:active-pane={splitActivePane === 'secondary'} style:flex="1" onclick={() => setSplitActivePane('secondary')}>
-                {#if splitTabs.length > 0}
-                  <TerminalHolder bind:tabs={ws!.splitTabs} bind:activeTabId={ws!.splitActiveTabId} onSessionDisconnect={handleSessionDisconnect} />
-                {:else}
-                  <div class="split-empty">
-                    <p>{t('terminal.splitSecondary')}</p>
-                    <button class="local-btn-empty" onclick={openNewTerminal}>{t('terminal.openNew')}</button>
-                  </div>
-                {/if}
-              </div>
+
+              {#if splitMode !== 'none'}
+                <!-- svelte-ignore a11y_no_static_element_interactions -->
+                <div
+                  class="split-divider"
+                  class:dragging={isDragging}
+                  ondblclick={() => setSplitRatio(50)}
+                  onmousedown={handleSplitDividerMouseDown}
+                  title="Drag to resize, double-click to center (50/50)"
+                ></div>
+                <div
+                  class="split-pane secondary"
+                  class:active-pane={splitActivePane === 'secondary'}
+                  style:flex="1 1 0%"
+                  onclick={() => setSplitActivePane('secondary')}
+                  role="region"
+                  aria-label="Secondary terminal pane"
+                >
+                  {#if splitTabs.length > 0}
+                    <TerminalHolder bind:tabs={ws!.splitTabs} bind:activeTabId={ws!.splitActiveTabId} onSessionDisconnect={handleSessionDisconnect} />
+                  {:else}
+                    <div class="split-empty">
+                      <p>{t('terminal.splitSecondary')}</p>
+                      <button class="local-btn-empty" onclick={openNewTerminal}>{t('terminal.openNew')}</button>
+                    </div>
+                  {/if}
+                </div>
+              {/if}
             </div>
           {/if}
         </div>
         <div class="view" class:hidden={activeView !== 'files'} role="tabpanel" aria-label={t('toolbar.fileBrowser')}>
           <div class="files-layout">
-            <FileBrowser sessionId={activeSessionId} />
+            <DualPaneFileBrowser sessionId={activeSessionId} />
             <TransferQueue />
           </div>
         </div>
@@ -681,7 +848,7 @@
           <ToolsPanel sessionId={activeSessionId} />
         </div>
       </div>
-    {:else if localTabs.length > 0}
+    {:else if activeSessionId === '__local__' || localTabs.length > 0}
       <div class="main-views">
         <div class="view" role="tabpanel" aria-label={t('toolbar.terminal')}>
           <TerminalHolder bind:tabs={localTabs} activeTabId={localTabs[localTabs.length - 1].id} onSessionDisconnect={handleSessionDisconnect} />
@@ -693,6 +860,16 @@
         <p class="hint">{t('app.connectHint')}</p>
       </div>
     {/if}
+    <StatusBar
+      activeSession={workspaces.get(activeSessionId) ? {
+        name: workspaces.get(activeSessionId)?.name,
+        host: workspaces.get(activeSessionId)?.host,
+        user: workspaces.get(activeSessionId)?.username,
+        port: workspaces.get(activeSessionId)?.port,
+      } : null}
+      {activeSessionId}
+      {activeView}
+    />
   </main>
 </div>
 
@@ -701,6 +878,8 @@
 {/if}
 
 <SettingsDialog bind:open={showSettings} />
+
+<Toast />
 
 {#if showAbout}
   <div class="backdrop" onclick={(e) => { if (e.target === e.currentTarget) showAbout = false }} onkeydown={(e) => { if (e.key === 'Escape') showAbout = false }} role="dialog" aria-modal="true" aria-label={t('about.title')} tabindex={-1}>
@@ -897,6 +1076,10 @@
     flex-direction: column;
   }
 
+  .split-container.no-split {
+    flex-direction: column;
+  }
+
   .split-pane {
     flex: 1;
     min-width: 0;
@@ -904,7 +1087,7 @@
     overflow: hidden;
   }
 
-  .split-pane.active-pane {
+  .split-container:not(.no-split) .split-pane.active-pane {
     outline: 2px solid var(--accent);
     outline-offset: -2px;
   }
@@ -1093,5 +1276,121 @@
   .cancel-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
+  }
+
+  /* Disconnect banner */
+  .disconnect-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 16px;
+    background: rgba(239, 68, 68, 0.15);
+    border-bottom: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    font-size: 13px;
+    flex-shrink: 0;
+  }
+
+  .disconnect-banner-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+  }
+
+  .disconnect-icon {
+    color: #ef4444;
+    font-size: 16px;
+  }
+
+  .disconnect-detail {
+    opacity: 0.85;
+    font-size: 12px;
+  }
+
+  .disconnect-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .reconnect-btn {
+    background: #ef4444;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 12px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s ease;
+  }
+
+  .reconnect-btn:hover:not(:disabled) {
+    background: #dc2626;
+  }
+
+  .reconnect-btn:disabled {
+    opacity: 0.6;
+    cursor: wait;
+  }
+
+  .disconnect-close-btn {
+    background: transparent;
+    border: 1px solid rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+
+  .disconnect-close-btn:hover {
+    background: rgba(239, 68, 68, 0.2);
+  }
+
+  /* Empty terminal state inside active workspace */
+  .empty-terminal-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex: 1;
+    height: 100%;
+    gap: 16px;
+    color: var(--text-muted, #64748b);
+  }
+
+  .empty-terminal-icon {
+    font-family: monospace;
+    font-size: 42px;
+    font-weight: bold;
+    color: var(--text-secondary, #94a3b8);
+    opacity: 0.4;
+  }
+
+  .empty-terminal-state h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-secondary, #94a3b8);
+  }
+
+  .primary-btn {
+    background: var(--accent, #6366f1);
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+  }
+
+  .primary-btn:hover {
+    opacity: 0.9;
   }
 </style>

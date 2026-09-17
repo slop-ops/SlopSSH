@@ -19,6 +19,33 @@ impl LocalFileSystem {
         Self { root: Some(root) }
     }
 
+    pub fn get_home_dir() -> String {
+        dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "/".to_string())
+    }
+
+    pub fn get_root_drives() -> Vec<String> {
+        #[cfg(windows)]
+        {
+            let mut drives = Vec::new();
+            for c in b'A'..=b'Z' {
+                let path_str = format!("{}:\\", c as char);
+                if std::path::Path::new(&path_str).exists() {
+                    drives.push(path_str);
+                }
+            }
+            if drives.is_empty() {
+                drives.push("C:\\".to_string());
+            }
+            drives
+        }
+        #[cfg(not(windows))]
+        {
+            vec!["/".to_string()]
+        }
+    }
+
     fn resolve(&self, path: &str) -> PathBuf {
         let p = Path::new(path);
         if p.is_absolute() {
@@ -186,5 +213,22 @@ impl FileSystem for LocalFileSystem {
 
     fn separator(&self) -> char {
         std::path::MAIN_SEPARATOR
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_local_get_home_dir() {
+        let home = LocalFileSystem::get_home_dir();
+        assert!(!home.is_empty());
+    }
+
+    #[test]
+    fn test_local_get_root_drives() {
+        let drives = LocalFileSystem::get_root_drives();
+        assert!(!drives.is_empty());
     }
 }

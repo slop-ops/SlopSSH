@@ -1,6 +1,7 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
+  import ConfirmDialog from '../common/ConfirmDialog.svelte'
 
   let {
     sessionId,
@@ -18,6 +19,7 @@
   let saving = $state(false)
   let error = $state('')
   let modified = $state(false)
+  let showDiscardConfirm = $state(false)
   let fileName = $derived(filePath.split('/').pop() || 'file')
 
   const MAX_FILE_SIZE = 10 * 1024 * 1024
@@ -39,7 +41,7 @@
         return
       }
       const base64 = await api.sftpReadFile(sessionId, filePath)
-      const decoded = atob(base64)
+      const decoded = decodeUtf8Base64(base64)
       content = decoded
       originalContent = decoded
       modified = false
@@ -50,16 +52,37 @@
     }
   }
 
-  async function saveFile() {
+  function decodeUtf8Base64(b64: string): string {
+    const binary = atob(b64)
+    const bytes = new Uint8Array(binary.length)
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i)
+    }
+    return new TextDecoder().decode(bytes)
+  }
+
+  function encodeUtf8Base64(str: string): string {
+    const bytes = new TextEncoder().encode(str)
+    let binary = ''
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i])
+    }
+    return btoa(binary)
+  }
+
+  async function saveFile(useSudo = false) {
     saving = true
     error = ''
     try {
-      let binary = ''
-      for (let i = 0; i < content.length; i++) {
-        binary += String.fromCharCode(content.charCodeAt(i))
+      const base64 = encodeUtf8Base64(content)
+      if (useSudo) {
+        // Write to temp file then sudo cp
+        const tmpFile = `/tmp/slopssh_edit_${Date.now()}`
+        await api.sftpWriteFile(sessionId, tmpFile, base64)
+        await api.remoteExec(sessionId, `sudo cp "${tmpFile}" "${filePath}" && sudo rm "${tmpFile}"`)
+      } else {
+        await api.sftpWriteFile(sessionId, filePath, base64)
       }
-      const base64 = btoa(binary)
-      await api.sftpWriteFile(sessionId, filePath, base64)
       originalContent = content
       modified = false
     } catch (e) {
@@ -75,8 +98,8 @@
 
   async function handleClose() {
     if (modified) {
-      const discard = confirm(t('files.unsaved'))
-      if (!discard) return
+      showDiscardConfirm = true
+      return
     }
     onclose()
   }
@@ -114,7 +137,7 @@
             {#if modified}
               <span class="modified">{t('files.modified')}</span>
             {/if}
-            <button class="save-btn" onclick={saveFile} disabled={!modified || saving}>
+            <button class="save-btn" onclick={() => saveFile()} disabled={!modified || saving}>
               {saving ? t('files.saving') : t('files.saveCtrl')}
             </button>
           </div>
@@ -129,6 +152,15 @@
     </div>
   </div>
 </div>
+
+<ConfirmDialog
+  bind:open={showDiscardConfirm}
+  title={t('files.unsaved') || 'Unsaved Changes'}
+  message={t('files.unsaved') || 'You have unsaved changes. Discard them and close?'}
+  confirmLabel={t('files.discard') || 'Discard'}
+  isDanger={true}
+  onconfirm={() => onclose()}
+/>
 
 <style>
   .backdrop {

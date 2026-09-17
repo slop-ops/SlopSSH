@@ -10,10 +10,12 @@ pub async fn remote_exec(
     timeout_secs: Option<u64>,
 ) -> Result<serde_json::Value, String> {
     tracing::debug!(session_id = %session_id, "remote_exec");
-    let ssh_manager = state.ssh_manager.lock().await;
-    let handle = ssh_manager
-        .get_handle(&session_id)
-        .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?;
+    let handle = {
+        let ssh_manager = state.ssh_manager.lock().await;
+        ssh_manager
+            .get_handle(&session_id)
+            .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?
+    };
 
     let result = slopssh_core::tools::remote_exec::RemoteExecutor::execute(
         &handle,

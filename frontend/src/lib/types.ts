@@ -62,6 +62,16 @@ export interface DirEntry {
   attributes: FileAttributes
 }
 
+export interface FileItem {
+  name: string
+  path: string
+  isDir: boolean
+  isFile: boolean
+  isSymlink: boolean
+  size: number
+  modified: number | null
+}
+
 export interface Snippet {
   id: string
   name: string

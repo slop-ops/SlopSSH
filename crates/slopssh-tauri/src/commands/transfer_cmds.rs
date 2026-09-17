@@ -1,3 +1,4 @@
+use base64::Engine;
 use tauri::{Emitter, State};
 
 use crate::AppState;
@@ -13,6 +14,19 @@ pub async fn transfer_upload(
     file_size: u64,
 ) -> Result<(), String> {
     tracing::debug!(transfer_id = %transfer_id, session_id = %session_id, file_size, "transfer_upload");
+    let actual_local_path = if let Some(base64_data) = local_path.strip_prefix("__drag__:") {
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(base64_data)
+            .map_err(|e| format!("Invalid base64 payload: {}", e))?;
+        let temp_path = std::env::temp_dir().join(format!("slopssh_upload_{}", transfer_id));
+        tokio::fs::write(&temp_path, &bytes)
+            .await
+            .map_err(|e| format!("Failed to write temporary upload file: {}", e))?;
+        temp_path.to_string_lossy().to_string()
+    } else {
+        local_path
+    };
+
     let sftp = {
         let sftp_sessions = state.sftp_sessions.lock().await;
         sftp_sessions
@@ -25,7 +39,7 @@ pub async fn transfer_upload(
         id: transfer_id.clone(),
         session_id: session_id.clone(),
         direction: slopssh_core::file_transfer::progress::TransferDirection::Upload,
-        source_path: local_path,
+        source_path: actual_local_path,
         dest_path: remote_path,
         file_size,
         conflict_resolution: slopssh_core::file_transfer::progress::ConflictResolution::Overwrite,

@@ -43,22 +43,32 @@
     status?: 'connected' | 'reconnecting' | 'disconnected'
   }
 
-  function createWorkspace(sessionId: string, info?: Partial<SessionInfo>): SessionWorkspace {
-    return {
-      sessionId,
-      name: info?.name,
-      host: info?.host,
-      username: info?.username,
-      port: info?.port,
-      tabs: [],
-      activeTabId: '',
-      activeView: 'terminal',
-      splitMode: 'none',
-      splitActivePane: 'primary',
-      splitActiveTabId: '',
-      splitRatio: 50,
-      status: 'connected',
+class Workspace implements SessionWorkspace {
+    sessionId: string
+    name = $state<string | undefined>()
+    host = $state<string | undefined>()
+    username = $state<string | undefined>()
+    port = $state<number | undefined>()
+    tabs = $state<Tab[]>([])
+    activeTabId = $state<string>('')
+    activeView = $state<'terminal' | 'files' | 'tools'>('terminal')
+    splitMode = $state<'none' | 'horizontal' | 'vertical'>('none')
+    splitActivePane = $state<'primary' | 'secondary'>('primary')
+    splitActiveTabId = $state<string>('')
+    splitRatio = $state<number>(50)
+    status = $state<'connected' | 'reconnecting' | 'disconnected'>('connected')
+
+    constructor(sessionId: string, info?: Partial<SessionInfo>) {
+      this.sessionId = sessionId
+      this.name = info?.name
+      this.host = info?.host
+      this.username = info?.username
+      this.port = info?.port
     }
+  }
+
+  function createWorkspace(sessionId: string, info?: Partial<SessionInfo>): SessionWorkspace {
+    return new Workspace(sessionId, info)
   }
 
   let showSidebar = $state(true)
@@ -131,9 +141,7 @@
   function updateWorkspace(sessionId: string, updater: (ws: SessionWorkspace) => void) {
     const existing = workspaces.get(sessionId)
     if (existing) {
-      const cloned = { ...existing }
-      updater(cloned)
-      workspaces.set(sessionId, cloned)
+      updater(existing)
       workspaces = new Map(workspaces)
     }
   }
@@ -867,6 +875,10 @@
                   bind:showSnippets={terminalSnippetsOpen}
                   onSessionDisconnect={handleSessionDisconnect}
                   onCloseTab={(tabId) => closeTerminalTab(workspace.sessionId, tabId)}
+                  onSelectTab={(tabId) => {
+                    workspace.activeTabId = tabId
+                    updateWorkspace(workspace.sessionId, (w) => { w.activeTabId = tabId })
+                  }}
                 />
               {/if}
             </div>
@@ -908,6 +920,9 @@
                 bind:showSnippets={terminalSnippetsOpen}
                 onSessionDisconnect={handleSessionDisconnect}
                 onCloseTab={(tabId) => closeTerminalTab('__local__', tabId)}
+                onSelectTab={(tabId) => {
+                  localActiveTabId = tabId
+                }}
               />
             </div>
           </div>

@@ -421,3 +421,13 @@ export async function downloadUpdate(updateInfo: UpdateInfo): Promise<string> {
 export async function updateTrayTooltip(): Promise<void> {
   return invoke('update_tray_tooltip')
 }
+
+export interface SystemFontInfo {
+  fonts: string[]
+  default_font: string
+}
+
+export async function listSystemFonts(): Promise<SystemFontInfo> {
+  return invoke('list_system_fonts')
+}
+

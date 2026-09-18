@@ -41,14 +41,43 @@
   let pluginSettingsMap = $state<Record<string, Record<string, string>>>({})
   let newSettingKey = $state('')
   let newSettingValue = $state('')
+  let availableFonts = $state<string[]>([])
+  let defaultSystemFont = $state('monospace')
+  let isCustomFont = $state(false)
 
   $effect(() => {
     if (open) {
       loadSettings()
       loadEditors()
       loadPlugins()
+      loadFonts()
     }
   })
+
+  async function loadFonts() {
+    try {
+      const res = await api.listSystemFonts()
+      availableFonts = res.fonts || []
+      defaultSystemFont = res.default_font || 'monospace'
+      if (settings) {
+        if (!settings.font_family || settings.font_family.trim() === '') {
+          settings.font_family = defaultSystemFont
+        }
+        isCustomFont = !availableFonts.some((f) => f.toLowerCase() === settings?.font_family?.toLowerCase())
+      }
+    } catch {
+      availableFonts = [
+        'Ubuntu Mono',
+        'DejaVu Sans Mono',
+        'Liberation Mono',
+        'Cascadia Code',
+        'Consolas',
+        'Menlo',
+        'Courier New',
+        'monospace',
+      ]
+    }
+  }
 
   async function loadEditors() {
     try {
@@ -125,6 +154,7 @@
     loading = true
     try {
       settings = await api.getSettings()
+      await loadFonts()
     } catch (e) {
       error = String(e)
     } finally {
@@ -296,8 +326,55 @@
 
           {#if activeTab === 'terminal'}
             <div class="field">
-              <label>{t('settings.fontFamily')}</label>
-              <input type="text" bind:value={settings.font_family} />
+              <label for="font-family-select">{t('settings.fontFamily')}</label>
+              <div class="font-select-row">
+                <select
+                  id="font-family-select"
+                  class="font-select"
+                  value={isCustomFont ? '__custom__' : settings.font_family}
+                  onchange={(e) => {
+                    const val = (e.target as HTMLSelectElement).value
+                    if (val === '__custom__') {
+                      isCustomFont = true
+                    } else if (settings) {
+                      isCustomFont = false
+                      settings.font_family = val
+                    }
+                  }}
+                >
+                  {#if availableFonts.length > 0}
+                    <optgroup label="Installed Monospace Fonts">
+                      {#each availableFonts as font}
+                        <option value={font}>
+                          {font} {font === defaultSystemFont ? '(System Default)' : ''}
+                        </option>
+                      {/each}
+                    </optgroup>
+                  {/if}
+                  <option value="__custom__">Custom / Other...</option>
+                </select>
+              </div>
+
+              {#if isCustomFont}
+                <div class="custom-font-input">
+                  <input
+                    type="text"
+                    bind:value={settings.font_family}
+                    placeholder="e.g. Fira Code, Source Code Pro, monospace"
+                  />
+                </div>
+              {/if}
+
+              <div
+                class="font-preview"
+                style="font-family: {settings.font_family || 'monospace'}, monospace; font-size: {settings.font_size || 14}px;"
+              >
+                <div class="font-preview-label">Live Preview:</div>
+                <div class="font-preview-text">
+                  abcdefghijklmnopqrstuvwxyz ABCDEFGHIJKLMNOPQRSTUVWXYZ
+                  0123456789 ()[]&#123;&#125; &lt;= &gt;= != == /* */ && ||
+                </div>
+              </div>
             </div>
             <div class="field">
               <label>{t('settings.fontSize')}</label>
@@ -1025,5 +1102,51 @@
     font-family: 'JetBrains Mono', monospace;
     font-size: 11px;
     outline: none;
+  }
+
+  .font-select-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .font-select {
+    width: 100%;
+    background: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    padding: 6px 10px;
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+
+  .custom-font-input {
+    margin-top: 6px;
+  }
+
+  .font-preview {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 4px;
+    color: var(--text-primary);
+    overflow-x: auto;
+  }
+
+  .font-preview-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-tertiary);
+    margin-bottom: 6px;
+    font-family: sans-serif;
+  }
+
+  .font-preview-text {
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-all;
   }
 </style>

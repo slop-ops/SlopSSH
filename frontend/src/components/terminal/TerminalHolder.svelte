@@ -25,6 +25,7 @@
     onSessionDisconnect,
     onSplitRatioChange,
     onCloseTab,
+    onSelectTab,
   }: {
     tabs: Tab[]
     activeTabId: string
@@ -37,6 +38,7 @@
     onSessionDisconnect?: (sessionId: string) => void
     onSplitRatioChange?: (ratio: number) => void
     onCloseTab?: (tabId: string) => void
+    onSelectTab?: (tabId: string) => void
   } = $props()
 
   let snippetHandlers: Map<string, (cmd: string) => void> = $state(new Map())
@@ -105,6 +107,7 @@
         }
       }
     }
+    onSelectTab?.(tabId)
   }
 
   function registerSnippetHandler(tabId: string, handler: (cmd: string) => void) {

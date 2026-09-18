@@ -125,3 +125,186 @@ pub async fn update_tray_tooltip(
     }
     Ok(())
 }
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+pub struct SystemFontInfo {
+    pub fonts: Vec<String>,
+    pub default_font: String,
+}
+
+pub fn detect_system_monospace_fonts() -> Vec<String> {
+    let mut fonts = Vec::new();
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(output) = std::process::Command::new("fc-list")
+            .args(["--format=%{family}\n", ":spacing=mono"])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                for family in line.split(',') {
+                    let trimmed = family.trim();
+                    if !trimmed.is_empty()
+                        && !fonts
+                            .iter()
+                            .any(|f: &String| f.eq_ignore_ascii_case(trimmed))
+                    {
+                        fonts.push(trimmed.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let known_mono = [
+            "Cascadia Code",
+            "Cascadia Mono",
+            "Consolas",
+            "Courier New",
+            "Lucida Console",
+            "JetBrains Mono",
+            "Fira Code",
+            "Source Code Pro",
+            "DejaVu Sans Mono",
+            "Liberation Mono",
+        ];
+        if let Some(output) = std::process::Command::new("reg")
+            .args([
+                "query",
+                "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts",
+            ])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                for mono in &known_mono {
+                    if line.to_lowercase().contains(&mono.to_lowercase())
+                        && !fonts.iter().any(|f: &String| f.eq_ignore_ascii_case(mono))
+                    {
+                        fonts.push(mono.to_string());
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let known_macos_mono = [
+            "Menlo",
+            "Monaco",
+            "SF Mono",
+            "Courier New",
+            "JetBrains Mono",
+            "Fira Code",
+        ];
+        if let Some(output) = std::process::Command::new("fc-list")
+            .args(["--format=%{family}\n", ":spacing=mono"])
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                for family in line.split(',') {
+                    let trimmed = family.trim();
+                    if !trimmed.is_empty()
+                        && !fonts
+                            .iter()
+                            .any(|f: &String| f.eq_ignore_ascii_case(trimmed))
+                    {
+                        fonts.push(trimmed.to_string());
+                    }
+                }
+            }
+        }
+        for mono in &known_macos_mono {
+            if !fonts.iter().any(|f: &String| f.eq_ignore_ascii_case(mono)) {
+                fonts.push(mono.to_string());
+            }
+        }
+    }
+
+    let default_candidates = [
+        "JetBrains Mono",
+        "Fira Code",
+        "Cascadia Code",
+        "Ubuntu Mono",
+        "DejaVu Sans Mono",
+        "Liberation Mono",
+        "Consolas",
+        "Menlo",
+        "Monaco",
+        "Courier New",
+        "monospace",
+    ];
+
+    if fonts.is_empty() {
+        for candidate in &default_candidates {
+            fonts.push(candidate.to_string());
+        }
+    } else if !fonts.iter().any(|f| f == "monospace") {
+        fonts.push("monospace".to_string());
+    }
+
+    fonts.sort_by(|a, b| {
+        if a == "monospace" {
+            std::cmp::Ordering::Greater
+        } else if b == "monospace" {
+            std::cmp::Ordering::Less
+        } else {
+            a.to_lowercase().cmp(&b.to_lowercase())
+        }
+    });
+
+    fonts
+}
+
+pub fn get_default_monospace_font(installed: &[String]) -> String {
+    let preference = [
+        "JetBrains Mono",
+        "Fira Code",
+        "Cascadia Code",
+        "Cascadia Mono",
+        "Ubuntu Mono",
+        "Ubuntu Sans Mono",
+        "DejaVu Sans Mono",
+        "Liberation Mono",
+        "Consolas",
+        "Menlo",
+        "Monaco",
+        "Courier New",
+    ];
+    for pref in &preference {
+        if installed.iter().any(|f| f.eq_ignore_ascii_case(pref)) {
+            return pref.to_string();
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    return "Cascadia Code".to_string();
+    #[cfg(target_os = "macos")]
+    return "Menlo".to_string();
+    #[cfg(target_os = "linux")]
+    return "Ubuntu Mono".to_string();
+    #[cfg(not(any(target_os = "windows", target_os = "macos", target_os = "linux")))]
+    return "monospace".to_string();
+}
+
+#[tauri::command]
+pub fn list_system_fonts() -> Result<SystemFontInfo, String> {
+    tracing::debug!("list_system_fonts");
+    let fonts = detect_system_monospace_fonts();
+    let default_font = get_default_monospace_font(&fonts);
+    Ok(SystemFontInfo {
+        fonts,
+        default_font,
+    })
+}

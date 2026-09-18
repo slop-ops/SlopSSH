@@ -6,6 +6,7 @@
   import { listen } from '@tauri-apps/api/event'
   import { getTheme, getTerminalSettings, getActiveXtermTheme } from '$lib/stores/theme.svelte'
   import * as api from '$lib/api/invoke'
+  import { buildTerminalFontFamily } from '$lib/utils/fonts'
   import '@xterm/xterm/css/xterm.css'
 
   let {
@@ -71,7 +72,7 @@
     const theme = getActiveXtermTheme()
     terminal = new Terminal({
       theme,
-      fontFamily: settings.font_family || 'JetBrains Mono, monospace',
+      fontFamily: buildTerminalFontFamily(settings.font_family),
       fontSize: settings.font_size || 14,
       cursorBlink: true,
       scrollback: settings.terminal_scrollback || 10000,
@@ -206,6 +207,20 @@
     getTheme()
     if (terminal) {
       terminal.options.theme = getActiveXtermTheme()
+    }
+  })
+
+  // Reactive font and terminal settings
+  $effect(() => {
+    const s = getTerminalSettings()
+    if (terminal) {
+      const family = buildTerminalFontFamily(s.font_family)
+      const size = s.font_size || 14
+      if (terminal.options.fontFamily !== family || terminal.options.fontSize !== size) {
+        terminal.options.fontFamily = family
+        terminal.options.fontSize = size
+        fitAddon?.fit()
+      }
     }
   })
 </script>

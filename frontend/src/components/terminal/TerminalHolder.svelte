@@ -12,9 +12,18 @@
     isLocal?: boolean
   }
 
-  let { tabs = $bindable(), activeTabId = $bindable(), onSessionDisconnect }: { tabs: Tab[]; activeTabId: string; onSessionDisconnect?: (sessionId: string) => void } = $props()
+  let {
+    tabs = $bindable(),
+    activeTabId = $bindable(),
+    showSnippets = $bindable(false),
+    onSessionDisconnect,
+  }: {
+    tabs: Tab[]
+    activeTabId: string
+    showSnippets?: boolean
+    onSessionDisconnect?: (sessionId: string) => void
+  } = $props()
 
-  let showSnippets = $state(false)
   let snippetHandlers: Map<string, (cmd: string) => void> = $state(new Map())
 
   function closeTab(tabId: string) {
@@ -63,10 +72,6 @@
             </div>
           {/each}
         </div>
-        <button class="local-btn" onclick={openLocalTerminal} title={t('app.openLocalTerminal')} aria-label="Open local terminal">+$</button>
-        <button class="snippet-toggle" class:active={showSnippets} onclick={() => (showSnippets = !showSnippets)} title="Snippets" aria-label="Toggle snippets">
-          S
-        </button>
       </div>
       <div class="tab-content">
         {#each tabs as tab (tab.id)}
@@ -97,7 +102,7 @@
     {/if}
   </div>
   {#if showSnippets && tabs.length > 0}
-    <SnippetPanel onSend={sendSnippet} />
+    <SnippetPanel onSend={sendSnippet} onclose={() => (showSnippets = false)} />
   {/if}
 </div>
 
@@ -177,37 +182,6 @@
     opacity: 1;
     background: var(--error-bg);
     color: var(--error);
-  }
-
-  .local-btn,
-  .snippet-toggle {
-    background: transparent;
-    border: 1px solid var(--border-primary);
-    color: var(--text-secondary);
-    width: 28px;
-    height: 28px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 11px;
-    font-weight: 600;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0 4px;
-    padding: 0;
-  }
-
-  .local-btn:hover,
-  .snippet-toggle:hover,
-  .snippet-toggle.active {
-    background: var(--bg-hover);
-    color: var(--accent);
-    border-color: var(--border-active);
-  }
-
-  .local-btn:hover {
-    color: var(--success);
-    border-color: var(--success);
   }
 
   .tab-content {

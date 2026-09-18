@@ -3,7 +3,13 @@
   import { t } from '$lib/utils/i18n'
   import type { Snippet } from '$lib/types'
 
-  let { onSend }: { onSend: (command: string) => void } = $props()
+  let {
+    onSend,
+    onclose,
+  }: {
+    onSend: (command: string) => void
+    onclose?: () => void
+  } = $props()
 
   let snippets = $state<Snippet[]>([])
   let search = $state('')
@@ -89,7 +95,12 @@
 <div class="snippet-panel">
   <div class="panel-header">
     <h3>{t('terminal.snippets')}</h3>
-    <button class="add-btn" onclick={() => { resetForm(); showForm = true }} aria-label="Add snippet">+</button>
+    <div class="header-actions">
+      <button class="add-btn" onclick={() => { resetForm(); showForm = true }} title={t('terminal.addSnippet')} aria-label="Add snippet">+</button>
+      {#if onclose}
+        <button class="close-panel-btn" onclick={onclose} title="Close" aria-label="Close snippets">✕</button>
+      {/if}
+    </div>
   </div>
 
   <div class="search-bar">
@@ -162,7 +173,14 @@
     letter-spacing: 1px;
   }
 
-  .add-btn {
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .add-btn,
+  .close-panel-btn {
     background: transparent;
     border: 1px solid var(--border-primary);
     color: var(--text-secondary);
@@ -177,7 +195,8 @@
     padding: 0;
   }
 
-  .add-btn:hover {
+  .add-btn:hover,
+  .close-panel-btn:hover {
     background: var(--bg-hover);
     color: var(--text-primary);
   }

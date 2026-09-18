@@ -1,9 +1,15 @@
 <script lang="ts">
   import * as api from '$lib/api/invoke'
   import { t } from '$lib/utils/i18n'
-  import type { AuthType } from '$lib/types'
+  import type { AuthType, SessionFolder } from '$lib/types'
 
-  let { onclose }: { onclose: () => void } = $props()
+  let {
+    onclose,
+    initialFolderId,
+  }: {
+    onclose: () => void
+    initialFolderId?: string | null
+  } = $props()
 
   let name = $state('')
   let host = $state('')
@@ -12,8 +18,28 @@
   let authType = $state<AuthType>('password')
   let password = $state('')
   let keyPath = $state('')
+  let folderId = $state<string>(initialFolderId ?? '')
+  let availableFolders = $state<Array<{ id: string; name: string }>>([])
   let saving = $state(false)
   let error = $state('')
+
+  function extractFolders(folder: SessionFolder, prefix = ''): Array<{ id: string; name: string }> {
+    const list: Array<{ id: string; name: string }> = []
+    for (const sub of folder.folders || []) {
+      const label = prefix ? `${prefix} / ${sub.name}` : sub.name
+      list.push({ id: sub.id, name: label })
+      list.push(...extractFolders(sub, label))
+    }
+    return list
+  }
+
+  $effect(() => {
+    api.listSessions().then((root) => {
+      if (root) {
+        availableFolders = extractFolders(root)
+      }
+    }).catch(() => {})
+  })
 
   async function save() {
     if (!host.trim() || !username.trim()) {
@@ -30,6 +56,7 @@
         username: username.trim(),
         auth_type: authType,
         private_key_path: authType === 'public_key' && keyPath ? keyPath : undefined,
+        folder_id: folderId ? folderId : undefined,
       })
       if (authType === 'password' && password) {
         await api.credentialSave(sessionId, 'password', password)
@@ -68,6 +95,18 @@
         <span>{t('session.name')}</span>
         <input type="text" bind:value={name} placeholder={t('session.name')} />
       </label>
+
+      {#if availableFolders.length > 0}
+        <label>
+          <span>{t('session.folder')}</span>
+          <select bind:value={folderId}>
+            <option value="">{t('session.noFolder')}</option>
+            {#each availableFolders as f}
+              <option value={f.id}>{f.name}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
 
       <div class="row">
         <label class="host">

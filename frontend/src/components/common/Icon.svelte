@@ -100,6 +100,9 @@
   {:else if name === 'plus'}
     <path d="M5 12h14" />
     <path d="M12 5v14" />
+  {:else if name === 'search'}
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.3-4.3" />
   {:else}
     <!-- Default generic bullet or square -->
     <rect width="14" height="14" x="5" y="5" rx="2" />

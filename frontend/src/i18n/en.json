@@ -23,7 +23,11 @@
     "newFolder": "New Folder",
     "folderNamePlaceholder": "Folder name...",
     "moveToFolder": "Move to folder",
-    "rootLevel": "Root level"
+    "rootLevel": "Root level",
+    "searchHosts": "Search hosts...",
+    "noMatches": "No matching hosts found",
+    "clearSearch": "Clear search",
+    "addToFolder": "Add host to folder"
   },
   "toolbar": {
     "newSession": "+ New Session",
@@ -66,6 +70,8 @@
     "hostRequired": "Host and username are required",
     "enterPassword": "Enter password",
     "savePassword": "Save password",
+    "folder": "Folder",
+    "noFolder": "Root (no folder)",
     "folderName": "Folder Name",
     "createFolder": "Create Folder",
     "importSshConfig": "Import SSH Config",

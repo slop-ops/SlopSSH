@@ -261,6 +261,67 @@ impl SessionManager {
         Ok(())
     }
 
+    /// Returns the connection handle and optional X11 display info for opening a shell channel without holding a lock.
+    #[cfg(unix)]
+    #[allow(clippy::type_complexity)]
+    pub fn get_shell_params(
+        &self,
+        session_id: &str,
+    ) -> Result<
+        (
+            Arc<russh::client::Handle<ClientHandler>>,
+            Option<Arc<super::x11::X11Display>>,
+        ),
+        SshError,
+    > {
+        let session = self
+            .sessions
+            .get(session_id)
+            .ok_or(SshError::NotConnected)?;
+        let handle = session
+            .connection
+            .handle()
+            .ok_or(SshError::NotConnected)?
+            .clone();
+        Ok((handle, session.x11_display.clone()))
+    }
+
+    /// Returns the connection handle for opening a shell channel without holding a lock.
+    #[cfg(not(unix))]
+    pub fn get_shell_params(
+        &self,
+        session_id: &str,
+    ) -> Result<Arc<russh::client::Handle<ClientHandler>>, SshError> {
+        let session = self
+            .sessions
+            .get(session_id)
+            .ok_or(SshError::NotConnected)?;
+        let handle = session
+            .connection
+            .handle()
+            .ok_or(SshError::NotConnected)?
+            .clone();
+        Ok(handle)
+    }
+
+    /// Stores an already-opened shell channel into the session.
+    pub fn insert_shell_channel(
+        &mut self,
+        session_id: &str,
+        channel_id: &str,
+        channel: ShellChannel,
+    ) -> Result<(), SshError> {
+        let session = self
+            .sessions
+            .get_mut(session_id)
+            .ok_or(SshError::NotConnected)?;
+        session
+            .shell_channels
+            .insert(channel_id.to_string(), channel);
+        tracing::debug!(session_id, channel_id, "Shell channel registered");
+        Ok(())
+    }
+
     /// Spawns a background read loop that calls `on_data` for each chunk of output.
     pub fn spawn_shell_read_loop<F>(
         &mut self,

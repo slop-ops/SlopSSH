@@ -14,6 +14,28 @@ pub struct ShellChannel {
     channel: Arc<Mutex<russh::Channel<russh::client::Msg>>>,
 }
 
+async fn open_session_with_retry(
+    handle: &russh::client::Handle<ClientHandler>,
+) -> Result<russh::Channel<russh::client::Msg>, SshError> {
+    let mut attempts = 0;
+    loop {
+        match handle.channel_open_session().await {
+            Ok(ch) => return Ok(ch),
+            Err(e) => {
+                let err_str = e.to_string();
+                if (err_str.contains("ConnectFailed") || err_str.contains("ResourceShortage"))
+                    && attempts < 3
+                {
+                    attempts += 1;
+                    tokio::time::sleep(Duration::from_millis(150 * attempts)).await;
+                    continue;
+                }
+                return Err(SshError::ChannelError(err_str));
+            }
+        }
+    }
+}
+
 impl ShellChannel {
     /// Opens a new shell channel with a PTY requesting the given terminal dimensions.
     pub async fn open(
@@ -21,10 +43,7 @@ impl ShellChannel {
         cols: u16,
         rows: u16,
     ) -> Result<Self, SshError> {
-        let channel = handle
-            .channel_open_session()
-            .await
-            .map_err(|e| SshError::ChannelError(e.to_string()))?;
+        let channel = open_session_with_retry(handle).await?;
 
         channel
             .request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[])
@@ -48,10 +67,7 @@ impl ShellChannel {
         rows: u16,
         x11_display: &super::x11::X11Display,
     ) -> Result<Self, SshError> {
-        let channel = handle
-            .channel_open_session()
-            .await
-            .map_err(|e| SshError::ChannelError(e.to_string()))?;
+        let channel = open_session_with_retry(handle).await?;
 
         channel
             .request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[])

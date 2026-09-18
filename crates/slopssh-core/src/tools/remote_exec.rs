@@ -30,10 +30,10 @@ impl RemoteExecutor {
 
         let deadline = Instant::now() + Duration::from_secs(timeout_secs);
 
-        loop {
+        let exec_result: Result<(), SshError> = loop {
             let remaining = deadline.saturating_duration_since(Instant::now());
             if remaining.is_zero() {
-                return Err(SshError::Timeout);
+                break Err(SshError::Timeout);
             }
 
             let result = timeout(remaining, channel.wait()).await;
@@ -48,15 +48,19 @@ impl RemoteExecutor {
                     exit_code = exit_status as i32;
                 }
                 Ok(Some(ChannelMsg::Eof)) | Ok(None) => {
-                    break;
+                    break Ok(());
                 }
                 Ok(Some(_)) => {}
                 Err(_) => {
-                    return Err(SshError::Timeout);
+                    break Err(SshError::Timeout);
                 }
             }
-        }
+        };
 
+        // Explicitly close the channel so the remote SSH server immediately frees the session
+        let _ = channel.close().await;
+
+        exec_result?;
         Ok(CommandResult { stdout, exit_code })
     }
 }

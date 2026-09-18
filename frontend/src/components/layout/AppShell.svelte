@@ -65,6 +65,8 @@
   let showSidebar = $state(true)
   let sidebarCollapsed = $state(false)
   let showNewSession = $state(false)
+  let targetFolderIdForNewSession = $state<string | null>(null)
+  let terminalSnippetsOpen = $state(false)
   let showSettings = $state(false)
   let activeSessionId = $state('')
   let theme = $state(getTheme())
@@ -120,7 +122,9 @@
   function updateWorkspace(sessionId: string, updater: (ws: SessionWorkspace) => void) {
     const existing = workspaces.get(sessionId)
     if (existing) {
-      updater(existing)
+      const cloned = { ...existing }
+      updater(cloned)
+      workspaces.set(sessionId, cloned)
       workspaces = new Map(workspaces)
     }
   }
@@ -693,7 +697,19 @@
   <div class="app-shell" role="application" aria-label={t('app.title')}>
   {#if showSidebar}
     <aside class="sidebar" class:collapsed={sidebarCollapsed} role="navigation" aria-label={t('sidebar.sessionList')}>
-      <Sidebar onConnect={handleConnect} onDisconnect={handleDisconnectSession} onNewSession={() => (showNewSession = true)} onSessionSelect={handleSessionSelect} bind:showImport bind:selectedSessionId bind:sessions={sidebarSessions} tabs={[...localTabs, ...[...workspaces.values()].flatMap((w) => w.tabs)]} {connectedSessionIds} {disconnectedSessionIds} collapsed={sidebarCollapsed} />
+      <Sidebar
+        onConnect={handleConnect}
+        onDisconnect={handleDisconnectSession}
+        onNewSession={(folderId) => { targetFolderIdForNewSession = folderId ?? null; showNewSession = true }}
+        onSessionSelect={handleSessionSelect}
+        bind:showImport
+        bind:selectedSessionId
+        bind:sessions={sidebarSessions}
+        tabs={[...localTabs, ...[...workspaces.values()].flatMap((w) => w.tabs)]}
+        {connectedSessionIds}
+        {disconnectedSessionIds}
+        collapsed={sidebarCollapsed}
+      />
     </aside>
   {/if}
   <main class="content" role="main">
@@ -707,19 +723,19 @@
         }
       }}
       onCloseSession={handleCloseSessionTab}
-      onNewSession={() => (showNewSession = true)}
+      onNewSession={() => { targetFolderIdForNewSession = null; showNewSession = true }}
       onOpenLocalTerminal={openLocalTerminal}
     />
     <div class="toolbar" role="toolbar" aria-label={t('toolbar.mainToolbar')}>
-      <button class="toolbar-btn" onclick={() => { sidebarCollapsed = !sidebarCollapsed; if (!showSidebar) showSidebar = true }} aria-label={sidebarCollapsed ? t('toolbar.expandSidebar') : t('toolbar.collapseSidebar')}>
+      <button
+        class="toolbar-btn"
+        onclick={() => { sidebarCollapsed = !sidebarCollapsed }}
+        aria-label={sidebarCollapsed ? t('toolbar.expandSidebar') : t('toolbar.collapseSidebar')}
+        title={sidebarCollapsed ? t('toolbar.expandSidebar') : t('toolbar.collapseSidebar')}
+      >
         <Icon name={sidebarCollapsed ? 'chevron-right' : 'chevron-left'} size={13} />
       </button>
-      {#if !sidebarCollapsed}
-        <button class="toolbar-btn" onclick={toggleSidebar} aria-label={showSidebar ? t('toolbar.hideSidebar') : t('toolbar.showSidebar')} aria-expanded={showSidebar}>
-          <Icon name={showSidebar ? 'chevron-left' : 'chevron-right'} size={13} />
-        </button>
-      {/if}
-      <button class="toolbar-btn" onclick={() => (showNewSession = true)} aria-label={t('toolbar.newSession')}>{t('toolbar.newSession')}</button>
+      <button class="toolbar-btn" onclick={() => { targetFolderIdForNewSession = null; showNewSession = true }} aria-label={t('toolbar.newSession')}>{t('toolbar.newSession')}</button>
       {#if activeSessionId && activeSessionId !== '__local__'}
         <div class="toolbar-separator" role="separator"></div>
         <button class="toolbar-btn" class:active={activeView === 'terminal'} onclick={() => setActiveView('terminal')} aria-pressed={activeView === 'terminal'}>{t('toolbar.terminal')}</button>
@@ -790,6 +806,16 @@
                   <Icon name="split-h" size={13} />
                 </button>
               </div>
+              <button
+                class="split-btn snippets-btn"
+                class:active={terminalSnippetsOpen}
+                onclick={() => (terminalSnippetsOpen = !terminalSnippetsOpen)}
+                title={t('terminal.snippets')}
+                aria-label={t('terminal.snippets')}
+              >
+                <Icon name="code" size={13} />
+                <span class="snippets-label">{t('terminal.snippets')}</span>
+              </button>
             </div>
             <div
               class="split-container"
@@ -805,7 +831,7 @@
                 role="region"
                 aria-label="Primary terminal pane"
               >
-                <TerminalHolder bind:tabs={ws!.tabs} bind:activeTabId={ws!.activeTabId} onSessionDisconnect={handleSessionDisconnect} />
+                <TerminalHolder bind:tabs={ws!.tabs} bind:activeTabId={ws!.activeTabId} bind:showSnippets={terminalSnippetsOpen} onSessionDisconnect={handleSessionDisconnect} />
               </div>
 
               {#if splitMode !== 'none'}
@@ -851,7 +877,7 @@
     {:else if activeSessionId === '__local__' || localTabs.length > 0}
       <div class="main-views">
         <div class="view" role="tabpanel" aria-label={t('toolbar.terminal')}>
-          <TerminalHolder bind:tabs={localTabs} activeTabId={localTabs[localTabs.length - 1].id} onSessionDisconnect={handleSessionDisconnect} />
+          <TerminalHolder bind:tabs={localTabs} activeTabId={localTabs[localTabs.length - 1].id} bind:showSnippets={terminalSnippetsOpen} onSessionDisconnect={handleSessionDisconnect} />
         </div>
       </div>
     {:else}
@@ -874,7 +900,10 @@
 </div>
 
 {#if showNewSession}
-  <NewSessionDialog onclose={() => (showNewSession = false)} />
+  <NewSessionDialog
+    initialFolderId={targetFolderIdForNewSession}
+    onclose={() => { showNewSession = false; targetFolderIdForNewSession = null }}
+  />
 {/if}
 
 <SettingsDialog bind:open={showSettings} />
@@ -1060,6 +1089,20 @@
     background: var(--accent-bg);
     border-color: var(--accent);
     color: var(--accent);
+  }
+
+  .snippets-btn {
+    width: auto;
+    padding: 0 8px;
+    gap: 4px;
+    font-size: 11px;
+    font-weight: 500;
+    margin-left: 6px;
+  }
+
+  .snippets-label {
+    display: inline;
+    font-size: 11px;
   }
 
   .split-container {

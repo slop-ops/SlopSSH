@@ -26,22 +26,29 @@ async fn get_sftp(
 #[tauri::command]
 pub async fn sftp_connect(state: State<'_, AppState>, session_id: String) -> Result<(), String> {
     tracing::info!(session_id = %session_id, "SFTP connect");
-    let sftp_session = {
+    let handle = {
         let ssh_manager = state.ssh_manager.lock().await;
-        let channel = ssh_manager
-            .open_sftp_channel(&session_id)
-            .await
-            .map_err(|e| {
-                tracing::error!(session_id = %session_id, error = %e, "SFTP channel open failed");
-                e.to_string()
-            })?;
-        let stream = channel.into_stream();
-        let sftp = SftpSession::new(stream).await.map_err(|e| {
-            tracing::error!(session_id = %session_id, error = %e, "SFTP session init failed");
-            format!("SFTP init failed: {}", e)
-        })?;
-        Arc::new(Mutex::new(Some(sftp)))
+        ssh_manager
+            .get_handle(&session_id)
+            .ok_or_else(|| format!("No SSH connection for session '{}'", session_id))?
     };
+
+    let channel = handle.channel_open_session().await.map_err(|e| {
+        tracing::error!(session_id = %session_id, error = %e, "SFTP channel open failed");
+        format!("Failed to open SFTP channel: {}", e)
+    })?;
+
+    channel.request_subsystem(true, "sftp").await.map_err(|e| {
+        tracing::error!(session_id = %session_id, error = %e, "SFTP subsystem request failed");
+        format!("Failed to request SFTP subsystem: {}", e)
+    })?;
+
+    let stream = channel.into_stream();
+    let sftp = SftpSession::new(stream).await.map_err(|e| {
+        tracing::error!(session_id = %session_id, error = %e, "SFTP session init failed");
+        format!("SFTP init failed: {}", e)
+    })?;
+    let sftp_session = Arc::new(Mutex::new(Some(sftp)));
 
     let mut sftp_sessions = state.sftp_sessions.lock().await;
     sftp_sessions.insert(session_id, sftp_session);

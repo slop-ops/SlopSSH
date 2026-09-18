@@ -152,14 +152,43 @@ pub async fn ssh_open_shell(
     rows: u16,
 ) -> Result<(), String> {
     tracing::debug!(session_id = %session_id, channel_id = %channel_id, cols, rows, "ssh_open_shell");
-    let mut ssh_manager = state.ssh_manager.lock().await;
-    ssh_manager
-        .open_shell(&session_id, &channel_id, cols, rows)
+
+    #[cfg(unix)]
+    let (handle, x11_display) = {
+        let ssh_manager = state.ssh_manager.lock().await;
+        ssh_manager
+            .get_shell_params(&session_id)
+            .map_err(|e| e.to_string())?
+    };
+
+    #[cfg(not(unix))]
+    let handle = {
+        let ssh_manager = state.ssh_manager.lock().await;
+        ssh_manager
+            .get_shell_params(&session_id)
+            .map_err(|e| e.to_string())?
+    };
+
+    #[cfg(unix)]
+    let channel = if let Some(display) = &x11_display {
+        slopssh_core::ssh::channel::ShellChannel::open_with_x11(&handle, cols, rows, display).await
+    } else {
+        slopssh_core::ssh::channel::ShellChannel::open(&handle, cols, rows).await
+    }
+    .map_err(|e| e.to_string())?;
+
+    #[cfg(not(unix))]
+    let channel = slopssh_core::ssh::channel::ShellChannel::open(&handle, cols, rows)
         .await
         .map_err(|e| e.to_string())?;
 
     let app_clone = app.clone();
     let cid = channel_id.clone();
+    let mut ssh_manager = state.ssh_manager.lock().await;
+    ssh_manager
+        .insert_shell_channel(&session_id, &channel_id, channel)
+        .map_err(|e| e.to_string())?;
+
     ssh_manager
         .spawn_shell_read_loop(&session_id, &channel_id, move |data| {
             let encoded = base64::engine::general_purpose::STANDARD.encode(&data);

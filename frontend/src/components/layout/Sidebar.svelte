@@ -2,6 +2,7 @@
   import * as api from '$lib/api/invoke'
   import ImportDialog from '$components/session/ImportDialog.svelte'
   import PasswordDialog from '$components/session/PasswordDialog.svelte'
+  import Icon from '$components/common/Icon.svelte'
   import { t } from '$lib/utils/i18n'
   import type { SessionFolder, SessionInfo } from '$lib/types'
 
@@ -28,7 +29,7 @@
   }: {
     onConnect: (id: string, name: string) => void
     onDisconnect: (sessionId: string) => void
-    onNewSession: () => void
+    onNewSession: (folderId?: string) => void
     onSessionSelect?: (sessionId: string) => void
     showImport?: boolean
     selectedSessionId?: string
@@ -44,6 +45,7 @@
   let passwordDialogSession = $state<{ id: string; name: string } | null>(null)
   let showNewFolder = $state(false)
   let newFolderName = $state('')
+  let searchQuery = $state('')
   let collapsedFolders = $state<Set<string>>(new Set())
   let contextMenu = $state<{ x: number; y: number; sessionId: string } | null>(null)
   let dragOverFolderId = $state<string | null>(null)
@@ -121,12 +123,13 @@
   }
 
   function toggleFolder(folderId: string) {
-    if (collapsedFolders.has(folderId)) {
-      collapsedFolders.delete(folderId)
+    const next = new Set(collapsedFolders)
+    if (next.has(folderId)) {
+      next.delete(folderId)
     } else {
-      collapsedFolders.add(folderId)
+      next.add(folderId)
     }
-    collapsedFolders = collapsedFolders
+    collapsedFolders = next
   }
 
   async function moveSessionToFolder(sessionId: string, targetFolderId: string | null) {
@@ -226,19 +229,53 @@
     folderId?: string
   }
 
+  function matchesSearch(item: SessionInfo | FlatItem, query: string): boolean {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    return (
+      (item.name && item.name.toLowerCase().includes(q)) ||
+      (item.host && item.host.toLowerCase().includes(q)) ||
+      (item.username && item.username.toLowerCase().includes(q)) ||
+      String(item.port).includes(q)
+    )
+  }
+
+  function folderHasMatch(folder: SessionFolder, query: string): boolean {
+    const q = query.trim().toLowerCase()
+    if (!q) return true
+    if (folder.items?.some((item) => matchesSearch(item, q))) return true
+    return folder.folders?.some((sub) => folderHasMatch(sub, q)) ?? false
+  }
+
+  function countTotalMatches(folder: SessionFolder, query: string): number {
+    const q = query.trim().toLowerCase()
+    if (!q) return 0
+    let count = (folder.items || []).filter((item) => matchesSearch(item, q)).length
+    for (const sub of folder.folders || []) {
+      count += countTotalMatches(sub, q)
+    }
+    return count
+  }
+
   function flattenSessions(
     folder: SessionFolder,
     depth: number = 0,
     parentFolderId: string | null = null,
   ): Array<{ item: FlatItem; depth: number }> {
     const result: Array<{ item: FlatItem; depth: number }> = []
+    const isSearching = !!searchQuery.trim()
+
     for (const item of folder.items || []) {
-      result.push({ item: { ...item, folderId: parentFolderId ?? undefined }, depth })
+      if (!isSearching || matchesSearch(item, searchQuery)) {
+        result.push({ item: { ...item, folderId: parentFolderId ?? undefined }, depth })
+      }
     }
     for (const sub of folder.folders || []) {
-      result.push({ item: { ...sub, isFolder: true, host: '', username: '', port: 0, folderId: sub.id }, depth })
-      if (!collapsedFolders.has(sub.id)) {
-        result.push(...flattenSessions(sub, depth + 1, sub.id))
+      if (!isSearching || folderHasMatch(sub, searchQuery)) {
+        result.push({ item: { ...sub, isFolder: true, host: '', username: '', port: 0, folderId: sub.id }, depth })
+        if (isSearching || !collapsedFolders.has(sub.id)) {
+          result.push(...flattenSessions(sub, depth + 1, sub.id))
+        }
       }
     }
     return result
@@ -266,7 +303,7 @@
         {/each}
         <div class="collapsed-divider"></div>
       {/if}
-      <button class="collapsed-item" onclick={onNewSession} title={t('sidebar.addSession')}>
+      <button class="collapsed-item" onclick={() => onNewSession()} title={t('sidebar.addSession')}>
         <span class="collapsed-icon">+</span>
       </button>
     </div>
@@ -295,9 +332,29 @@
         <div class="header-actions">
           <button class="folder-btn" onclick={() => { showNewFolder = !showNewFolder }} title={t('sidebar.newFolder')} aria-label="New folder">&#128193;</button>
           <button class="import-btn" onclick={() => (showImport = true)} title={t('sidebar.importSshConfig')} aria-label="Import SSH config">&#8595;</button>
-          <button class="add-btn" onclick={onNewSession} aria-label="Add session">+</button>
+          <button class="add-btn" onclick={() => onNewSession()} aria-label="Add session">+</button>
         </div>
       </div>
+
+      <div class="search-box">
+        <span class="search-icon"><Icon name="search" size={13} /></span>
+        <input
+          type="text"
+          bind:value={searchQuery}
+          placeholder={t('sidebar.searchHosts')}
+          class="search-input"
+          aria-label={t('sidebar.searchHosts')}
+        />
+        {#if searchQuery}
+          <button class="search-clear-btn" onclick={() => (searchQuery = '')} title={t('sidebar.clearSearch')} aria-label="Clear search">✕</button>
+        {/if}
+      </div>
+      {#if searchQuery.trim()}
+        {@const matchCount = sessions ? countTotalMatches(sessions, searchQuery) : 0}
+        <div class="search-result-info">
+          <span class="match-count">{matchCount} {matchCount === 1 ? 'match' : 'matches'}</span>
+        </div>
+      {/if}
 
       {#if showNewFolder}
         <div class="new-folder-row">
@@ -329,8 +386,13 @@
           {@const flatItems = flattenSessions(sessions)}
           {#if flatItems.length === 0}
             <div class="empty">
-              <p>{t('sidebar.noSessions')}</p>
-              <button class="empty-add" onclick={onNewSession}>{t('sidebar.addSession')}</button>
+              {#if searchQuery.trim()}
+                <p>{t('sidebar.noMatches')}</p>
+                <button class="empty-add" onclick={() => (searchQuery = '')}>{t('sidebar.clearSearch')}</button>
+              {:else}
+                <p>{t('sidebar.noSessions')}</p>
+                <button class="empty-add" onclick={() => onNewSession()}>{t('sidebar.addSession')}</button>
+              {/if}
             </div>
           {:else}
             {#each flatItems as { item, depth }}
@@ -352,6 +414,12 @@
                   <span class="folder-chevron">{collapsedFolders.has(item.id) ? '\u25B6' : '\u25BC'}</span>
                   <span class="folder-icon">{'\uD83D\uDCC1'}</span>
                   <span class="folder-name">{item.name}</span>
+                  <button
+                    class="folder-add-host-btn"
+                    onclick={(e) => { e.stopPropagation(); onNewSession(item.id) }}
+                    title="{t('sidebar.addToFolder')} ({item.name})"
+                    aria-label="{t('sidebar.addToFolder')} ({item.name})"
+                  >+</button>
                 </div>
               {:else}
                 <!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -513,6 +581,73 @@
     gap: 4px;
   }
 
+  .search-box {
+    display: flex;
+    align-items: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-primary);
+    border-radius: 6px;
+    padding: 4px 8px;
+    margin: 0 0 6px 0;
+    gap: 6px;
+    transition: border-color 0.15s;
+  }
+
+  .search-box:focus-within {
+    border-color: var(--border-active);
+  }
+
+  .search-icon {
+    display: flex;
+    align-items: center;
+    color: var(--text-tertiary);
+  }
+
+  .search-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--text-primary);
+    font-size: 12px;
+    padding: 0;
+    min-width: 0;
+  }
+
+  .search-input::placeholder {
+    color: var(--text-tertiary);
+  }
+
+  .search-clear-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 11px;
+    padding: 0 2px;
+    display: flex;
+    align-items: center;
+    border-radius: 2px;
+  }
+
+  .search-clear-btn:hover {
+    color: var(--text-primary);
+  }
+
+  .search-result-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 4px 6px 4px;
+    font-size: 11px;
+    color: var(--text-tertiary);
+  }
+
+  .match-count {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
   .add-btn,
   .import-btn,
   .folder-btn {
@@ -618,6 +753,10 @@
     cursor: pointer;
     flex: 1;
     min-width: 0;
+    background: transparent;
+    border: none;
+    text-align: left;
+    font-family: inherit;
   }
 
   .active-dot {
@@ -705,6 +844,10 @@
     padding: 6px 8px;
     cursor: pointer;
     flex: 1;
+    background: transparent;
+    border: none;
+    text-align: left;
+    font-family: inherit;
   }
 
   .session-name {
@@ -779,6 +922,38 @@
     color: var(--text-secondary);
     font-size: 12px;
     font-weight: 600;
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folder-add-host-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 0 4px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.15s, color 0.15s, background 0.15s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 18px;
+    width: 18px;
+  }
+
+  .folder:hover .folder-add-host-btn {
+    opacity: 0.8;
+  }
+
+  .folder-add-host-btn:hover {
+    opacity: 1 !important;
+    background: var(--bg-hover);
+    color: var(--accent);
   }
 
   .empty {

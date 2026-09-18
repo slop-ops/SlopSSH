@@ -6,7 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-09-18
+
 ### Added
+- Real-time host search in sidebar with match counter, clear button, and auto-expanding folders
+- Ability to create a host directly inside a specified folder via folder hover button
+- Folder selector dropdown in New Session Dialog with destination folder assignment
+- Snippets toggle button with icon in terminal controls header bar
+- Close button (`✕`) in Snippets panel
+- Automatic channel retry with exponential backoff for multiplexed SSH terminal connections
+
+### Changed
+- Resolved GUI freezes when opening secondary terminals by releasing `ssh_manager` mutex prior to network round-trips
+- Fixed view switching freeze across Terminal, Files, and Tools views in Svelte 5 via immutable workspace updates
+- Fixed sidebar folder collapsing/expanding reactivity in Svelte 5 (`new Set`)
+- Fixed sidebar server element button styling to properly match dark theme (`background: transparent`)
+- Consolidated duplicate `<` collapse buttons into a single clean sidebar toggle button
+- Closed remote execution channels immediately on completion to prevent OpenSSH `MaxSessions 10` exhaustion
+
+### Removed
+- Obsolete `+$` local terminal button and single-letter `S` snippet button from terminal tab bar
+
 
 - Session backup rotation: keeps last 5 backup copies (`sessions.json.bak.1` through `.bak.5`) before each save
 - Tab state persistence: open tabs saved to disk and restored on next launch

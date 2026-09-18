@@ -98,13 +98,16 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Clean previous bundle artifacts
+        run: rm -rf target/release/bundle
+
       - name: Build Tauri app
         working-directory: crates/slopssh-tauri
         run: |
           for i in 1 2 3; do
             cargo tauri build --config '{"build":{"beforeBuildCommand":""}}' && break
             echo "Build attempt $i failed, retrying..."
-            rm -rf target/release/bundle/appimage
+            rm -rf ../../target/release/bundle/appimage
             sleep 5
           done
 
@@ -116,6 +119,10 @@ jobs:
           path: |
             target/release/bundle/deb/*.deb
             target/release/bundle/appimage/*.AppImage
+
+      - name: Clean bundles from cache
+        if: always()
+        run: rm -rf target/release/bundle
 
   build-windows:
     name: Build Windows
@@ -149,6 +156,10 @@ jobs:
         working-directory: frontend
         run: npm run build
 
+      - name: Clean previous bundle artifacts
+        shell: bash
+        run: rm -rf target/release/bundle
+
       - name: Build Tauri app
         working-directory: crates/slopssh-tauri
         shell: bash
@@ -158,9 +169,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: windows-artifacts
+          if-no-files-found: error
           path: |
             target/release/bundle/nsis/*.exe
             target/release/bundle/msi/*.msi
+
+      - name: Clean bundles from cache
+        if: always()
+        shell: bash
+        run: rm -rf target/release/bundle
 
   release:
     name: Create GitHub Release
@@ -184,8 +201,28 @@ jobs:
           name: windows-artifacts
           path: artifacts/windows
 
-      - name: List downloaded artifacts
-        run: find artifacts -type f
+      - name: Clean stale release assets on GitHub
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Checking for stale assets in release ${GITHUB_REF_NAME} (current version: ${VERSION})..."
+          STALE_ASSETS=$(gh release view "${GITHUB_REF_NAME}" --repo "${{ github.repository }}" --json assets --jq -r '.assets[]? | select(.name | contains("'"$VERSION"'") | not) | .name' 2>/dev/null || true)
+          for asset in $STALE_ASSETS; do
+            if [ -n "$asset" ]; then
+              echo "Removing stale asset from release: $asset"
+              gh release delete-asset "${GITHUB_REF_NAME}" "$asset" --repo "${{ github.repository }}" --yes || true
+            fi
+          done
+
+      - name: Filter local artifacts by current version
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          echo "Ensuring only version ${VERSION} artifacts are uploaded..."
+          find artifacts -type f ! -name "*${VERSION}*" -exec echo "Removing stale artifact: {}" \; -exec rm -f {} +
+          echo "Artifacts to publish:"
+          find artifacts -type f
 
       - name: Create Release
         uses: softprops/action-gh-release@v2

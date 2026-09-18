@@ -24,3 +24,9 @@ base64 = "0.22"
 uuid = { version = "1", features = ["v4", "serde"] }
 chrono = { version = "0.4", features = ["serde"] }
 russh-sftp = "2"
+
+[profile.dev]
+debug = 1
+
+[profile.test]
+debug = 1

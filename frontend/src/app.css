@@ -32,6 +32,23 @@
    THEME PALETTES
    ========================================================================== */
 
+:root,
+:root[data-theme='dark'],
+:root[data-theme='jetbrains-dark'],
+:root[data-theme='tokyo-night'],
+:root[data-theme='nord'],
+:root[data-theme='catppuccin-mocha'],
+:root[data-theme='monokai'],
+:root[data-theme='dracula'],
+:root[data-theme='one-dark-pro'],
+:root[data-theme='custom'] {
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+
 /* 1. JETBRAINS DARK (Default Dark) */
 :root[data-theme='dark'],
 :root[data-theme='jetbrains-dark'] {
@@ -330,7 +347,30 @@ select, input, textarea {
   border-color: var(--border-primary);
 }
 
-select option {
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  border: 1px solid var(--border-primary);
+  border-radius: 4px;
+  padding: 6px 28px 6px 10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239da0a8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+}
+
+select:focus {
+  border-color: var(--border-active);
+  outline: none;
+}
+
+select option,
+select optgroup {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
+  padding: 6px 10px;
 }

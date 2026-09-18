@@ -79,8 +79,8 @@ cd crates/slopssh-tauri && cargo tauri build
 ```
 
 Output artifacts:
-- `crates/slopssh-tauri/target/release/bundle/deb/slopssh_0.5.0_amd64.deb` — Debian package
-- `crates/slopssh-tauri/target/release/bundle/appimage/slopssh_0.5.0_amd64.AppImage` — AppImage
+- `crates/slopssh-tauri/target/release/bundle/deb/slopssh_0.5.1_amd64.deb` — Debian package
+- `crates/slopssh-tauri/target/release/bundle/appimage/slopssh_0.5.1_amd64.AppImage` — AppImage
 
 ### Windows
 
@@ -97,8 +97,8 @@ cd crates\slopssh-tauri && cargo tauri build
 ```
 
 Output artifacts:
-- `crates\slopssh-tauri\target\release\bundle\nsis\SlopSSH_0.5.0_x64-setup.exe` — NSIS installer
-- `crates\slopssh-tauri\target\release\bundle\msi\SlopSSH_0.5.0_x64_en-US.msi` — MSI installer
+- `crates\slopssh-tauri\target\release\bundle\nsis\SlopSSH_0.5.1_x64-setup.exe` — NSIS installer
+- `crates\slopssh-tauri\target\release\bundle\msi\SlopSSH_0.5.1_x64_en-US.msi` — MSI installer
 
 ## Development
 
@@ -122,7 +122,7 @@ cd frontend && npm run check
 
 1. Update the version in `Cargo.toml`, `crates/slopssh-tauri/tauri.conf.json`, and `frontend/package.json`
 2. Commit the version bump
-3. Create and push a git tag: `git tag v0.5.0 && git push origin v0.5.0`
+3. Create and push a git tag: `git tag v0.5.1 && git push origin v0.5.1`
 4. The GitHub Actions release workflow will automatically:
    - Run all tests (Rust + frontend)
    - Build Linux (`.deb` + `.AppImage`) and Windows (`.exe` + `.msi`) artifacts

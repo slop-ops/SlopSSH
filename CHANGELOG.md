@@ -6,6 +6,21 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-09-18
+
+### Added
+- Tab utilities module (`tabs.ts`) with dynamic non-colliding title calculation (`getNextTerminalTitle`) and adjacent tab reordering (`placeAdjacent`)
+- Unit test suite for tab naming and placement in `tabs.test.ts`
+- Polished dark dropdown box styling with custom chevron SVG indicator and theme input backgrounds
+
+### Fixed
+- Terminal history and buffer clearing when switching between connected hosts and local terminal by preserving workspaces in the DOM with CSS visibility (`display: none` / `.hidden`)
+- Terminal split multiplexing destruction: terminals now stay mounted in memory during split toggling, divider resizing, and pane switching
+- Auto-creation of a second terminal tab (`Terminal 2`) when activating split mode on a session with 1 tab
+- Split tab positioning: secondary terminal tab is placed immediately adjacent to the primary tab in the tab bar when exiting split mode
+- Tab naming collisions (repeated "Terminal 2") replaced with sequential numbering based on existing tabs
+- Purely white select dropdown menus in Settings and dialogs resolved by setting `color-scheme: dark` across all dark themes
+
 ## [0.5.0] - 2026-09-18
 
 ### Added
